@@ -1,0 +1,233 @@
+#!/bin/bash
+#set -e
+#set -o pipefail
+
+<< LICENSE
+The MIT License (MIT)
+
+Copyright 2017 - 2018, Alchemy Limited, LLC.
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+LICENSE
+
+usage()
+{
+	cat <<- _EOM_
+	deploy: deploy metronome to a local parity instance by default, overriding
+	auction launch date, price and supply, if specified.
+
+	By default, deploy deploys to a local clean "dev chain" instance of parity.
+
+	If --test is offered, deploy will connect to the New Alchemy test network and
+	deploy there. Note you will need NA testnet ETH. Contact your SA for help.
+
+	If --live is offered, deploy will connect to the default parity instance.
+
+	usage: deploy [--supply supply of Metronome] [-P | --pass <password> ]
+		[-p | --price <price at start of MTN Auction] [--live | --test]
+		[--auction auction_epoch_seconds] [-t | --timescale Time Mult]
+    [-i | --interactive] [--seed ]| [-h]
+
+	_EOM_
+
+}
+
+check_system()
+{
+	unameOut="$(uname -s)"
+	case "${unameOut}" in
+		Linux*)     SOLDEPLOY=bin/soldeploy.amd64.bin;;
+		Darwin*)    SOLDEPLOY=bin/soldeploy.osx.bin;;
+		*)          echo "What Architecture is this? Punting."
+			    exit 1;;
+	esac
+
+	parityString=`parity --version | grep version\ P`
+	parityVersion=${parityString:18:3}	
+	if [[ "$parityString" = *"1.8"* ]]; then
+		echo "You have Parity 1.8"
+	else
+		echo "Need Parity 1.8. You have $parityString. Punting."
+		exit 1
+	fi
+
+	mkdir -p log
+}
+
+check_system
+
+AUCTION=0
+SEED=""
+INTERACTIVE=0
+PARITY="parity --geth --config dev --datadir=/tmp/paritydev --fat-db on --tracing on --pruning archive --gasprice 0 >log/parity.log 2>log/parity.err.log"
+SUPPLY=10000000
+DEST="Parity DevChain Local"
+LIVE=0
+PASS=""
+TEST=0
+LOCAL=1
+TIMESCALE=1
+
+# Price in ETH per MTN at start
+PRICE=2
+
+while [ "$1" != "" ]; do
+	case $1 in
+		--live )      		PARITY="parity >log/parity.log 2>log/parity.err.log"
+			DEST="Eth Live Net"
+			LIVE=1
+			LOCAL=0
+			;;
+		--test )      		PARITY="parity --geth  --fat-db on  --datadir=/tmp/natestnet --tracing on  --pruning archive --chain parity-spec.json --bootnodes enode://a90b36105811c87207b3a9bef260c2bff02355b0f8c1bfbc1e8341ee332fc803bc0f62cbec61fcc443228580a7f2ec3eeab3b57a649203f6ae6955e54ee9dfac@35.202.109.171:30303 >log/parity.log 2>log/parity.err.log --force-ui"
+			DEST="New Alchemy Testnet"
+			LIVE=0
+			TEST=1
+			LOCAL=0
+			;;
+		-h | --help )           usage
+			exit
+			;;
+		-s | --supply )         shift
+			supply=$1
+			;;
+		-p | --price )         shift
+			PRICE=$1
+			;;
+		-a | --auction )	shift
+			AUCTION=$1
+			;;
+		-P | --pass ) 		shift
+			PASS=$1
+			;;
+		-t | --timescale ) 	shift
+			TIMESCALE=$1
+			;;
+    -i | --interactive )
+      INTERACTIVE=1
+      ;;
+    --seed )
+      SEED=,js/testStart.js
+      ;;
+		* )                     usage
+			exit 1
+	esac
+	shift
+done
+
+LOCAL_ETH=$ETHER_ADDR
+
+if [[ $LOCAL = 1 ]]
+then
+
+	LOCAL_ETH=0x00a329c0648769a73afac7f9381e08fb43dbea72
+  if [[ $AUCTION = 0 ]]
+  then
+    AUCTION=$(expr `date +%s` + 10)
+  fi
+
+else
+	if [[ $PASS = "" ]]
+	then
+		echo "Live and Test net deploy requires password. Use -P or --pass."
+		exit 1
+	fi
+
+  # Give Auction 15 seconds from initialization so we can catch the beginning
+  if [[ $AUCTION = 0 ]]
+  then
+    AUCTION=$(expr `date +%s` + 1)
+  fi
+
+fi
+
+echo "About to Deploy Metronome with Supply $SUPPLY, starting $AUCTION (`date -r $AUCTION`) to $DEST.."
+if [[ $LOCAL = 1 ]] && [[ $TIMESCALE = 1 ]]
+then
+  echo "Running on local chain but realtime.. Can I suggest -t 1000?"
+fi
+
+read -p "Press enter to continue"
+
+echo "Turning off Parity..."
+killall parity
+sleep 5
+
+rm -rf /tmp/paritydev
+mkdir -p /tmp/paritydev
+
+NODES_CACHE=/tmp/natestnet/chains/GethTranslation/network/nodes.json
+if [ $TEST = 1 ] && [ -f $NODES_CACHE ]
+then
+	rm $NODES_CACHE
+fi
+
+echo "Loading Parity.."
+eval $PARITY &
+
+if [ $LIVE = 1 ] || [ $TEST = 1 ]
+then
+	sleep 5
+else
+	sleep 1
+fi
+
+echo "Authorizing.."
+curl -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"personal_unlockAccount","params":["'$LOCAL_ETH'", "'$PASS'","0x1000"],"id":1}' http://127.0.0.1:8545
+
+sleep 1
+
+echo "Compiling.."
+npm run compile
+
+echo "Deploying.."
+
+echo "" > js/metronome.js
+
+echo -e "contracts/monolithic.sol:Proceeds\njs/metronome.js" | ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
+echo -e "contracts/monolithic.sol:Auctions\njs/metronome.js" | ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
+echo -e "contracts/monolithic.sol:AutonomousConverter\njs/metronome.js" | ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
+echo -e "var SmartTokenJSON = " >> js/metronome.js | cat build/contracts/SmartToken.json >> js/metronome.js
+echo -e "\nvar MTNTokenJSON = " >> js/metronome.js | cat build/contracts/MTNToken.json >> js/metronome.js
+
+echo "ABIs and Contract info written to metronome.js"
+echo "Supply: $SUPPLY"
+
+cat <<EOF > js/const.js
+// File generated by deploy -- edits will get overwritten!
+
+var PRICE = $PRICE;
+var ONE = 1;
+var NUMTOKENS = $SUPPLY;
+var START = $AUCTION;
+var TIMESCALE = $TIMESCALE
+var MINPRICE = 3300000000000
+var ETHER_ADDR = '$LOCAL_ETH'
+EOF
+
+if [[ $INTERACTIVE = 1 ]]
+then
+  geth attach --preload js/metronome.js,js/const.js,js/initMetronome.js$SEED
+else
+  echo "To deploy: geth attach --preload js/metronome.js,js/const.js,js/initMetronome.js$SEED (or use -i for interactive mode) "
+#  echo "or for TestNet (make sure contract addresses are current in initTestnet.js "
+#  echo "To deploy: geth attach --preload js/metronome.js,js/const.js,js/initTestnet.js$SEED (or use -i for interactive mode) "
+fi
+
+exit 0

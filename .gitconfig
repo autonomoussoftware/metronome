@@ -1,0 +1,3 @@
+# Use SSH instead of HTTPS for `go get`.
+[url "git@github.com:"]
+    insteadOf = https://github.com/
