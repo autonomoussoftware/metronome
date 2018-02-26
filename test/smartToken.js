@@ -55,28 +55,13 @@ contract('SmartToken', accounts => {
   })
 
   describe('Balance and Total Supply', () => {
-    it('Only AutonomousConverter can get balances and total supply', () => {
+    it('any one can get balances and total supply', () => {
       return new Promise(async (resolve, reject) => {
-        const badCallers = [actors.owner, actors.alice, actors.bob, actors.minter]
-        for (let idx = 0; idx < badCallers.length; idx++) {
-          const badCaller = badCallers[idx]
+        const aliceBalance = await contracts.smartToken.balanceOf(actors.alice, { from: actors.bob })
+        assert.equal(aliceBalance.toNumber(), mintAmount, 'Alice balance is incorrect')
 
-          let thrown = false
-          try {
-            await contracts.smartToken.balanceOf(actors.alice, { from: badCaller })
-          } catch (error) {
-            thrown = true
-          }
-          assert(thrown, 'balanceOf did not throw for ' + idx)
-
-          thrown = false
-          try {
-            await contracts.smartToken.totalSupply({ from: badCaller })
-          } catch (error) {
-            thrown = true
-          }
-          assert(thrown, 'totalSupply did not throw for ' + idx)
-        }
+        const totalSupply = await contracts.smartToken.totalSupply({ from: actors.owner })
+        assert.equal(totalSupply.toNumber(), initialSupply * decMult * 2, 'Total Supply is incorrect')
         resolve()
       })
     })

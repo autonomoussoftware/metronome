@@ -244,7 +244,6 @@ contract('TokenLocker', accounts => {
         value: 1e18
       })
       assert.isFalse(await auctions.isInitialAuctionEnded(), 'Initial Auction should not have already ended')
-
       const founders = [
         { address: await auctions.founders(0), targetTokens: parseInt(OWNER_TOKENS_HEX, 16) },
         { address: await auctions.founders(1), targetTokens: parseInt(FOUNDER_TOKENS_HEX, 16) }]
@@ -266,7 +265,7 @@ contract('TokenLocker', accounts => {
       let advanceSeconds = INITIAL_AUCTION_END_TIME + (2 * 60)
       await timeTravel(advanceSeconds)
       await mineBlock()
-
+      await mtnToken.enableMTNTransfers()
       for (let i = 0; i < founders.length; i++) {
         const founder = founders[i]
         const tokenLockerAddress = await auctions.tokenLockers(founder.address)

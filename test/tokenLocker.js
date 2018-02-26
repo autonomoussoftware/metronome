@@ -102,7 +102,7 @@ contract('TokenLocker', accounts => {
       assert.equal(extFounder, EXT_FOUNDER, 'External founder was not set')
       const extBalance = await mtnToken.balanceOf(extFounder)
       assert.equal(extBalance.toNumber(), EXT_FOUNDER_TOKENS, 'External founder minted balance was not correct')
-
+      // console.log('totalSupply=', (await mtnToken.totalSupply()).valueOf())
       const firstFounder = await auctions.founders(0)
       assert.equal(firstFounder, OWNER, 'First founder is wrong')
       const secondFounder = await auctions.founders(1)
@@ -157,6 +157,8 @@ contract('TokenLocker', accounts => {
       // seven days in past, round to prev midnight plus a few minutes
       const sevenDaysAgo = roundToPrevMidnight(currentTime() - INITIAL_AUCTION_END_TIME) - 120
       await initContracts(sevenDaysAgo, TIME_SCALE)
+      await mtnToken.enableMTNTransfers()
+
       // Transaction in auction will enable withdraw
       await auctions.sendTransaction({
         from: accounts[2],
@@ -196,6 +198,8 @@ contract('TokenLocker', accounts => {
       // seven days in past, round to prev midnight plus a few minutes
       const sevenDaysAgo = roundToPrevMidnight(currentTime() - INITIAL_AUCTION_END_TIME) - 120
       await initContracts(sevenDaysAgo, TIME_SCALE)
+      await mtnToken.enableMTNTransfers()
+
       // Transaction in auction will enable withdraw
       await auctions.sendTransaction({
         from: accounts[2],
@@ -237,8 +241,9 @@ contract('TokenLocker', accounts => {
     return new Promise(async (resolve, reject) => {
       // seven days and one quarter in the past, plus a few minutes
       const genesisTime = roundToPrevMidnight(currentTime() - ONE_QUARTER - INITIAL_AUCTION_END_TIME) - 120
-
       await initContracts(genesisTime, TIME_SCALE)
+      await mtnToken.enableMTNTransfers()
+
       // Transaction in auction will enable withdraw
       await auctions.sendTransaction({
         from: accounts[3],
@@ -286,6 +291,8 @@ contract('TokenLocker', accounts => {
       // seven days and two quarters in the past, plus a few minutes
       const genesisTime = roundToPrevMidnight(currentTime() - (2 * ONE_QUARTER) - INITIAL_AUCTION_END_TIME) - 120
       await initContracts(genesisTime, TIME_SCALE)
+      await mtnToken.enableMTNTransfers()
+
       // Transaction in auction will enable withdraw
       await auctions.sendTransaction({
         from: accounts[4],
@@ -332,6 +339,8 @@ contract('TokenLocker', accounts => {
       // seven days and 12 quarters in the past, plus a few minutes
       const genesisTime = roundToPrevMidnight(currentTime() - 12 * ONE_QUARTER - INITIAL_AUCTION_END_TIME) - 120
       await initContracts(genesisTime, TIME_SCALE)
+      await mtnToken.enableMTNTransfers()
+
       // Transaction in auction will enable withdraw
       await auctions.sendTransaction({
         from: accounts[5],
