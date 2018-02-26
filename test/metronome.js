@@ -66,6 +66,7 @@ contract('AutonomousConverter', accounts => {
     const EXT_FOUNDER = accounts[6]
     await auctions.mintInitialSupply(founders, EXT_FOUNDER, mtnToken.address, proceeds.address, {from: OWNER})
     await auctions.initAuctions(START_TIME, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE, {from: OWNER})
+    await mtnToken.enableMTNTransfers()
   })
   it('Should verify that AutonomousConverter is initialized correctly', () => {
     return new Promise(async (resolve, reject) => {
