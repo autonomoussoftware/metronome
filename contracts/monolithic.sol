@@ -431,7 +431,6 @@ contract Token is ERC827, Mintable {
         require(_to != address(0));
         require(_to != minter);
         require(_to != address(this));
-        require(_balanceOf[msg.sender] >= _value);
 
         _balanceOf[msg.sender] = _balanceOf[msg.sender].sub(_value);
         _balanceOf[_to] = _balanceOf[_to].add(_value);
@@ -463,7 +462,6 @@ contract Token is ERC827, Mintable {
         require(_to != minter);
         require(_to != address(this));
         require(_allowance[_from][msg.sender] >= _value);
-        require(_balanceOf[_from] >= _value);
 
         _balanceOf[_from] = _balanceOf[_from].sub(_value);
         _balanceOf[_to] = _balanceOf[_to].add(_value);
@@ -556,29 +554,11 @@ contract Token is ERC827, Mintable {
 
 /// @title  Smart token are intermediate token generated during conversion of MTN-ETH
 contract SmartToken is Mintable {
-    
     uint constant internal MTNDECIMALS = 18;
     uint constant internal MTNDECMULT = 10 ** MTNDECIMALS;
 
     function SmartToken(address _autonomousConverter, address _minter, uint _initialSupply) public 
         Mintable(_autonomousConverter, _minter, _initialSupply, MTNDECMULT) {
-    }
-
-    modifier onlyAutonomousConverter() {
-        require(msg.sender == autonomousConverter);
-        _;
-    }
-
-    function totalSupply() 
-        public onlyAutonomousConverter constant returns (uint256) 
-    {
-        return _totalSupply;
-    }
-
-    function balanceOf(address _owner)
-        public onlyAutonomousConverter constant returns (uint256) 
-    {
-        return _balanceOf[_owner];
     }
 }
 
@@ -600,12 +580,14 @@ contract MTNToken is Token {
     
     /// @notice Transferable modifier to allow transfer only after initial auction ended.
     modifier transferable() {
-        if (!transferAllowed && Auctions(minter).isInitialAuctionEnded()) {
-            transferAllowed = true;
-        }
-
         require(transferAllowed);
         _;
+    }
+
+    function enableMTNTransfers() public returns (bool) {
+        require(!transferAllowed && Auctions(minter).isInitialAuctionEnded());
+        transferAllowed = true; 
+        return true;
     }
 
     /// @notice Transfer tokens from caller to another address
@@ -695,7 +677,7 @@ contract MTNToken is Token {
     /// @param _recipient address of beneficiary
     /// @return true/false
     function subscribe(uint _startTime, uint _payPerWeek, address _recipient) public returns (bool) {
-        require(_startTime != 0);
+        require(_startTime >= block.timestamp);
         require(_payPerWeek != 0);
         require(_recipient != 0);
 
@@ -901,7 +883,6 @@ contract AutonomousConverter is Formula, Owned {
     }
 
     function convert(WhichToken whichFrom, uint _minReturn, uint amnt) internal returns (uint) {
-        require(auctions.isInitialAuctionEnded());
         WhichToken to = WhichToken.Mtn;
         if (whichFrom == WhichToken.Mtn) {
             to = WhichToken.Eth;
@@ -1308,12 +1289,13 @@ contract Auctions is Pricer, Owned {
     /// @notice Global MTN daily supply. Daily supply is greater of 1) 2880 2)2% of then outstanding supply per year.
     function globalDailySupply() public view returns (uint) {
         uint globalSupply = INITIAL_SUPPLY.add(INITIAL_GLOBAL_DAILY_SUPPLY.mul(currentAuction()));
-         
-        if (globalSupply > (52560000 * MTNDECMULT)) {   
+        
+        if (globalSupply > (52560000 * MTNDECMULT)) {
             return (globalSupply.mul(2).div(100)).div(365);
         } else {
             return INITIAL_GLOBAL_DAILY_SUPPLY;
         }
+        
     }
 
     /// @notice Return the information about the next auction
