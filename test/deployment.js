@@ -194,7 +194,7 @@ contract('Deploy Contracts', accounts => {
         //
         // Deployment Step 2
         //
-        await autonomousConverter.init(mtnToken.address, smartToken.address, proceeds.address, auctions.address, { from: BLOQ, value: web3.toWei(1, 'ether') })
+        await autonomousConverter.init(mtnToken.address, smartToken.address, auctions.address, { from: BLOQ, value: web3.toWei(1, 'ether') })
         await proceeds.initProceeds(autonomousConverter.address, auctions.address, {from: BLOQ})
 
         const MINIMUM_PRICE = 1000

@@ -796,7 +796,6 @@ contract AutonomousConverter is Formula, Owned {
 
     SmartToken public smartToken;
     MTNToken public reserveToken;
-    Proceeds public proceeds;
     Auctions public auctions;
 
     enum WhichToken { Eth, Mtn }
@@ -809,14 +808,13 @@ contract AutonomousConverter is Formula, Owned {
         LogFundsIn(msg.sender, msg.value);
     }
 
-    function init(address _reserveToken, address _smartToken, address _proceeds, address _auctions) 
+    function init(address _reserveToken, address _smartToken, address _auctions) 
         public onlyOwner payable 
     {
         require(!initialized);
         auctions = Auctions(_auctions);
         reserveToken = MTNToken(_reserveToken);
         smartToken = SmartToken(_smartToken);
-        proceeds = Proceeds(_proceeds);
         initialized = true;
     }
 

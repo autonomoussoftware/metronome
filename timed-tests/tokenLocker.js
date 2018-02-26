@@ -84,7 +84,7 @@ contract('TokenLocker', accounts => {
   async function initContracts (startTime, timeScale) {
     mtnToken = await MTNToken.new(autonomousConverter.address, auctions.address, MTN_INITIAL_SUPPLY, DECMULT, {from: OWNER})
     smartToken = await SmartToken.new(autonomousConverter.address, autonomousConverter.address, SMART_INITIAL_SUPPLY, {from: OWNER})
-    await autonomousConverter.init(mtnToken.address, smartToken.address, proceeds.address, auctions.address,
+    await autonomousConverter.init(mtnToken.address, smartToken.address, auctions.address,
       { from: OWNER,
         value: web3.toWei(1, 'ether')
       })
