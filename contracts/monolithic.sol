@@ -1016,6 +1016,8 @@ contract Auctions is Pricer, Owned {
     mapping (address => uint) internal lastPurcahseAuction;
     bool public minted;
     bool public initialized;
+    uint public globalSupplyAfterPercentageLogic = 52598080 * MTNDECMULT;
+    uint internal constant AUCTION_WHEN_PERCENTAGE_LOGIC_STARTS = 14791;
 
     event LogAuctionFundsIn(address indexed sender, uint amount);
 
@@ -1161,9 +1163,9 @@ contract Auctions is Pricer, Owned {
         }
         genesisGMT = genesisTime;
         currentAuctionPrice = currentPrice();
-        dailyMintable = auctionSupply();
         uint recentAuction = whichAuction(lastPurchaseTick);
         uint totalAuctions = currAuction.sub(recentAuction);
+        dailyMintable = nextAuctionSupply(totalAuctions);
         minting = mintable.add(dailyMintable.mul(totalAuctions));
         _lastPurchasePrice = lastPurchasePrice;
 
@@ -1287,18 +1289,45 @@ contract Auctions is Pricer, Owned {
 
     /// @notice Global MTN supply
     function globalMtnSupply() public view returns (uint) {
-        return INITIAL_SUPPLY.add(globalDailySupply().mul(currentAuction()));
+        if (currentAuction() > AUCTION_WHEN_PERCENTAGE_LOGIC_STARTS) {
+            return globalSupplyAfterPercentageLogic;
+        } else {
+
+            return INITIAL_SUPPLY.add(INITIAL_GLOBAL_DAILY_SUPPLY.mul(currentAuction()));
+
+        }
+        
     }
 
     /// @notice Global MTN daily supply. Daily supply is greater of 1) 2880 2)2% of then outstanding supply per year.
+    /// @dev 2% logic will kicks in at 14792th auction. 
     function globalDailySupply() public view returns (uint) {
-        uint globalSupply = INITIAL_SUPPLY.add(INITIAL_GLOBAL_DAILY_SUPPLY.mul(currentAuction()));
-        
-        if (globalSupply > (52560000 * MTNDECMULT)) {
-            return (globalSupply.mul(2).div(100)).div(365);
-        } else {
-            return INITIAL_GLOBAL_DAILY_SUPPLY;
+        uint dailySupply = INITIAL_GLOBAL_DAILY_SUPPLY;
+        uint thisAuction = currentAuction();
+        uint lastPurchaseAuction = whichAuction(lastPurchaseTick);
+        if (thisAuction > AUCTION_WHEN_PERCENTAGE_LOGIC_STARTS) {
+            
+            uint recentAuction = AUCTION_WHEN_PERCENTAGE_LOGIC_STARTS + 1;
+
+            if (lastPurchaseAuction > recentAuction) {
+                recentAuction = lastPurchaseAuction;
+            }
+            uint totalAuctions = thisAuction - recentAuction;
+            if (totalAuctions > 1) {
+                // derived formula to find close to accurate daily supply when some auction missed. 
+                uint factor = 36525 + ((totalAuctions - 1) * 2);
+                dailySupply = (globalSupplyAfterPercentageLogic.mul(2).mul(factor)).div(36525 ** 2);
+               
+            } else {
+                dailySupply = globalSupplyAfterPercentageLogic.mul(2).div(36525);
+            }
+
+            if (dailySupply < INITIAL_GLOBAL_DAILY_SUPPLY) {
+                dailySupply = INITIAL_GLOBAL_DAILY_SUPPLY; 
+            }
         }
+
+        return dailySupply;
         
     }
 
@@ -1323,11 +1352,8 @@ contract Auctions is Pricer, Owned {
             _startTime = (currentAuction()) * DAY_IN_SECONDS / timeScale + dailyAuctionStartTime;
         }
 
-        if (totalAuctions == 0) {
-            _auctionTokens = auctionSupply();
-        } else {
-            _auctionTokens = auctionSupply().mul(totalAuctions);
-        }
+        _auctionTokens = nextAuctionSupply(totalAuctions);
+        
 
         if (totalAuctions > 1) {
             _startPrice = lastPurchasePrice / 100 + 1;
@@ -1390,11 +1416,29 @@ contract Auctions is Pricer, Owned {
         }
     }
 
-    /// @notice MTN supply in current auction
-    function auctionSupply() internal view returns (uint) {
+    /// @notice MTN supply for next Auction also considering  carry forward mtn.
+    /// @param totalAuctionMissed auction count when no purchase done.
+    function nextAuctionSupply(uint totalAuctionMissed) internal view returns (uint supply) {
+        uint thisAuction = currentAuction();
         uint tokensHere = token.totalSupply().add(mintable);
-        uint previousGlobalMtnSupply = INITIAL_SUPPLY.add(globalDailySupply().mul(whichAuction(lastPurchaseTick)));
-        return (globalDailySupply().mul(tokensHere)).div(previousGlobalMtnSupply);
+        supply = INITIAL_GLOBAL_DAILY_SUPPLY;
+        uint dailySupplyAtLastPurchase;
+        if (thisAuction > AUCTION_WHEN_PERCENTAGE_LOGIC_STARTS) {
+            supply = globalDailySupply();
+            if (totalAuctionMissed > 1) {
+                dailySupplyAtLastPurchase = globalSupplyAfterPercentageLogic.mul(2).div(36525);
+                supply = dailySupplyAtLastPurchase.add(supply).mul(totalAuctionMissed).div(2);
+            } 
+            supply = (supply.mul(tokensHere)).div(globalSupplyAfterPercentageLogic);
+        } else {
+            if (totalAuctionMissed > 1) {
+                supply = supply.mul(totalAuctionMissed);
+            }
+            uint previousGlobalMtnSupply = 
+            INITIAL_SUPPLY.add(INITIAL_GLOBAL_DAILY_SUPPLY.mul(whichAuction(lastPurchaseTick)));
+            supply = (supply.mul(tokensHere)).div(previousGlobalMtnSupply);
+        
+        }
     }
 
     /// @notice price at a number of minutes out in Initial auction and daily auction
@@ -1445,6 +1489,10 @@ contract Auctions is Pricer, Owned {
     function restartAuction() private {
         var (time, price, auctionTokens) = nextAuction();
 
+        uint thisAuction = currentAuction();
+        if (thisAuction > AUCTION_WHEN_PERCENTAGE_LOGIC_STARTS) {
+            globalSupplyAfterPercentageLogic = globalSupplyAfterPercentageLogic.add(globalDailySupply());
+        }
         mintable = mintable.add(auctionTokens);
         lastPurchasePrice = price;
 
