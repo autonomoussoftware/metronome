@@ -279,24 +279,30 @@ contract Pricer {
 }
 
 
-/// @dev Reference: https://github.com/ethereum/EIPs/issues/827
-/// @notice ERC827 standard interface
-interface ERC827 {
-
+/// @dev Reference: https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md
+/// @notice ERC20 standard interface
+interface ERC20 {
     function totalSupply() public constant returns (uint256);
     function balanceOf(address _owner) public constant returns (uint256);
     function allowance(address _owner, address _spender) public constant returns (uint256);
 
     event Transfer(address indexed _from, address indexed _to, uint256 _value);
-    event Transfer(address indexed _from, address indexed _to, uint256 _value, bytes _data);
     function transfer(address _to, uint256 _value) public returns (bool);
-    function transfer(address _to, uint256 _value, bytes _data) public returns (bool);
     function transferFrom(address _from, address _to, uint256 _value) public returns (bool);
-    function transferFrom(address _from, address _to, uint256 _value, bytes _data) public returns (bool);
 
     event Approval(address indexed _owner, address indexed _spender, uint256 _value);
-    event Approval(address indexed _owner, address indexed _spender, uint256 _value, bytes _data);
     function approve(address _spender, uint256 _value) public returns (bool);
+}
+
+
+/// @dev Reference: https://github.com/ethereum/EIPs/issues/827
+/// @notice ERC827 standard interface
+interface ERC827 {
+    event Transfer(address indexed _from, address indexed _to, uint256 _value, bytes _data);
+    function transfer(address _to, uint256 _value, bytes _data) public returns (bool);
+    function transferFrom(address _from, address _to, uint256 _value, bytes _data) public returns (bool);
+
+    event Approval(address indexed _owner, address indexed _spender, uint256 _value, bytes _data);
     function approve(address _spender, uint256 _value, bytes _data) public returns (bool);
 }
 
@@ -411,7 +417,7 @@ contract Mintable is Owned {
 
 
 /// @title Token contract
-contract Token is ERC827, Mintable {
+contract Token is ERC20, ERC827, Mintable {
     mapping(address => mapping(address => uint256)) internal _allowance;
 
     function Token(address _autonomousConverter, address _minter, uint _initialSupply, uint _decmult) public

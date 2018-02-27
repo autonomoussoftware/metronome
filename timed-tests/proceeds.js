@@ -172,9 +172,9 @@ contract('Proceeds - timed test', accounts => {
 
       await initContracts(0, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
-      assert.equal(await auctions.genesisTime(), defaultAuctionTime, 'default genesisTime isn\'t setup correctly or test took longer in execution')
-      assert.equal(await auctions.minimumPrice(), defaultMinimumPrice, 'default minimumPrice isn\'t setup correctly')
-      assert.equal(await auctions.lastPurchasePrice(), web3.toWei(defaultStartingPrice), 'default startingPrice isn\'t setup correctly')
+      assert.equal((await auctions.genesisTime()).toNumber(), defaultAuctionTime, 'default genesisTime isn\'t setup correctly or test took longer in execution')
+      assert.equal((await auctions.minimumPrice()).toNumber(), defaultMinimumPrice, 'default minimumPrice isn\'t setup correctly')
+      assert.equal((await auctions.lastPurchasePrice()).toNumber(), web3.toWei(defaultStartingPrice), 'default startingPrice isn\'t setup correctly')
 
       resolve()
     })
