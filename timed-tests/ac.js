@@ -25,7 +25,7 @@
 
 const assert = require('chai').assert
 const ethjsABI = require('ethjs-abi')
-
+const TestRPCTime = require('../test/shared/time')
 const AutonomousConverter = artifacts.require('AutonomousConverter')
 const Auctions = artifacts.require('Auctions')
 const MTNToken = artifacts.require('MTNToken')
@@ -45,41 +45,18 @@ contract('AutonomousConverter Interactions', accounts => {
 
   const DAYS_IN_WEEK = 7
   const SECS_IN_DAY = 86400
-  const timeTravel = function (time) {
-    return new Promise((resolve, reject) => {
-      web3.currentProvider.sendAsync({
-        jsonrpc: '2.0',
-        method: 'evm_increaseTime',
-        params: [time],
-        id: new Date().getTime()
-      }, (err, result) => {
-        if (err) { return reject(err) }
-        return resolve(result)
-      })
-    })
-  }
-  const mineBlock = function () {
-    return new Promise((resolve, reject) => {
-      web3.currentProvider.sendAsync({
-        jsonrpc: '2.0',
-        method: 'evm_mine'
-      }, (err, result) => {
-        if (err) { return reject(err) }
-        return resolve(result)
-      })
-    })
-  }
-  function getCurrentTime (offsetDays) {
-    let date = new Date()
-    date.setDate(date.getDate() + offsetDays)
-    return Math.floor(date.getTime() / 1000)
-  }
-  function roundToMidNightNextDay (initialAuctionEndTime) {
-    let remainderSeconds = Math.ceil(initialAuctionEndTime / (24 * 60 * 60))
-    return (remainderSeconds * 24 * 60 * 60)
+
+  function getCurrentBlockTime () {
+    var defaultBlock = web3.eth.defaultBlock
+    return web3.eth.getBlock(defaultBlock).timestamp
   }
 
-  const initContracts = function (startOffset) {
+  function roundToMidNightNextDay (t) {
+    let remainderSeconds = Math.ceil(t / SECS_IN_DAY)
+    return (remainderSeconds * SECS_IN_DAY)
+  }
+
+  const initContracts = function () {
     return new Promise(async (resolve, reject) => {
       autonomousConverter = await AutonomousConverter.new({from: OWNER})
       auctions = await Auctions.new({from: OWNER})
@@ -94,7 +71,7 @@ contract('AutonomousConverter Interactions', accounts => {
       const MINIMUM_PRICE = 1000
       const STARTING_PRICE = 1
       const TIME_SCALE = 1
-      const START_TIME = getCurrentTime(startOffset)
+      const START_TIME = getCurrentBlockTime()
 
       mtnToken = await MTNToken.new(autonomousConverter.address, auctions.address, MTN_INITIAL_SUPPLY, DECMULT, {from: OWNER})
       smartToken = await SmartToken.new(autonomousConverter.address, autonomousConverter.address, MTN_INITIAL_SUPPLY, {from: OWNER})
@@ -106,12 +83,10 @@ contract('AutonomousConverter Interactions', accounts => {
     })
   }
 
-  let currentTimeOffset = 0
-
   describe('Proceeds -> AutonomousConverter', () => {
     it('Initial Auction should end after 7 days', () => {
       return new Promise(async (resolve, reject) => {
-        await initContracts(currentTimeOffset + 1)
+        await initContracts()
 
         const genesisTime = await auctions.genesisTime()
         const initialAuctionEndTime = await auctions.initialAuctionEndTime()
@@ -123,9 +98,8 @@ contract('AutonomousConverter Interactions', accounts => {
         assert.equal(await auctions.isInitialAuctionEnded(), false, 'Inital auction should not have ended')
 
         const advDays = 8 // adv 1 day to start auction, then 7 days, plus a few seconds
-        await timeTravel((SECS_IN_DAY * advDays) + 60)
-        await mineBlock()
-        currentTimeOffset += advDays
+        await TestRPCTime.timeTravel((SECS_IN_DAY * advDays) + 60)
+        await TestRPCTime.mineBlock()
 
         assert.equal(await auctions.isInitialAuctionEnded(), true, 'Inital auction did not end after 7 days')
 
@@ -135,12 +109,11 @@ contract('AutonomousConverter Interactions', accounts => {
 
     it('Initial Auction should end early, if all tokens are sold', () => {
       return new Promise(async (resolve, reject) => {
-        await initContracts(currentTimeOffset + 1)
+        await initContracts()
 
         const advDays = 1 // adv 1 day plus a few seconds to start auction
-        await timeTravel((SECS_IN_DAY * advDays) + 60)
-        await mineBlock()
-        currentTimeOffset += advDays
+        await TestRPCTime.timeTravel((SECS_IN_DAY * advDays) + 60)
+        await TestRPCTime.mineBlock()
 
         // sell all tokens in three days
         const amount = web3.toWei(2, 'ether')
@@ -200,9 +173,8 @@ contract('AutonomousConverter Interactions', accounts => {
           }
 
           const advDays = 1 // adv 1 day, plus a few seconds
-          await timeTravel((SECS_IN_DAY * advDays) + 60)
-          await mineBlock()
-          currentTimeOffset += advDays
+          await TestRPCTime.timeTravel((SECS_IN_DAY * advDays) + 60)
+          await TestRPCTime.mineBlock()
 
           if (isOver) {
             const founders = [
