@@ -96,7 +96,7 @@ contract('Proceeds - timed test', accounts => {
     // 1000000e18 =  0000d3c20dee1639f99c0000
     founders.push(OWNER + OWNER_TOKENS_HEX)
     founders.push(FOUNDER + FOUNDER_TOKENS_HEX)
-    await autonomousConverter.init(mtnToken.address, smartToken.address, proceeds.address, auctions.address,
+    await autonomousConverter.init(mtnToken.address, smartToken.address, auctions.address,
       {
         from: OWNER,
         value: web3.toWei(1, 'ether')
