@@ -279,24 +279,30 @@ contract Pricer {
 }
 
 
-/// @dev Reference: https://github.com/ethereum/EIPs/issues/827
-/// @notice ERC827 standard interface
-interface ERC827 {
-
+/// @dev Reference: https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md
+/// @notice ERC20 standard interface
+interface ERC20 {
     function totalSupply() public constant returns (uint256);
     function balanceOf(address _owner) public constant returns (uint256);
     function allowance(address _owner, address _spender) public constant returns (uint256);
 
     event Transfer(address indexed _from, address indexed _to, uint256 _value);
-    event Transfer(address indexed _from, address indexed _to, uint256 _value, bytes _data);
     function transfer(address _to, uint256 _value) public returns (bool);
-    function transfer(address _to, uint256 _value, bytes _data) public returns (bool);
     function transferFrom(address _from, address _to, uint256 _value) public returns (bool);
-    function transferFrom(address _from, address _to, uint256 _value, bytes _data) public returns (bool);
 
     event Approval(address indexed _owner, address indexed _spender, uint256 _value);
-    event Approval(address indexed _owner, address indexed _spender, uint256 _value, bytes _data);
     function approve(address _spender, uint256 _value) public returns (bool);
+}
+
+
+/// @dev Reference: https://github.com/ethereum/EIPs/issues/827
+/// @notice ERC827 standard interface
+interface ERC827 {
+    event Transfer(address indexed _from, address indexed _to, uint256 _value, bytes _data);
+    function transfer(address _to, uint256 _value, bytes _data) public returns (bool);
+    function transferFrom(address _from, address _to, uint256 _value, bytes _data) public returns (bool);
+
+    event Approval(address indexed _owner, address indexed _spender, uint256 _value, bytes _data);
     function approve(address _spender, uint256 _value, bytes _data) public returns (bool);
 }
 
@@ -331,6 +337,17 @@ contract Owned {
         changed = true;
         owner = newOwner;
         return true;
+    }
+}
+
+
+/// @dev contract that allows owner to claim erc tokens sent to contract
+/// @notice this was created in response to airdrops, so tokens are not trapped in metronome contracts
+contract ERCClaimable is Owned {
+    function claimTokens(address _contract, uint _amount) public onlyOwner {
+        require(_contract != address(0));
+        ERC20 token = ERC20(_contract);
+        require(token.transfer(msg.sender, _amount));
     }
 }
 
@@ -411,7 +428,7 @@ contract Mintable is Owned {
 
 
 /// @title Token contract
-contract Token is ERC827, Mintable {
+contract Token is ERC20, ERC827, Mintable {
     mapping(address => mapping(address => uint256)) internal _allowance;
 
     function Token(address _autonomousConverter, address _minter, uint _initialSupply, uint _decmult) public
@@ -792,7 +809,7 @@ contract MTNToken is Token {
 
 
 /// @title Autonomous Converter contract for MTN <=> ETH exchange
-contract AutonomousConverter is Formula, Owned {
+contract AutonomousConverter is Formula, ERCClaimable {
 
     SmartToken public smartToken;
     MTNToken public reserveToken;
@@ -939,7 +956,7 @@ contract AutonomousConverter is Formula, Owned {
 
 
 /// @title Proceeds contract
-contract Proceeds is Owned {
+contract Proceeds is ERCClaimable {
     using SafeMath for uint256;
 
     AutonomousConverter public autonomousConverter;
@@ -980,7 +997,7 @@ contract Proceeds is Owned {
 
 
 /// @title Auction contract. Send eth to the contract address and buy MTN. 
-contract Auctions is Pricer, Owned {
+contract Auctions is Pricer, ERCClaimable {
 
     using SafeMath for uint256;
     MTNToken public token;

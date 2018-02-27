@@ -24,6 +24,8 @@
 */
 
 const assert = require('chai').assert
+const ERCClaimableTests = require('../test/shared/erc-claimable')
+const TestRPCTime = require('../test/shared/time')
 const MTNToken = artifacts.require('MTNToken')
 const SmartToken = artifacts.require('SmartToken')
 const Proceeds = artifacts.require('Proceeds')
@@ -56,32 +58,6 @@ contract('Auctions', accounts => {
   let currentTimeOffset = 0
 
   let mtnToken, smartToken, proceeds, autonomousConverter, auctions
-
-  const timeTravel = function (time) {
-    return new Promise((resolve, reject) => {
-      web3.currentProvider.sendAsync({
-        jsonrpc: '2.0',
-        method: 'evm_increaseTime',
-        params: [time],
-        id: new Date().getTime()
-      }, (err, result) => {
-        if (err) { return reject(err) }
-        return resolve(result)
-      })
-    })
-  }
-
-  const mineBlock = function () {
-    return new Promise((resolve, reject) => {
-      web3.currentProvider.sendAsync({
-        jsonrpc: '2.0',
-        method: 'evm_mine'
-      }, (err, result) => {
-        if (err) { return reject(err) }
-        return resolve(result)
-      })
-    })
-  }
 
   function getCurrentTime (offsetDays) {
     let date = new Date()
@@ -210,8 +186,8 @@ contract('Auctions', accounts => {
 
       // advance a minute so action can start
       let advanceSeconds = SECS_IN_MINUTE
-      await timeTravel(advanceSeconds)
-      await mineBlock()
+      await TestRPCTime.timeTravel(advanceSeconds)
+      await TestRPCTime.mineBlock()
       currentTimeOffset += advanceSeconds / SECS_IN_DAY
 
       // validate we are at the begining of initial auction
@@ -274,8 +250,8 @@ contract('Auctions', accounts => {
 
         // advance an hour
         advanceSeconds = SECS_IN_HOUR
-        await timeTravel(advanceSeconds)
-        await mineBlock()
+        await TestRPCTime.timeTravel(advanceSeconds)
+        await TestRPCTime.mineBlock()
         currentTimeOffset += advanceSeconds / SECS_IN_DAY
       }
 
@@ -298,8 +274,8 @@ contract('Auctions', accounts => {
 
       // console.log('before', new Date(currentBlockTime * MILLISECS_IN_A_SEC).toUTCString())
       const advanceSeconds = SECS_TO_NEXT_MIDNIGHT + (SECS_IN_DAY * 9) + (10 * SECS_IN_MINUTE)
-      await timeTravel(advanceSeconds)
-      await mineBlock()
+      await TestRPCTime.timeTravel(advanceSeconds)
+      await TestRPCTime.mineBlock()
       currentTimeOffset += advanceSeconds / SECS_IN_DAY
       // console.log('after', new Date(getCurrentBlockTime() * MILLISECS_IN_A_SEC).toUTCString())
 
@@ -333,16 +309,17 @@ contract('Auctions', accounts => {
     return new Promise(async (resolve, reject) => {
       // operational auction started and no purchase yet. 10th tick
       const amount = 1e18
-      await initContracts(getCurrentTime(currentTimeOffset), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      await TestRPCTime.mineBlock()
+      const currentBlockTime = getCurrentBlockTime()
+      await initContracts(currentBlockTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
       // fast forward time to opertional auction skipping first day
-      const currentBlockTime = getCurrentBlockTime()
       const currentBlockTimeRounded = roundToNextMidnight(currentBlockTime)
       const SECS_TO_NEXT_MIDNIGHT = currentBlockTimeRounded - currentBlockTime
       // console.log('before', new Date(currentBlockTime * MILLISECS_IN_A_SEC).toUTCString())
       const advanceSeconds = SECS_TO_NEXT_MIDNIGHT + (SECS_IN_DAY * 8) + (10 * SECS_IN_MINUTE)
-      await timeTravel(advanceSeconds)
-      await mineBlock()
+      await TestRPCTime.timeTravel(advanceSeconds)
+      await TestRPCTime.mineBlock()
       currentTimeOffset += advanceSeconds / SECS_IN_DAY
       // console.log('after', new Date(getCurrentBlockTime() * MILLISECS_IN_A_SEC).toUTCString())
 
@@ -401,8 +378,8 @@ contract('Auctions', accounts => {
       const SECS_TO_NEXT_MIDNIGHT = currentBlockTimeRounded - currentBlockTime
       // console.log('before', new Date(currentBlockTime * MILLISECS_IN_A_SEC).toUTCString())
       const advanceSeconds = SECS_TO_NEXT_MIDNIGHT + (SECS_IN_DAY * 7) + (10 * SECS_IN_MINUTE)
-      await timeTravel(advanceSeconds)
-      await mineBlock()
+      await TestRPCTime.timeTravel(advanceSeconds)
+      await TestRPCTime.mineBlock()
       currentTimeOffset += advanceSeconds / SECS_IN_DAY
       // console.log('after', new Date(getCurrentBlockTime() * MILLISECS_IN_A_SEC).toUTCString())
 
@@ -443,5 +420,9 @@ contract('Auctions', accounts => {
 
       resolve()
     })
+  })
+
+  describe('claim airdropped erc tokens', () => {
+    ERCClaimableTests.tests(accounts, 'auctions')
   })
 })
