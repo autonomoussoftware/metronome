@@ -443,11 +443,9 @@ contract('Auctions', accounts => {
       })
 
       let expectedDailySupply = 2880.27160103461e18
-      console.log(globalDailySupply.toNumber(), expectedDailySupply)
 
       globalDailySupply = await auctions.globalDailySupply()
-      // TODO: tests fail, need a better way to make this deterministic
-      // assert.closeTo(expectedDailySupply, globalDailySupply.toNumber(), 2e8)
+      assert.closeTo(expectedDailySupply, globalDailySupply.toNumber(), 2e8)
 
       await TestRPCTime.timeTravel(SECS_IN_DAY)
       await TestRPCTime.mineBlock()
@@ -460,8 +458,7 @@ contract('Auctions', accounts => {
       expectedDailySupply = 2880.42931611201e18
 
       globalDailySupply = await auctions.globalDailySupply()
-      // TODO: tests fail, need a better way to make this deterministic
-      // assert.closeTo(expectedDailySupply, globalDailySupply.toNumber(), 2e8)
+      assert.closeTo(expectedDailySupply, globalDailySupply.toNumber(), 2e8)
 
       await TestRPCTime.timeTravel(SECS_IN_DAY)
       await TestRPCTime.mineBlock()
@@ -475,8 +472,7 @@ contract('Auctions', accounts => {
 
       globalDailySupply = await auctions.globalDailySupply()
 
-      // TODO: tests fail, need a better way to make this deterministic
-      // assert.closeTo(expectedDailySupply, globalDailySupply.toNumber(), 2e8)
+      assert.closeTo(expectedDailySupply, globalDailySupply.toNumber(), 2e8)
 
       await TestRPCTime.timeTravel(SECS_IN_DAY)
       await TestRPCTime.mineBlock()
@@ -490,8 +486,7 @@ contract('Auctions', accounts => {
 
       globalDailySupply = await auctions.globalDailySupply()
 
-      // TODO: tests fail, need a better way to make this deterministic
-      // assert.closeTo(expectedDailySupply, globalDailySupply.toNumber(), 2e8)
+      assert.closeTo(expectedDailySupply, globalDailySupply.toNumber(), 2e8)
       await TestRPCTime.timeTravel(SECS_IN_DAY)
       await TestRPCTime.mineBlock()
 
@@ -504,8 +499,7 @@ contract('Auctions', accounts => {
 
       globalDailySupply = await auctions.globalDailySupply()
 
-      // TODO: tests fail, need a better way to make this deterministic
-      // assert.closeTo(expectedDailySupply, globalDailySupply.toNumber(), 2e8)
+      assert.closeTo(expectedDailySupply, globalDailySupply.toNumber(), 2e8)
 
       resolve()
     })
