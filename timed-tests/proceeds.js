@@ -25,6 +25,7 @@
 
 const assert = require('chai').assert
 const ethjsABI = require('ethjs-abi')
+const ERCClaimableTests = require('../test/shared/erc-claimable')
 const MTNToken = artifacts.require('MTNToken')
 const SmartToken = artifacts.require('SmartToken')
 const Proceeds = artifacts.require('Proceeds')
@@ -172,9 +173,9 @@ contract('Proceeds - timed test', accounts => {
 
       await initContracts(0, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
-      assert.equal(await auctions.genesisTime(), defaultAuctionTime, 'default genesisTime isn\'t setup correctly or test took longer in execution')
-      assert.equal(await auctions.minimumPrice(), defaultMinimumPrice, 'default minimumPrice isn\'t setup correctly')
-      assert.equal(await auctions.lastPurchasePrice(), web3.toWei(defaultStartingPrice), 'default startingPrice isn\'t setup correctly')
+      assert.equal((await auctions.genesisTime()).toNumber(), defaultAuctionTime, 'default genesisTime isn\'t setup correctly or test took longer in execution')
+      assert.equal((await auctions.minimumPrice()).toNumber(), defaultMinimumPrice, 'default minimumPrice isn\'t setup correctly')
+      assert.equal((await auctions.lastPurchasePrice()).toNumber(), web3.toWei(defaultStartingPrice), 'default startingPrice isn\'t setup correctly')
 
       resolve()
     })
@@ -243,5 +244,9 @@ contract('Proceeds - timed test', accounts => {
       assert.equal(balanceACAfter - balanceACBefore, 0, 'Incorrect fund transffered to AC')
       resolve()
     })
+  })
+
+  describe('claim airdropped erc tokens', () => {
+    ERCClaimableTests.tests(accounts, 'proceeds')
   })
 })
