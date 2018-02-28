@@ -444,18 +444,6 @@ contract('Auctions', accounts => {
     })
   })
 
-  it('Should test Global daily mtn supply after 41 years', () => {
-    return new Promise(async (resolve, reject) => {
-      // operational auction started and no purchase yet. 10th tick
-      const startTime = ((currentTime() - (43 * 365 * SECS_IN_A_DAY)))
-      const expectedGlobalSupply = ((43 * 365 * 2880 + 10000000) * 0.02 / 365) * 1e18
-      await initContracts(startTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
-      var globaldailySupply = await auctions.globalDailySupply()
-      assert.closeTo(globaldailySupply.toNumber(), expectedGlobalSupply, 2e18, ' Global daily mtn supply  is not correct after 41 years')
-      resolve()
-    })
-  })
-
   it('Should test heart beat function during initial auction', () => {
     return new Promise(async (resolve, reject) => {
       const startTime = ((currentTime() - (4 * SECS_IN_A_DAY) - 60))
