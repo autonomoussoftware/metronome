@@ -430,12 +430,14 @@ contract('Auctions', accounts => {
       const currentBlockTimeRounded = roundToNextMidnight(currentBlockTime)
       const SECS_TO_NEXT_MIDNIGHT = currentBlockTimeRounded - currentBlockTime
       let advanceSeconds = SECS_TO_NEXT_MIDNIGHT + (10 * SECS_IN_MINUTE)
+
       await TestRPCTime.timeTravel(advanceSeconds)
       await TestRPCTime.mineBlock()
       let globalDailySupply = await auctions.globalDailySupply()
       advanceSeconds = SECS_TO_NEXT_MIDNIGHT + (SECS_IN_DAY * 14798) + (10 * SECS_IN_MINUTE)
       await TestRPCTime.timeTravel(advanceSeconds)
       await TestRPCTime.mineBlock()
+
       await auctions.sendTransaction({
         from: BUYER1,
         value: amount
@@ -445,8 +447,10 @@ contract('Auctions', accounts => {
 
       globalDailySupply = await auctions.globalDailySupply()
       assert.closeTo(expectedDailySupply, globalDailySupply.toNumber(), 2e8)
+
       await TestRPCTime.timeTravel(SECS_IN_DAY)
       await TestRPCTime.mineBlock()
+
       await auctions.sendTransaction({
         from: BUYER1,
         value: amount
@@ -459,6 +463,7 @@ contract('Auctions', accounts => {
 
       await TestRPCTime.timeTravel(SECS_IN_DAY)
       await TestRPCTime.mineBlock()
+
       await auctions.sendTransaction({
         from: BUYER1,
         value: amount
@@ -472,6 +477,7 @@ contract('Auctions', accounts => {
 
       await TestRPCTime.timeTravel(SECS_IN_DAY)
       await TestRPCTime.mineBlock()
+
       await auctions.sendTransaction({
         from: BUYER1,
         value: amount
@@ -482,9 +488,9 @@ contract('Auctions', accounts => {
       globalDailySupply = await auctions.globalDailySupply()
 
       assert.closeTo(expectedDailySupply, globalDailySupply.toNumber(), 2e8)
-
       await TestRPCTime.timeTravel(SECS_IN_DAY)
       await TestRPCTime.mineBlock()
+
       await auctions.sendTransaction({
         from: BUYER1,
         value: amount
