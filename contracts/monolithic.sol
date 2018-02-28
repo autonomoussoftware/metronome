@@ -341,17 +341,6 @@ contract Owned {
 }
 
 
-/// @dev contract that allows owner to claim erc tokens sent to contract
-/// @notice this was created in response to airdrops, so tokens are not trapped in metronome contracts
-contract ERCClaimable is Owned {
-    function claimTokens(address _contract, uint _amount) public onlyOwner {
-        require(_contract != address(0));
-        ERC20 token = ERC20(_contract);
-        require(token.transfer(msg.sender, _amount));
-    }
-}
-
-
 /// @title Mintable contract to allow minting and destroy.
 contract Mintable is Owned {
 
@@ -809,7 +798,7 @@ contract MTNToken is Token {
 
 
 /// @title Autonomous Converter contract for MTN <=> ETH exchange
-contract AutonomousConverter is Formula, ERCClaimable {
+contract AutonomousConverter is Formula, Owned {
 
     SmartToken public smartToken;
     MTNToken public reserveToken;
@@ -956,7 +945,7 @@ contract AutonomousConverter is Formula, ERCClaimable {
 
 
 /// @title Proceeds contract
-contract Proceeds is ERCClaimable {
+contract Proceeds is Owned {
     using SafeMath for uint256;
 
     AutonomousConverter public autonomousConverter;
@@ -997,7 +986,7 @@ contract Proceeds is ERCClaimable {
 
 
 /// @title Auction contract. Send eth to the contract address and buy MTN. 
-contract Auctions is Pricer, ERCClaimable {
+contract Auctions is Pricer, Owned {
 
     using SafeMath for uint256;
     MTNToken public token;
