@@ -423,7 +423,8 @@ contract('Auctions', accounts => {
 
   it('Should verify annual rate ​equal ​to ​2.0% ​of ​the ​then-outstanding ​supply ​per ​year ', () => {
     return new Promise(async (resolve, reject) => {
-      await initContracts(getCurrentTime(currentTimeOffset), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      await TestRPCTime.mineBlock()
+      await initContracts(TestRPCTime.getCurrentBlockTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
       const amount = 1e17
       let currentBlockTime = getCurrentBlockTime()
       const currentBlockTimeRounded = roundToNextMidnight(currentBlockTime)
