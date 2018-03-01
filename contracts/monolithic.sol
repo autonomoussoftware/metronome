@@ -1434,16 +1434,17 @@ contract Auctions is Pricer, ERCClaimable {
         uint dailySupplyAtLastPurchase;
         if (thisAuction > AUCTION_WHEN_PERCENTAGE_LOGIC_STARTS) {
             supply = globalDailySupply();
-            if(totalAuctionMissed > 1) {
+            if (totalAuctionMissed > 1) {
                 dailySupplyAtLastPurchase = globalSupplyAfterPercentageLogic.mul(2).div(36525);
                 supply = dailySupplyAtLastPurchase.add(supply).mul(totalAuctionMissed).div(2);
             } 
-             supply = (supply.mul(tokensHere)).div(globalSupplyAfterPercentageLogic);
+            supply = (supply.mul(tokensHere)).div(globalSupplyAfterPercentageLogic);
         } else {
-            if(totalAuctionMissed > 1) {
+            if (totalAuctionMissed > 1) {
                 supply = supply.mul(totalAuctionMissed);
             }
-            uint previousGlobalMtnSupply = INITIAL_SUPPLY.add(INITIAL_GLOBAL_DAILY_SUPPLY.mul(whichAuction(lastPurchaseTick)));
+            uint previousGlobalMtnSupply = 
+            INITIAL_SUPPLY.add(INITIAL_GLOBAL_DAILY_SUPPLY.mul(whichAuction(lastPurchaseTick)));
             supply = (supply.mul(tokensHere)).div(previousGlobalMtnSupply);
             
         }
