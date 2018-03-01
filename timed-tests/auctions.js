@@ -24,12 +24,8 @@
 */
 
 const assert = require('chai').assert
+const MTNGlobal = require('../test/shared/inits')
 const TestRPCTime = require('../test/shared/time')
-const MTNToken = artifacts.require('MTNToken')
-const SmartToken = artifacts.require('SmartToken')
-const Proceeds = artifacts.require('Proceeds')
-const AutonomousConverter = artifacts.require('AutonomousConverter')
-const Auctions = artifacts.require('Auctions')
 const TokenLocker = artifacts.require('TokenLocker')
 
 contract('Auctions', accounts => {
@@ -37,15 +33,10 @@ contract('Auctions', accounts => {
   const BUYER2 = accounts[8]
 
   const OWNER = accounts[0]
-  const OWNER_TOKENS_HEX = '0000d3c20dee1639f99c0000'
-  const FOUNDER = accounts[1]
-  const FOUNDER_TOKENS_HEX = '000069e10de76676d0000000'
-
-  const EXT_FOUNDER = accounts[7]
-  const EXT_FOUNDER_TOKENS = 5e23
+  const OWNER_TOKENS_HEX = '0000D3C214DE7193CD4E0000'
+  const FOUNDER_TOKENS_HEX = '0000D3C214DE7193CD4E0000'
 
   const MTN_INITIAL_SUPPLY = 0
-  const SMART_INITIAL_SUPPLY = 0
   const DECMULT = 10 ** 18
   const MINIMUM_PRICE = 33 * 10 ** 11 // minimum wei per token
   const STARTING_PRICE = 2 // 2 ETH per MTN
@@ -56,8 +47,6 @@ contract('Auctions', accounts => {
   const SECS_IN_HOUR = 3600
   let currentTimeOffset = 0
 
-  let mtnToken, smartToken, proceeds, autonomousConverter, auctions
-
   function getCurrentTime (offsetDays) {
     let date = new Date()
     date.setDate(date.getDate() + offsetDays)
@@ -65,35 +54,11 @@ contract('Auctions', accounts => {
     return Math.floor(timeInSeconds / 60) * 60 // time in seconds round to nearest minute
   }
 
-  function getCurrentBlockTime () {
-    var defaultBlock = web3.eth.defaultBlock
-    return web3.eth.getBlock(defaultBlock).timestamp
-  }
-
   function roundToNextMidnight (t) {
     // round to prev midnight, then add a day
     const nextMidnight = (t - (t % SECS_IN_DAY)) + SECS_IN_DAY
     assert(new Date(nextMidnight * MILLISECS_IN_A_SEC).toUTCString().indexOf('00:00:00') >= 0, 'timestamp is not midnight')
     return nextMidnight
-  }
-
-  async function initContracts (startTime, minimumPrice, startingPrice, timeScale) {
-    const founders = []
-    // Since we are appending it with hexadecimal address so amount should also be
-    // in hexa decimal. Hence 999999e18 = 0000d3c21bcecceda1000000 in 24 character ( 96 bits)
-    // 1000000e18 =  0000d3c20dee1639f99c0000
-    founders.push(OWNER + OWNER_TOKENS_HEX)
-    founders.push(FOUNDER + FOUNDER_TOKENS_HEX)
-    mtnToken = await MTNToken.new(autonomousConverter.address, auctions.address, MTN_INITIAL_SUPPLY, DECMULT, {from: OWNER})
-    smartToken = await SmartToken.new(autonomousConverter.address, autonomousConverter.address, SMART_INITIAL_SUPPLY, {from: OWNER})
-    await autonomousConverter.init(mtnToken.address, smartToken.address, auctions.address,
-      {
-        from: OWNER,
-        value: web3.toWei(1, 'ether')
-      })
-    await proceeds.initProceeds(autonomousConverter.address, auctions.address, {from: OWNER})
-    await auctions.mintInitialSupply(founders, EXT_FOUNDER, mtnToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
-    await auctions.initAuctions(startTime, MINIMUM_PRICE, STARTING_PRICE, timeScale, {from: OWNER})
   }
 
   before(async () => {
@@ -104,20 +69,13 @@ contract('Auctions', accounts => {
     })
   })
 
-  // Create contracts and initilize them for each test case
-  beforeEach(async () => {
-    proceeds = await Proceeds.new()
-    autonomousConverter = await AutonomousConverter.new()
-    auctions = await Auctions.new()
-  })
-
   it('Should verify that Auctions contract is initialized correctly ', () => {
     return new Promise(async (resolve, reject) => {
       const reserveAmount = 2000000 // 20% of total supply aka 2 million
       // auction start time will be provided time + 60
       const genesisTime = getCurrentTime(currentTimeOffset) + 60
 
-      await initContracts(getCurrentTime(currentTimeOffset), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      const { auctions, proceeds, mtnToken, autonomousConverter } = await MTNGlobal.initContracts(accounts, getCurrentTime(currentTimeOffset), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
       assert.equal(await auctions.proceeds(), proceeds.address, 'Proceeds address isn`t setup correctly')
       assert.equal(await auctions.token(), mtnToken.address, 'MTNToken address isn\'t setup correctly')
@@ -126,16 +84,11 @@ contract('Auctions', accounts => {
       assert.equal(await auctions.lastPurchasePrice(), web3.toWei(STARTING_PRICE), 'startingPrice isn\'t setup correctly')
       assert.equal(await auctions.timeScale(), TIME_SCALE, 'time scale isn\'t setup correctly')
 
-      const extFounder = await auctions.extFounder()
-      assert.equal(extFounder, EXT_FOUNDER, 'External founder was not set')
-      const extBalance = await mtnToken.balanceOf(extFounder)
-      assert.equal(extBalance.toNumber(), EXT_FOUNDER_TOKENS, 'External founder minted balance was not correct')
-
       const founders = [
         { address: await auctions.founders(0), targetTokens: parseInt(OWNER_TOKENS_HEX, 16) },
         { address: await auctions.founders(1), targetTokens: parseInt(FOUNDER_TOKENS_HEX, 16) }]
 
-      let totalFounderMints = extBalance.toNumber() / DECMULT
+      let totalFounderMints = 0
       for (let i = 0; i < founders.length; i++) {
         const founder = founders[i]
         const tokenLockerAddress = await auctions.tokenLockers(founder.address)
@@ -160,7 +113,7 @@ contract('Auctions', accounts => {
       const defaultStartingPrice = 2 // 2 ETH per MTN
       const defaultMinimumPrice = 33 * 10 ** 11
 
-      await initContracts(0, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      const { auctions } = await MTNGlobal.initContracts(accounts, 0, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
       assert.equal(await auctions.genesisTime(), defaultAuctionTime, 'default genesisTime isn\'t setup correctly or test took longer in execution')
       assert.equal(await auctions.minimumPrice(), defaultMinimumPrice, 'default minimumPrice isn\'t setup correctly')
@@ -172,7 +125,7 @@ contract('Auctions', accounts => {
 
   it('Should return true indicating auction is running', () => {
     return new Promise(async (resolve, reject) => {
-      await initContracts(1, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      const { auctions } = await MTNGlobal.initContracts(accounts, 1, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
       assert.ok(await auctions.isRunning(), 'Auctions should be running')
       resolve()
     })
@@ -181,7 +134,8 @@ contract('Auctions', accounts => {
   it('Should buy MTN every hour during initial auction until 3 days ', () => {
     return new Promise(async (resolve, reject) => {
       // initialize auction
-      await initContracts(getCurrentBlockTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      await TestRPCTime.mineBlock()
+      const { auctions, mtnToken } = await MTNGlobal.initContracts(accounts, TestRPCTime.getCurrentBlockTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
       // advance a minute so action can start
       let advanceSeconds = SECS_IN_MINUTE
@@ -190,7 +144,7 @@ contract('Auctions', accounts => {
       currentTimeOffset += advanceSeconds / SECS_IN_DAY
 
       // validate we are at the begining of initial auction
-      const nowTime = getCurrentBlockTime()
+      const nowTime = TestRPCTime.getCurrentBlockTime()
       const genesisTime = (await auctions.genesisTime()).toNumber()
       assert(nowTime > genesisTime, 'Current time is not after genesisTime')
       const initialAuctionEndTime = (await auctions.initialAuctionEndTime()).toNumber()
@@ -263,11 +217,11 @@ contract('Auctions', accounts => {
       const fromAccount = accounts[6]
       const amountUsedForPurchase = 1e18
 
-      await initContracts(getCurrentTime(currentTimeOffset), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      const { auctions, mtnToken } = await MTNGlobal.initContracts(accounts, getCurrentTime(currentTimeOffset), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
       // const startTime = currentTime() - (9 * 24 * 60 * 60) - 11 * 60
       // offset + 9 days + 10th tick
-      const currentBlockTime = getCurrentBlockTime()
+      const currentBlockTime = TestRPCTime.getCurrentBlockTime()
       const currentBlockTimeRounded = roundToNextMidnight(currentBlockTime)
       const SECS_TO_NEXT_MIDNIGHT = currentBlockTimeRounded - currentBlockTime
 
@@ -287,7 +241,7 @@ contract('Auctions', accounts => {
       const tokensInNextAuction = 8e24 + 3 * 2880e18
 
       // get estimate from auction
-      const purchaseDetail = await auctions.whatWouldPurchaseDo(amountUsedForPurchase, getCurrentBlockTime())
+      const purchaseDetail = await auctions.whatWouldPurchaseDo(amountUsedForPurchase, TestRPCTime.getCurrentBlockTime())
       assert.equal(purchaseDetail[0].valueOf(), expectedWeiPerToken, ' weiPerToken is not correct')
       assert.equal(purchaseDetail[1].valueOf(), expectedTokenPurchase, 'Total calcualted tokens are not correct')
       assert.equal(purchaseDetail[2].valueOf(), 0, 'refund is not correct')
@@ -309,8 +263,8 @@ contract('Auctions', accounts => {
       // operational auction started and no purchase yet. 10th tick
       const amount = 1e18
       await TestRPCTime.mineBlock()
-      const currentBlockTime = getCurrentBlockTime()
-      await initContracts(currentBlockTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      const currentBlockTime = TestRPCTime.getCurrentBlockTime()
+      const { auctions, mtnToken, proceeds } = await MTNGlobal.initContracts(accounts, currentBlockTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
       // fast forward time to opertional auction skipping first day
       const currentBlockTimeRounded = roundToNextMidnight(currentBlockTime)
@@ -331,7 +285,7 @@ contract('Auctions', accounts => {
       // assert.equal(currentTick, 10, 'Not at the 10th tick')
 
       // validate we are in the operation auction time period (skip day 1)
-      const nowTime = getCurrentBlockTime()
+      const nowTime = TestRPCTime.getCurrentBlockTime()
       const genesisTime = (await auctions.genesisTime()).toNumber()
       assert(genesisTime < nowTime, 'Current time is not after genesisTime')
       const initialAuctionEndTime = (await auctions.initialAuctionEndTime()).toNumber()
@@ -369,10 +323,10 @@ contract('Auctions', accounts => {
     return new Promise(async (resolve, reject) => {
       // operational auction started and no purchase yet. 10th tick
       const amount = 1e18
-      await initContracts(getCurrentBlockTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      const { auctions, mtnToken, proceeds } = await MTNGlobal.initContracts(accounts, TestRPCTime.getCurrentBlockTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
       // fast forward time to opertional auction skipping first day
-      const currentBlockTime = getCurrentBlockTime()
+      const currentBlockTime = TestRPCTime.getCurrentBlockTime()
       const currentBlockTimeRounded = roundToNextMidnight(currentBlockTime)
       const SECS_TO_NEXT_MIDNIGHT = currentBlockTimeRounded - currentBlockTime
       // console.log('before', new Date(currentBlockTime * MILLISECS_IN_A_SEC).toUTCString())
@@ -387,7 +341,7 @@ contract('Auctions', accounts => {
       assert.equal(currentAuction, 1, 'Not at the 1st auction')
 
       // validate we are in the operation auction time period (skip day 1)
-      const nowTime = getCurrentBlockTime()
+      const nowTime = TestRPCTime.getCurrentBlockTime()
       const genesisTime = (await auctions.genesisTime()).toNumber()
       assert(genesisTime < nowTime, 'Current time is not after genesisTime')
       const initialAuctionEndTime = (await auctions.initialAuctionEndTime()).toNumber()
@@ -425,10 +379,10 @@ contract('Auctions', accounts => {
     return new Promise(async (resolve, reject) => {
       // await initContracts(getCurrentTime(currentTimeOffset), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
       await TestRPCTime.mineBlock()
-      await initContracts(TestRPCTime.getCurrentBlockTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      const { auctions } = await MTNGlobal.initContracts(accounts, TestRPCTime.getCurrentBlockTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
       const amount = 1e17
-      let currentBlockTime = getCurrentBlockTime()
+      let currentBlockTime = TestRPCTime.getCurrentBlockTime()
       const currentBlockTimeRounded = roundToNextMidnight(currentBlockTime)
       const SECS_TO_NEXT_MIDNIGHT = currentBlockTimeRounded - currentBlockTime
       let advanceSeconds = SECS_TO_NEXT_MIDNIGHT + (10 * SECS_IN_MINUTE)

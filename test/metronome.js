@@ -61,10 +61,9 @@ contract('AutonomousConverter', accounts => {
     // Since we are appending it with hexadecimal address so amount should also be
     // in hexa decimal. Hence 999999e18 = 0000d3c20dee1639f99c0000 in 24 character ( 96 bits)
     // 1000000e18 =  0000d3c20dee1639f99c0000
-    founders.push(OWNER + '0000d3c20dee1639f99c0000')
-    founders.push(accounts[1] + '000069e10de76676d0000000')
-    const EXT_FOUNDER = accounts[6]
-    await auctions.mintInitialSupply(founders, EXT_FOUNDER, mtnToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
+    founders.push(OWNER + '0000D3C214DE7193CD4E0000')
+    founders.push(accounts[1] + '0000D3C214DE7193CD4E0000')
+    await auctions.mintInitialSupply(founders, mtnToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
     await auctions.initAuctions(START_TIME, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE, {from: OWNER})
     await mtnToken.enableMTNTransfers()
   })

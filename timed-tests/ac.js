@@ -37,11 +37,9 @@ contract('AutonomousConverter Interactions', accounts => {
   let mtnToken, autonomousConverter, auctions, proceeds, smartToken
 
   const OWNER = accounts[0]
-  const OWNER_TOKENS_HEX = '0000d3c20dee1639f99c0000'
+  const OWNER_TOKENS_HEX = '0000D3C214DE7193CD4E0000'
   const FOUNDER = accounts[1]
-  const FOUNDER_TOKENS_HEX = '000069e10de76676d0000000'
-
-  const EXT_FOUNDER = accounts[6]
+  const FOUNDER_TOKENS_HEX = '0000D3C214DE7193CD4E0000'
 
   const DAYS_IN_WEEK = 7
   const SECS_IN_DAY = 86400
@@ -63,8 +61,8 @@ contract('AutonomousConverter Interactions', accounts => {
       proceeds = await Proceeds.new({from: OWNER})
 
       const founders = []
-      founders.push(OWNER + '0000d3c20dee1639f99c0000')
-      founders.push(FOUNDER + '000069e10de76676d0000000')
+      founders.push(OWNER + '0000D3C214DE7193CD4E0000')
+      founders.push(FOUNDER + '0000D3C214DE7193CD4E0000')
 
       const MTN_INITIAL_SUPPLY = 0
       const DECMULT = 10 ** 18
@@ -77,7 +75,7 @@ contract('AutonomousConverter Interactions', accounts => {
       smartToken = await SmartToken.new(autonomousConverter.address, autonomousConverter.address, MTN_INITIAL_SUPPLY, {from: OWNER})
       await autonomousConverter.init(mtnToken.address, smartToken.address, auctions.address, { from: OWNER, value: web3.toWei(1, 'ether') })
       await proceeds.initProceeds(autonomousConverter.address, auctions.address, {from: OWNER})
-      await auctions.mintInitialSupply(founders, EXT_FOUNDER, mtnToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
+      await auctions.mintInitialSupply(founders, mtnToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
       await auctions.initAuctions(START_TIME, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE, {from: OWNER})
       resolve()
     })
