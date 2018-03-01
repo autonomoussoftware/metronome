@@ -1174,9 +1174,9 @@ contract Auctions is Pricer, ERCClaimable {
         }
         genesisGMT = genesisTime;
         currentAuctionPrice = currentPrice();
-        dailyMintable = auctionSupply();
         uint recentAuction = whichAuction(lastPurchaseTick);
         uint totalAuctions = currAuction.sub(recentAuction);
+        dailyMintable = nextAuctionSupply(totalAuctions);
         minting = mintable.add(dailyMintable.mul(totalAuctions));
         _lastPurchasePrice = lastPurchasePrice;
 
@@ -1303,7 +1303,7 @@ contract Auctions is Pricer, ERCClaimable {
         if (currentAuction() > AUCTION_WHEN_PERCENTAGE_LOGIC_STARTS) {
             return globalSupplyAfterPercentageLogic;
         } else {
-            return INITIAL_SUPPLY.add(globalDailySupply().mul(currentAuction()));
+            return INITIAL_SUPPLY.add(INITIAL_GLOBAL_DAILY_SUPPLY.mul(currentAuction()));
         }
         
     }
@@ -1361,11 +1361,8 @@ contract Auctions is Pricer, ERCClaimable {
             _startTime = (currentAuction()) * DAY_IN_SECONDS / timeScale + dailyAuctionStartTime;
         }
 
-        if (totalAuctions == 0) {
-            _auctionTokens = auctionSupply();
-        } else {
-            _auctionTokens = auctionSupply().mul(totalAuctions);
-        }
+        _auctionTokens = nextAuctionSupply(totalAuctions);
+        
 
         if (totalAuctions > 1) {
             _startPrice = lastPurchasePrice / 100 + 1;
@@ -1428,14 +1425,27 @@ contract Auctions is Pricer, ERCClaimable {
         }
     }
 
-    /// @notice MTN supply in current auction
-    function auctionSupply() internal view returns (uint supply) {
+    /// @notice MTN supply for next Auction also considering  carry forward mtn.
+    /// @param totalAuctionMissed auction count when no purchase done.
+    function nextAuctionSupply(uint totalAuctionMissed) internal view returns (uint supply) {
+        uint thisAuction = currentAuction();
         uint tokensHere = token.totalSupply().add(mintable);
-        if (currentAuction() > AUCTION_WHEN_PERCENTAGE_LOGIC_STARTS) {
-            supply = (globalDailySupply().mul(tokensHere)).div(globalSupplyAfterPercentageLogic);
+        supply = INITIAL_GLOBAL_DAILY_SUPPLY;
+        uint dailySupplyAtLastPurchase;
+        if (thisAuction > AUCTION_WHEN_PERCENTAGE_LOGIC_STARTS) {
+            supply = globalDailySupply();
+            if(totalAuctionMissed > 1) {
+                dailySupplyAtLastPurchase = globalSupplyAfterPercentageLogic.mul(2).div(36525);
+                supply = dailySupplyAtLastPurchase.add(supply).mul(totalAuctionMissed).div(2);
+            } 
+             supply = (supply.mul(tokensHere)).div(globalSupplyAfterPercentageLogic);
         } else {
-            uint previousGlobalMtnSupply = INITIAL_SUPPLY.add(globalDailySupply().mul(whichAuction(lastPurchaseTick)));
-            supply = (globalDailySupply().mul(tokensHere)).div(previousGlobalMtnSupply);
+            if(totalAuctionMissed > 1) {
+                supply = supply.mul(totalAuctionMissed);
+            }
+            uint previousGlobalMtnSupply = INITIAL_SUPPLY.add(INITIAL_GLOBAL_DAILY_SUPPLY.mul(whichAuction(lastPurchaseTick)));
+            supply = (supply.mul(tokensHere)).div(previousGlobalMtnSupply);
+            
         }
     }
 
@@ -1486,8 +1496,8 @@ contract Auctions is Pricer, ERCClaimable {
     /// @notice start the next day's auction
     function restartAuction() private {
         var (time, price, auctionTokens) = nextAuction();
-
-        if (currentAuction() > AUCTION_WHEN_PERCENTAGE_LOGIC_STARTS) {
+        uint thisAuction = currentAuction();
+        if (thisAuction > AUCTION_WHEN_PERCENTAGE_LOGIC_STARTS) {
             globalSupplyAfterPercentageLogic = globalSupplyAfterPercentageLogic.add(globalDailySupply());
         }
         mintable = mintable.add(auctionTokens);

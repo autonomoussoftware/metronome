@@ -444,7 +444,8 @@ contract('Auctions', accounts => {
       })
 
       let expectedDailySupply = 2880.27160103461e18
-
+      var nextAuctionTokenBefore = await auctions.nextAuction()
+      console.log('nextAuctionTokenBefore=', nextAuctionTokenBefore[2].valueOf())
       globalDailySupply = await auctions.globalDailySupply()
       assert.closeTo(expectedDailySupply, globalDailySupply.toNumber(), 2e8)
 
@@ -457,7 +458,9 @@ contract('Auctions', accounts => {
       })
 
       expectedDailySupply = 2880.42931611201e18
-
+      var nextAuctionTokenAfter = await auctions.nextAuction()
+      console.log('nextAuctionTokenAfter=', nextAuctionTokenAfter[2].valueOf())
+      console.log('difference=', nextAuctionTokenAfter[2].valueOf() - nextAuctionTokenBefore[2].valueOf()) 
       globalDailySupply = await auctions.globalDailySupply()
       assert.closeTo(expectedDailySupply, globalDailySupply.toNumber(), 2e8)
 
@@ -469,8 +472,7 @@ contract('Auctions', accounts => {
         value: amount
       })
 
-      expectedDailySupply = 2880.58703982542e18
-
+      expectedDailySupply = 2880.58703982542e18    
       globalDailySupply = await auctions.globalDailySupply()
 
       assert.closeTo(expectedDailySupply, globalDailySupply.toNumber(), 2e8)
@@ -484,7 +486,6 @@ contract('Auctions', accounts => {
       })
 
       expectedDailySupply = 2880.74477217531e18
-
       globalDailySupply = await auctions.globalDailySupply()
 
       assert.closeTo(expectedDailySupply, globalDailySupply.toNumber(), 2e8)
@@ -496,8 +497,7 @@ contract('Auctions', accounts => {
         value: amount
       })
 
-      expectedDailySupply = 2880.90251316215e18
-
+      expectedDailySupply = 2880.90251316215e18    
       globalDailySupply = await auctions.globalDailySupply()
 
       assert.closeTo(expectedDailySupply, globalDailySupply.toNumber(), 2e8)
