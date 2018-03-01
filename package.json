@@ -24,10 +24,10 @@
   "pre-commit": [
     "eslint",
     "solhint",
+    "testrpc:auctions",
     "testrpc",
     "testrpc:subs",
     "testrpc:ac",
-    "testrpc:auctions",
     "testrpc:proceeds",
     "testrpc:tokenLocker"
   ],

@@ -25,7 +25,6 @@
 
 const assert = require('chai').assert
 const ethjsABI = require('ethjs-abi')
-const ERCClaimableTests = require('../test/shared/erc-claimable')
 const TestRPCTime = require('../test/shared/time')
 const AutonomousConverter = artifacts.require('AutonomousConverter')
 const Auctions = artifacts.require('Auctions')
@@ -199,9 +198,5 @@ contract('AutonomousConverter Interactions', accounts => {
         resolve()
       })
     })
-  })
-
-  describe('claim airdropped erc tokens', () => {
-    ERCClaimableTests.tests(accounts, 'autonomousConverter')
   })
 })

@@ -24,7 +24,6 @@
 */
 
 const assert = require('chai').assert
-const ERCClaimableTests = require('../test/shared/erc-claimable')
 const TestRPCTime = require('../test/shared/time')
 const MTNToken = artifacts.require('MTNToken')
 const SmartToken = artifacts.require('SmartToken')
@@ -424,7 +423,10 @@ contract('Auctions', accounts => {
 
   it('Should verify annual rate ​equal ​to ​2.0% ​of ​the ​then-outstanding ​supply ​per ​year ', () => {
     return new Promise(async (resolve, reject) => {
-      await initContracts(getCurrentTime(currentTimeOffset), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      // await initContracts(getCurrentTime(currentTimeOffset), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      await TestRPCTime.mineBlock()
+      await initContracts(TestRPCTime.getCurrentBlockTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+
       const amount = 1e17
       let currentBlockTime = getCurrentBlockTime()
       const currentBlockTimeRounded = roundToNextMidnight(currentBlockTime)
@@ -444,8 +446,7 @@ contract('Auctions', accounts => {
       })
 
       let expectedDailySupply = 2880.27160103461e18
-      var nextAuctionTokenBefore = await auctions.nextAuction()
-      console.log('nextAuctionTokenBefore=', nextAuctionTokenBefore[2].valueOf())
+
       globalDailySupply = await auctions.globalDailySupply()
       assert.closeTo(expectedDailySupply, globalDailySupply.toNumber(), 2e8)
 
@@ -458,9 +459,7 @@ contract('Auctions', accounts => {
       })
 
       expectedDailySupply = 2880.42931611201e18
-      var nextAuctionTokenAfter = await auctions.nextAuction()
-      console.log('nextAuctionTokenAfter=', nextAuctionTokenAfter[2].valueOf())
-      console.log('difference=', nextAuctionTokenAfter[2].valueOf() - nextAuctionTokenBefore[2].valueOf())
+
       globalDailySupply = await auctions.globalDailySupply()
       assert.closeTo(expectedDailySupply, globalDailySupply.toNumber(), 2e8)
 
@@ -486,6 +485,7 @@ contract('Auctions', accounts => {
       })
 
       expectedDailySupply = 2880.74477217531e18
+
       globalDailySupply = await auctions.globalDailySupply()
 
       assert.closeTo(expectedDailySupply, globalDailySupply.toNumber(), 2e8)
@@ -498,15 +498,12 @@ contract('Auctions', accounts => {
       })
 
       expectedDailySupply = 2880.90251316215e18
+
       globalDailySupply = await auctions.globalDailySupply()
 
       assert.closeTo(expectedDailySupply, globalDailySupply.toNumber(), 2e8)
 
       resolve()
     })
-  })
-
-  describe('claim airdropped erc tokens', () => {
-    ERCClaimableTests.tests(accounts, 'auctions')
   })
 })

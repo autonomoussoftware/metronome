@@ -1303,7 +1303,9 @@ contract Auctions is Pricer, ERCClaimable {
         if (currentAuction() > AUCTION_WHEN_PERCENTAGE_LOGIC_STARTS) {
             return globalSupplyAfterPercentageLogic;
         } else {
+
             return INITIAL_SUPPLY.add(INITIAL_GLOBAL_DAILY_SUPPLY.mul(currentAuction()));
+
         }
         
     }
@@ -1446,7 +1448,7 @@ contract Auctions is Pricer, ERCClaimable {
             uint previousGlobalMtnSupply = 
             INITIAL_SUPPLY.add(INITIAL_GLOBAL_DAILY_SUPPLY.mul(whichAuction(lastPurchaseTick)));
             supply = (supply.mul(tokensHere)).div(previousGlobalMtnSupply);
-            
+        
         }
     }
 
@@ -1497,6 +1499,7 @@ contract Auctions is Pricer, ERCClaimable {
     /// @notice start the next day's auction
     function restartAuction() private {
         var (time, price, auctionTokens) = nextAuction();
+
         uint thisAuction = currentAuction();
         if (thisAuction > AUCTION_WHEN_PERCENTAGE_LOGIC_STARTS) {
             globalSupplyAfterPercentageLogic = globalSupplyAfterPercentageLogic.add(globalDailySupply());
