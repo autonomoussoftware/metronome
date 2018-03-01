@@ -43,12 +43,9 @@ contract('TokenLocker', accounts => {
   const SECS_IN_A_MIN = 60
 
   const OWNER = accounts[0]
-  const OWNER_TOKENS_HEX = '0000d3c20dee1639f99c0000'
+  const OWNER_TOKENS_HEX = '0000D3C214DE7193CD4E0000'
   const FOUNDER = accounts[1]
-  const FOUNDER_TOKENS_HEX = '000069e10de76676d0000000'
-
-  const EXT_FOUNDER = accounts[6]
-  const EXT_FOUNDER_TOKENS = 5e23
+  const FOUNDER_TOKENS_HEX = '0000D3C214DE7193CD4E0000'
 
   let mtnToken, smartToken, proceeds, autonomousConverter, auctions
   const timeTravel = function (time) {
@@ -96,9 +93,7 @@ contract('TokenLocker', accounts => {
     // 1000000e18 =  0000d3c20dee1639f99c0000
     founders.push(OWNER + OWNER_TOKENS_HEX)
     founders.push(FOUNDER + FOUNDER_TOKENS_HEX)
-
-    assert.equal((await mtnToken.balanceOf(EXT_FOUNDER)).toNumber(), 0, 'External founder should not already have tokens')
-    await auctions.mintInitialSupply(founders, EXT_FOUNDER, mtnToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
+    await auctions.mintInitialSupply(founders, mtnToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
     await auctions.initAuctions(startTime, MINIMUM_PRICE, STARTING_PRICE, timeScale, {from: OWNER})
   }
 
@@ -112,11 +107,6 @@ contract('TokenLocker', accounts => {
   it('Should verify that TokenLocker contract is initialized correctly', () => {
     return new Promise(async (resolve, reject) => {
       await initContracts(getCurrentBlockTime(), TIME_SCALE)
-
-      const extFounder = await auctions.extFounder()
-      assert.equal(extFounder, EXT_FOUNDER, 'External founder was not set')
-      const extBalance = await mtnToken.balanceOf(extFounder)
-      assert.equal(extBalance.toNumber(), EXT_FOUNDER_TOKENS, 'External founder minted balance was not correct')
 
       const firstFounder = await auctions.founders(0)
       assert.equal(firstFounder, OWNER, 'First founder is wrong')
@@ -135,7 +125,7 @@ contract('TokenLocker', accounts => {
       assert.isTrue(thrown, 'There are more than two founders')
 
       let grandTotalDeposited = 0
-      let totalMinted = extBalance.toNumber() / DECMULT
+      let totalMinted = 0
       for (let i = 0; i < founders.length; i++) {
         const founder = founders[i]
         const tokenLockerAddress = await auctions.tokenLockers(founder.address)

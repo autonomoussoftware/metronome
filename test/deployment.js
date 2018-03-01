@@ -36,7 +36,6 @@ contract('Deploy Contracts', accounts => {
   const OWNER = accounts[0]
   const BLOQ = accounts[3]
   const FOUNDER = accounts[1]
-  const EXT_FOUNDER = accounts[6]
   const BUYER = accounts[2]
   const MILLISECS_IN_A_SEC = 1000
   const SECS_IN_A_DAY = 86400
@@ -64,10 +63,10 @@ contract('Deploy Contracts', accounts => {
       smartToken = await SmartToken.new(autonomousConverter.address, autonomousConverter.address, MTN_INITIAL_SUPPLY, {from: OWNER})
 
       const founders = []
-      founders.push(OWNER + '000069E10DE76676D0800000')
-      founders.push(FOUNDER + '000069E10DE76676D0800000')
-      assert.isTrue(await auctions.mintInitialSupply.call(founders, EXT_FOUNDER, mtnToken.address, proceeds.address, autonomousConverter.address), 'mintInitialSupply did not return true')
-      await auctions.mintInitialSupply(founders, EXT_FOUNDER, mtnToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
+      founders.push(OWNER + '0000D3C214DE7193CD4E0000')
+      founders.push(FOUNDER + '0000D3C214DE7193CD4E0000')
+      assert.isTrue(await auctions.mintInitialSupply.call(founders, mtnToken.address, proceeds.address, autonomousConverter.address, {from: OWNER}), 'mintInitialSupply did not return true')
+      await auctions.mintInitialSupply(founders, mtnToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
 
       //
       // change ownership to bloq for step 2

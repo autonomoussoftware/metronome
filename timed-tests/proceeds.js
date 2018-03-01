@@ -42,12 +42,9 @@ contract('Proceeds - timed test', accounts => {
   // const INITIAL_AUCTION_DURATION = 7 * 24 * 60// 7 days in minutes
 
   const OWNER = accounts[0]
-  const OWNER_TOKENS_HEX = '0000d3c20dee1639f99c0000'
+  const OWNER_TOKENS_HEX = '0000D3C214DE7193CD4E0000'
   const FOUNDER = accounts[1]
-  const FOUNDER_TOKENS_HEX = '000069e10de76676d0000000'
-
-  const EXT_FOUNDER = accounts[6]
-  const EXT_FOUNDER_TOKENS = 5e23
+  const FOUNDER_TOKENS_HEX = '0000D3C214DE7193CD4E0000'
 
   let mtnToken, smartToken, proceeds, autonomousConverter, auctions
 
@@ -102,7 +99,7 @@ contract('Proceeds - timed test', accounts => {
         value: web3.toWei(1, 'ether')
       })
     await proceeds.initProceeds(autonomousConverter.address, auctions.address, {from: OWNER})
-    await auctions.mintInitialSupply(founders, EXT_FOUNDER, mtnToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
+    await auctions.mintInitialSupply(founders, mtnToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
     await auctions.initAuctions(startTime, MINIMUM_PRICE, STARTING_PRICE, timeScale, {from: OWNER})
   }
 
@@ -136,16 +133,11 @@ contract('Proceeds - timed test', accounts => {
       assert.equal(await auctions.lastPurchasePrice(), web3.toWei(STARTING_PRICE), 'startingPrice isn\'t setup correctly')
       assert.equal(await auctions.timeScale(), TIME_SCALE, 'time scale isn\'t setup correctly')
 
-      const extFounder = await auctions.extFounder()
-      assert.equal(extFounder, EXT_FOUNDER, 'External founder was not set')
-      const extBalance = await mtnToken.balanceOf(extFounder)
-      assert.equal(extBalance.toNumber(), EXT_FOUNDER_TOKENS, 'External founder minted balance was not correct')
-
       const founders = [
         { address: await auctions.founders(0), targetTokens: parseInt(OWNER_TOKENS_HEX, 16) },
         { address: await auctions.founders(1), targetTokens: parseInt(FOUNDER_TOKENS_HEX, 16) }]
 
-      let totalFounderMints = extBalance.toNumber() / DECMULT
+      let totalFounderMints = 0
       for (let i = 0; i < founders.length; i++) {
         const founder = founders[i]
         const tokenLockerAddress = await auctions.tokenLockers(founder.address)
