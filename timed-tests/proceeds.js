@@ -25,7 +25,6 @@
 
 const assert = require('chai').assert
 const ethjsABI = require('ethjs-abi')
-const ERCClaimableTests = require('../test/shared/erc-claimable')
 const MTNToken = artifacts.require('MTNToken')
 const SmartToken = artifacts.require('SmartToken')
 const Proceeds = artifacts.require('Proceeds')
@@ -246,7 +245,4 @@ contract('Proceeds - timed test', accounts => {
     })
   })
 
-  describe('claim airdropped erc tokens', () => {
-    ERCClaimableTests.tests(accounts, 'proceeds')
-  })
 })
