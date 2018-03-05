@@ -573,7 +573,7 @@ contract SmartToken is Mintable {
 contract MTNToken is Token {
 
     string public constant name = "Metronome";
-    string public constant symbol = "MTN";
+    string public constant symbol = "MET";
     uint8 public constant decimals = 18;
     
     bool public transferAllowed;
