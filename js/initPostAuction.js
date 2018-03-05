@@ -59,9 +59,9 @@ var founders = []
 founders.push(ETHER_ADDR + '0000d3c20dee1639f99c0000')
 founders.push('0xf17f52151ebef6c7334fad080c5704d77216b732' + '000069e10de76676d0000000')
 var extFounder = '0x009A298B3AF0EF8AECC6B058367Fe231476A0319'
-var gasForMint = Auctions.mintInitialSupply.estimateGas(founders, extFounder, MTNToken.address, Proceeds.address)
+var gasForMint = Auctions.mintInitialSupply.estimateGas(founders, extFounder, MTNToken.address, Proceeds.address, AutonomousConverter.address)
 console.log('gas for mint', gasForMint)
-hash = Auctions.mintInitialSupply(founders, extFounder, MTNToken.address, Proceeds.address, {gas: gasForMint})
+hash = Auctions.mintInitialSupply(founders, extFounder, MTNToken.address, Proceeds.address, AutonomousConverter.address, {gas: gasForMint})
 waitForTx(hash)
 
 console.log('Minted', Auctions.minted())

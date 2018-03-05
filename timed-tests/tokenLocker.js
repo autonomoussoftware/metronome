@@ -98,7 +98,7 @@ contract('TokenLocker', accounts => {
     founders.push(FOUNDER + FOUNDER_TOKENS_HEX)
 
     assert.equal((await mtnToken.balanceOf(EXT_FOUNDER)).toNumber(), 0, 'External founder should not already have tokens')
-    await auctions.mintInitialSupply(founders, EXT_FOUNDER, mtnToken.address, proceeds.address, {from: OWNER})
+    await auctions.mintInitialSupply(founders, EXT_FOUNDER, mtnToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
     await auctions.initAuctions(startTime, MINIMUM_PRICE, STARTING_PRICE, timeScale, {from: OWNER})
   }
 
