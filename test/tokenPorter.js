@@ -64,7 +64,7 @@ contract('TokenPorter', accounts => {
     founders.push(OWNER + '0000d3c20dee1639f99c0000')
     founders.push(accounts[1] + '000069e10de76676d0000000')
     const EXT_FOUNDER = accounts[6]
-    await auctions.mintInitialSupply(founders, EXT_FOUNDER, mtnToken.address, proceeds.address, {from: OWNER})
+    await auctions.mintInitialSupply(founders, EXT_FOUNDER, mtnToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
     await auctions.initAuctions(startTime, minimumPrice, startingPrice, timeScale, {from: OWNER})
     tokenPorter = await TokenPorter.new(mtnToken.address, auctions.address)
     await mtnToken.setTokenPorter(tokenPorter.address)

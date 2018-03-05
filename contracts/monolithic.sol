@@ -1219,13 +1219,14 @@ contract Auctions is Pricer, Owned {
     /// @param _token MTN token contract address
     /// @param _proceeds Address of Proceeds contract
     function mintInitialSupply(uint[] _founders, address _extFounder,
-        address _token, address _proceeds) public onlyOwner returns (bool) 
+        address _token, address _proceeds, address _autonomousConverter) public onlyOwner returns (bool) 
     {
         require(!minted);
         require(founders.length == 0);
         require(_founders.length != 0);
         require(address(token) == 0x0 && _token != 0x0);
         require(address(proceeds) == 0x0 && _proceeds != 0x0);
+        require(_autonomousConverter != 0x0);
 
         token = MTNToken(_token);
         proceeds = Proceeds(_proceeds);
@@ -1264,7 +1265,7 @@ contract Auctions is Pricer, Owned {
         require(foundersTotal == INITIAL_FOUNDER_SUPPLY);
 
         // mint a small amount to the AC
-        require(token.mint(proceeds.autonomousConverter(), INITIAL_AC_SUPPLY));
+        require(token.mint(_autonomousConverter, INITIAL_AC_SUPPLY));
 
         minted = true;
         return true;

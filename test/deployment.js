@@ -66,8 +66,8 @@ contract('Deploy Contracts', accounts => {
       const founders = []
       founders.push(OWNER + '000069E10DE76676D0800000')
       founders.push(FOUNDER + '000069E10DE76676D0800000')
-      assert.isTrue(await auctions.mintInitialSupply.call(founders, EXT_FOUNDER, mtnToken.address, proceeds.address), 'mintInitialSupply did not return true')
-      await auctions.mintInitialSupply(founders, EXT_FOUNDER, mtnToken.address, proceeds.address, {from: OWNER})
+      assert.isTrue(await auctions.mintInitialSupply.call(founders, EXT_FOUNDER, mtnToken.address, proceeds.address, autonomousConverter.address), 'mintInitialSupply did not return true')
+      await auctions.mintInitialSupply(founders, EXT_FOUNDER, mtnToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
 
       //
       // change ownership to bloq for step 2

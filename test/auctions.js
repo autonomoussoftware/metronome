@@ -74,7 +74,7 @@ contract('Auctions', accounts => {
         value: web3.toWei(1, 'ether')
       })
     await proceeds.initProceeds(autonomousConverter.address, auctions.address, {from: OWNER})
-    await auctions.mintInitialSupply(founders, EXT_FOUNDER, mtnToken.address, proceeds.address, {from: OWNER})
+    await auctions.mintInitialSupply(founders, EXT_FOUNDER, mtnToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
     await auctions.initAuctions(startTime, minimumPrice, startingPrice, timeScale, {from: OWNER})
   }
 
