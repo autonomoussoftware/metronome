@@ -279,24 +279,30 @@ contract Pricer {
 }
 
 
-/// @dev Reference: https://github.com/ethereum/EIPs/issues/827
-/// @notice ERC827 standard interface
-interface ERC827 {
-
+/// @dev Reference: https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md
+/// @notice ERC20 standard interface
+interface ERC20 {
     function totalSupply() public constant returns (uint256);
     function balanceOf(address _owner) public constant returns (uint256);
     function allowance(address _owner, address _spender) public constant returns (uint256);
 
     event Transfer(address indexed _from, address indexed _to, uint256 _value);
-    event Transfer(address indexed _from, address indexed _to, uint256 _value, bytes _data);
     function transfer(address _to, uint256 _value) public returns (bool);
-    function transfer(address _to, uint256 _value, bytes _data) public returns (bool);
     function transferFrom(address _from, address _to, uint256 _value) public returns (bool);
-    function transferFrom(address _from, address _to, uint256 _value, bytes _data) public returns (bool);
 
     event Approval(address indexed _owner, address indexed _spender, uint256 _value);
-    event Approval(address indexed _owner, address indexed _spender, uint256 _value, bytes _data);
     function approve(address _spender, uint256 _value) public returns (bool);
+}
+
+
+/// @dev Reference: https://github.com/ethereum/EIPs/issues/827
+/// @notice ERC827 standard interface
+interface ERC827 {
+    event Transfer(address indexed _from, address indexed _to, uint256 _value, bytes _data);
+    function transfer(address _to, uint256 _value, bytes _data) public returns (bool);
+    function transferFrom(address _from, address _to, uint256 _value, bytes _data) public returns (bool);
+
+    event Approval(address indexed _owner, address indexed _spender, uint256 _value, bytes _data);
     function approve(address _spender, uint256 _value, bytes _data) public returns (bool);
 }
 
@@ -411,7 +417,7 @@ contract Mintable is Owned {
 
 
 /// @title Token contract
-contract Token is ERC827, Mintable {
+contract Token is ERC20, ERC827, Mintable {
     mapping(address => mapping(address => uint256)) internal _allowance;
 
     function Token(address _autonomousConverter, address _minter, uint _initialSupply, uint _decmult) public
@@ -1010,7 +1016,8 @@ contract Auctions is Pricer, Owned {
     mapping (address => uint) internal lastPurcahseAuction;
     bool public minted;
     bool public initialized;
-
+    uint public globalSupplyAfterPercentageLogic = 52598080 * MTNDECMULT;
+    uint public constant AUCTION_WHEN_PERCENTAGE_LOGIC_STARTS = 14791;
     event LogAuctionFundsIn(address indexed sender, uint amount);
 
     function Auctions() public {
@@ -1135,14 +1142,10 @@ contract Auctions is Pricer, Owned {
         uint currentAuctionPrice,
         uint dailyMintable,
         uint _lastPurchasePrice) {
-
         chain = "ETH";
-
-        auctionAddr = this;
         convertAddr = proceeds.autonomousConverter();
-
         tokenAddr = token;
-
+        auctionAddr = this;
         totalMTN = token.totalSupply();
         proceedsBal = proceeds.balance;
 
@@ -1154,13 +1157,17 @@ contract Auctions is Pricer, Owned {
             nextAuctionGMT = (currAuction * DAY_IN_SECONDS) / timeScale + dailyAuctionStartTime;
         }
         genesisGMT = genesisTime;
+
         currentAuctionPrice = currentPrice();
-        dailyMintable = auctionSupply();
         uint recentAuction = whichAuction(lastPurchaseTick);
         uint totalAuctions = currAuction.sub(recentAuction);
-        minting = mintable.add(dailyMintable.mul(totalAuctions));
+        dailyMintable = nextAuctionSupply(0);
+        if (totalAuctions > 0) {
+            minting = mintable.add(nextAuctionSupply(totalAuctions));
+        } else {
+            minting = mintable;
+        }
         _lastPurchasePrice = lastPurchasePrice;
-
     }
 
     /// @notice Initialize Auctions parameters
@@ -1281,19 +1288,44 @@ contract Auctions is Pricer, Owned {
 
     /// @notice Global MTN supply
     function globalMtnSupply() public view returns (uint) {
-        return INITIAL_SUPPLY.add(globalDailySupply().mul(currentAuction()));
+
+        uint currAuc = currentAuction();
+        if (currAuc > AUCTION_WHEN_PERCENTAGE_LOGIC_STARTS) {
+            return globalSupplyAfterPercentageLogic;
+        } else {
+            return INITIAL_SUPPLY.add(INITIAL_GLOBAL_DAILY_SUPPLY.mul(currAuc));
+        }
     }
 
     /// @notice Global MTN daily supply. Daily supply is greater of 1) 2880 2)2% of then outstanding supply per year.
+    /// @dev 2% logic will kicks in at 14792th auction. 
     function globalDailySupply() public view returns (uint) {
-        uint globalSupply = INITIAL_SUPPLY.add(INITIAL_GLOBAL_DAILY_SUPPLY.mul(currentAuction()));
-        
-        if (globalSupply > (52560000 * MTNDECMULT)) {
-            return (globalSupply.mul(2).div(100)).div(365);
-        } else {
-            return INITIAL_GLOBAL_DAILY_SUPPLY;
+        uint dailySupply = INITIAL_GLOBAL_DAILY_SUPPLY;
+        uint thisAuction = currentAuction();
+
+        if (thisAuction > AUCTION_WHEN_PERCENTAGE_LOGIC_STARTS) {
+            uint lastPurchaseAuction = whichAuction(lastPurchaseTick);
+            uint recentAuction = AUCTION_WHEN_PERCENTAGE_LOGIC_STARTS + 1;
+            if (lastPurchaseAuction > recentAuction) {
+                recentAuction = lastPurchaseAuction;
+            }
+
+            uint totalAuctions = thisAuction - recentAuction;
+            if (totalAuctions > 1) {
+                // derived formula to find close to accurate daily supply when some auction missed. 
+                uint factor = 36525 + ((totalAuctions - 1) * 2);
+                dailySupply = (globalSupplyAfterPercentageLogic.mul(2).mul(factor)).div(36525 ** 2);
+
+            } else {
+                dailySupply = globalSupplyAfterPercentageLogic.mul(2).div(36525);
+            }
+
+            if (dailySupply < INITIAL_GLOBAL_DAILY_SUPPLY) {
+                dailySupply = INITIAL_GLOBAL_DAILY_SUPPLY; 
+            }
         }
-        
+
+        return dailySupply;
     }
 
     /// @notice Return the information about the next auction
@@ -1301,7 +1333,6 @@ contract Auctions is Pricer, Owned {
     /// @return _startPrice Start price of MTN in next auction
     /// @return _auctionTokens  MTN supply in next auction
     function nextAuction() public constant returns(uint _startTime, uint _startPrice, uint _auctionTokens) {
-
         if (block.timestamp < genesisTime) {
             _startTime = genesisTime;
             _startPrice = lastPurchasePrice;
@@ -1310,18 +1341,15 @@ contract Auctions is Pricer, Owned {
         }
 
         uint recentAuction = whichAuction(lastPurchaseTick);
-        uint totalAuctions = currentAuction() - recentAuction;
-        if (currentAuction() == 0) {
+        uint currAuc = currentAuction();
+        uint totalAuctions = currAuc - recentAuction;
+        if (currAuc == 0) {
             _startTime = dailyAuctionStartTime;
         } else {
-            _startTime = (currentAuction()) * DAY_IN_SECONDS / timeScale + dailyAuctionStartTime;
+            _startTime = (currAuc * DAY_IN_SECONDS / timeScale) + dailyAuctionStartTime;
         }
 
-        if (totalAuctions == 0) {
-            _auctionTokens = auctionSupply();
-        } else {
-            _auctionTokens = auctionSupply().mul(totalAuctions);
-        }
+        _auctionTokens = nextAuctionSupply(totalAuctions);
 
         if (totalAuctions > 1) {
             _startPrice = lastPurchasePrice / 100 + 1;
@@ -1384,11 +1412,29 @@ contract Auctions is Pricer, Owned {
         }
     }
 
-    /// @notice MTN supply in current auction
-    function auctionSupply() internal view returns (uint) {
+    /// @notice MTN supply for next Auction also considering  carry forward mtn.
+    /// @param totalAuctionMissed auction count when no purchase done.
+    function nextAuctionSupply(uint totalAuctionMissed) internal view returns (uint supply) {
+        uint thisAuction = currentAuction();
         uint tokensHere = token.totalSupply().add(mintable);
-        uint previousGlobalMtnSupply = INITIAL_SUPPLY.add(globalDailySupply().mul(whichAuction(lastPurchaseTick)));
-        return (globalDailySupply().mul(tokensHere)).div(previousGlobalMtnSupply);
+        supply = INITIAL_GLOBAL_DAILY_SUPPLY;
+        uint dailySupplyAtLastPurchase;
+        if (thisAuction > AUCTION_WHEN_PERCENTAGE_LOGIC_STARTS) {
+            supply = globalDailySupply();
+            if (totalAuctionMissed > 1) {
+                dailySupplyAtLastPurchase = globalSupplyAfterPercentageLogic.mul(2).div(36525);
+                supply = dailySupplyAtLastPurchase.add(supply).mul(totalAuctionMissed).div(2);
+            } 
+            supply = (supply.mul(tokensHere)).div(globalSupplyAfterPercentageLogic);
+        } else {
+            if (totalAuctionMissed > 1) {
+                supply = supply.mul(totalAuctionMissed);
+            }
+            uint previousGlobalMtnSupply = 
+            INITIAL_SUPPLY.add(INITIAL_GLOBAL_DAILY_SUPPLY.mul(whichAuction(lastPurchaseTick)));
+            supply = (supply.mul(tokensHere)).div(previousGlobalMtnSupply);
+        
+        }
     }
 
     /// @notice price at a number of minutes out in Initial auction and daily auction
@@ -1439,9 +1485,13 @@ contract Auctions is Pricer, Owned {
     function restartAuction() private {
         var (time, price, auctionTokens) = nextAuction();
 
+        uint thisAuction = currentAuction();
+        if (thisAuction > AUCTION_WHEN_PERCENTAGE_LOGIC_STARTS) {
+            globalSupplyAfterPercentageLogic = globalSupplyAfterPercentageLogic.add(globalDailySupply());
+        }
+
         mintable = mintable.add(auctionTokens);
         lastPurchasePrice = price;
-
         lastPurchaseTick = whichTick(time - 1 days);
     }
 }
