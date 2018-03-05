@@ -244,5 +244,4 @@ contract('Proceeds - timed test', accounts => {
       resolve()
     })
   })
-
 })
