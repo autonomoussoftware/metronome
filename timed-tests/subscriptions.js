@@ -79,10 +79,8 @@ contract('Subscriptions', accounts => {
     proceeds = await Proceeds.new({from: OWNER})
 
     const founders = []
-    founders.push(OWNER + '0000d3c20dee1639f99c0000')
-    founders.push(FOUNDER + '000069e10de76676d0000000')
-
-    const EXT_FOUNDER = accounts[8]
+    founders.push(OWNER + '0000D3C214DE7193CD4E0000')
+    founders.push(FOUNDER + '0000D3C214DE7193CD4E0000')
 
     const MTN_INITIAL_SUPPLY = 0
     const ST_INITIAL_SUPPLY = 10e6
@@ -98,7 +96,7 @@ contract('Subscriptions', accounts => {
     smartToken = await SmartToken.new(autonomousConverter.address, autonomousConverter.address, ST_INITIAL_SUPPLY, {from: OWNER})
     await autonomousConverter.init(mtnToken.address, smartToken.address, auctions.address, { from: OWNER, value: web3.toWei(1, 'ether') })
     await proceeds.initProceeds(autonomousConverter.address, auctions.address, {from: OWNER})
-    await auctions.mintInitialSupply(founders, EXT_FOUNDER, mtnToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
+    await auctions.mintInitialSupply(founders, mtnToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
     await auctions.initAuctions(START_TIME, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE, {from: OWNER})
     await mtnToken.enableMTNTransfers()
   })

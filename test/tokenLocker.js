@@ -40,12 +40,9 @@ contract('TokenLocker', accounts => {
   const TIME_SCALE = 1
 
   const OWNER = accounts[0]
-  const OWNER_TOKENS_HEX = '000069E10DE76676D0800000'
+  const OWNER_TOKENS_HEX = '0000d3c20dee1639f99c0000'
   const FOUNDER = accounts[1]
-  const FOUNDER_TOKENS_HEX = '000069E10DE76676D0800000'
-
-  const EXT_FOUNDER = accounts[6]
-  const EXT_FOUNDER_TOKENS = 9.99999e23
+  const FOUNDER_TOKENS_HEX = '0000D3C21BCECCEDA1000000'
 
   const SECS_IN_A_DAY = 86400
   const SECS_IN_A_MIN = 60
@@ -82,8 +79,7 @@ contract('TokenLocker', accounts => {
     // 1000000e18 =  0000d3c20dee1639f99c0000
     founders.push(OWNER + OWNER_TOKENS_HEX)
     founders.push(FOUNDER + FOUNDER_TOKENS_HEX)
-    assert.equal((await mtnToken.balanceOf(EXT_FOUNDER)).toNumber(), 0, 'External founder should not already have tokens')
-    await auctions.mintInitialSupply(founders, EXT_FOUNDER, mtnToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
+    await auctions.mintInitialSupply(founders, mtnToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
     await auctions.initAuctions(startTime, MINIMUM_PRICE, STARTING_PRICE, timeScale, {from: OWNER})
   }
 
@@ -98,10 +94,6 @@ contract('TokenLocker', accounts => {
     return new Promise(async (resolve, reject) => {
       await initContracts(currentTime(), TIME_SCALE)
 
-      const extFounder = await auctions.extFounder()
-      assert.equal(extFounder, EXT_FOUNDER, 'External founder was not set')
-      const extBalance = await mtnToken.balanceOf(extFounder)
-      assert.equal(extBalance.toNumber(), EXT_FOUNDER_TOKENS, 'External founder minted balance was not correct')
       // console.log('totalSupply=', (await mtnToken.totalSupply()).valueOf())
       const firstFounder = await auctions.founders(0)
       assert.equal(firstFounder, OWNER, 'First founder is wrong')
@@ -120,7 +112,7 @@ contract('TokenLocker', accounts => {
       assert.isTrue(thrown, 'There are more than two founders')
 
       let grandTotalDeposited = 0
-      let totalMinted = extBalance.toNumber()
+      let totalMinted = 0
       totalMinted = totalMinted / DECMULT
       for (let i = 0; i < founders.length; i++) {
         const founder = founders[i]
@@ -143,7 +135,7 @@ contract('TokenLocker', accounts => {
       }
       totalMinted = totalMinted * DECMULT
       assert.equal(grandTotalDeposited, founders[0].targetTokens + founders[1].targetTokens, 'Total deposit is not correct')
-      assert.equal(totalMinted, founders[0].targetTokens + founders[1].targetTokens + extBalance.toNumber(), 'Total minted is not correct')
+      assert.equal(totalMinted, founders[0].targetTokens + founders[1].targetTokens, 'Total minted is not correct')
 
       const reserveAmount = 2000000
       assert.equal(totalMinted, (reserveAmount - 1) * DECMULT, 'Total minted for all founders is not correct')
@@ -265,18 +257,20 @@ contract('TokenLocker', accounts => {
         const log = tx.logs[0]
 
         var expectedWithdrawn = (founder.targetTokens * 0.25) + ((founder.targetTokens * 0.75) / 12)
-        expectedWithdrawn = Math.ceil(expectedWithdrawn / DECMULT) * DECMULT
+        expectedWithdrawn = (expectedWithdrawn / DECMULT) * DECMULT
 
         assert.equal(log.event, 'Withdrawn', 'Withdrawn log was not emitted')
         assert.equal(log.args.who, founder.address, 'Who is wrong')
-        assert.equal(log.args.amount.toNumber(), expectedWithdrawn, 'Amount is wrong')
+        let errorMargin = 67108864
+        assert.closeTo(log.args.amount.toNumber(), expectedWithdrawn, errorMargin, 'Amount is wrong')
         let balanceAfter = await mtnToken.balanceOf(founder.address)
-        assert.equal(balanceAfter.toNumber() - balanceBefore.toNumber(), expectedWithdrawn, 'Quarterly withdraw was not correct')
+        assert.closeTo(balanceAfter.toNumber() - balanceBefore.toNumber(), expectedWithdrawn, errorMargin, 'Quarterly withdraw was not correct')
 
         const remainingBalance = await tokenLocker.deposited()
         const QrtlyWithdrawable = await tokenLocker.quarterlyWithdrable()
         const expectedRemaingBalance = (founder.targetTokens - expectedWithdrawn)
-        assert.equal(remainingBalance.toNumber(), expectedRemaingBalance, 'Remaining fund after withdraw is not correct')
+        errorMargin = 134217728
+        assert.closeTo(remainingBalance.toNumber(), expectedRemaingBalance, errorMargin, 'Remaining fund after withdraw is not correct')
 
         const expectedQtrlyWithdrawable = ((founder.targetTokens * 0.75) / 12)
         assert.equal(QrtlyWithdrawable.toNumber(), expectedQtrlyWithdrawable, 'Quarterly withdrawable is not correct')

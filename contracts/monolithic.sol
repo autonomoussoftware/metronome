@@ -992,7 +992,6 @@ contract Auctions is Pricer, Owned {
     MTNToken public token;
     Proceeds public proceeds;
     address[] public founders;
-    address public extFounder;
     mapping(address => TokenLocker) public tokenLockers;
     uint internal constant DAY_IN_SECONDS = 86400;
     uint internal constant DAY_IN_MINUTES = 1440;
@@ -1215,15 +1214,13 @@ contract Auctions is Pricer, Owned {
 
     /// @notice Mint initail supply for founder and move to tocken locker
     /// @param _founders Left 160 bits are the founder address and the right 96 bits are the token amount.
-    /// @param _extFounder External founder
     /// @param _token MTN token contract address
     /// @param _proceeds Address of Proceeds contract
-    function mintInitialSupply(uint[] _founders, address _extFounder,
-        address _token, address _proceeds, address _autonomousConverter) public onlyOwner returns (bool) 
+    function mintInitialSupply(uint[] _founders, address _token, 
+        address _proceeds, address _autonomousConverter) public onlyOwner returns (bool) 
     {
         require(!minted);
-        require(founders.length == 0);
-        require(_founders.length != 0);
+        require(founders.length == 0 && _founders.length != 0);
         require(address(token) == 0x0 && _token != 0x0);
         require(address(proceeds) == 0x0 && _proceeds != 0x0);
         require(_autonomousConverter != 0x0);
@@ -1250,16 +1247,6 @@ contract Auctions is Pricer, Owned {
 
             foundersTotal = foundersTotal.add(amount);
         }
-
-        // _extFounder is a special founder that will receive minted tokens in an external wallet
-        require(_extFounder != 0x0);
-        extFounder = _extFounder;
-
-        // mint remaining to external founder
-        uint extAmount = INITIAL_FOUNDER_SUPPLY.sub(foundersTotal);
-        require(extAmount > 0);
-        require(token.mint(extFounder, extAmount));
-        foundersTotal = foundersTotal.add(extAmount);
 
         // reconcile minted total for founders
         require(foundersTotal == INITIAL_FOUNDER_SUPPLY);
