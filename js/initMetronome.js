@@ -32,7 +32,7 @@ function waitForTx (hash) {
   while (receipt === null) {
     receipt = eth.getTransactionReceipt(hash)
   }
-  console.log(hash)
+  console.log('tx', hash)
   return receipt
 }
 

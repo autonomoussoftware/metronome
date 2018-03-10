@@ -205,6 +205,7 @@ echo -e "contracts/monolithic.sol:Auctions\njs/metronome.js" | ETHER_ADDR=$LOCAL
 echo -e "contracts/monolithic.sol:AutonomousConverter\njs/metronome.js" | ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
 echo -e "var SmartTokenJSON = " >> js/metronome.js | cat build/contracts/SmartToken.json >> js/metronome.js
 echo -e "\nvar MTNTokenJSON = " >> js/metronome.js | cat build/contracts/MTNToken.json >> js/metronome.js
+echo -e "\nvar TokenPorterJSON = " >> js/metronome.js | cat build/contracts/TokenPorter.json >> js/metronome.js
 
 echo "ABIs and Contract info written to metronome.js"
 echo "Supply: $SUPPLY"
