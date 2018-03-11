@@ -24,7 +24,7 @@
 */
 
 const assert = require('chai').assert
-const MTNGlobal = require('../test/shared/inits')
+const METGlobal = require('../test/shared/inits')
 const TestRPCTime = require('../test/shared/time')
 const TokenLocker = artifacts.require('TokenLocker')
 
@@ -36,10 +36,10 @@ contract('Auctions', accounts => {
   const OWNER_TOKENS_HEX = '0000D3C214DE7193CD4E0000'
   const FOUNDER_TOKENS_HEX = '0000D3C214DE7193CD4E0000'
 
-  const MTN_INITIAL_SUPPLY = 0
+  const MET_INITIAL_SUPPLY = 0
   const DECMULT = 10 ** 18
   const MINIMUM_PRICE = 33 * 10 ** 11 // minimum wei per token
-  const STARTING_PRICE = 2 // 2 ETH per MTN
+  const STARTING_PRICE = 2 // 2 ETH per MET
   const TIME_SCALE = 1
   const MILLISECS_IN_A_SEC = 1000
   const SECS_IN_DAY = 86400
@@ -75,10 +75,10 @@ contract('Auctions', accounts => {
       // auction start time will be provided time + 60
       const genesisTime = getCurrentTime(currentTimeOffset) + 60
 
-      const { auctions, proceeds, mtnToken, autonomousConverter } = await MTNGlobal.initContracts(accounts, getCurrentTime(currentTimeOffset), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      const { auctions, proceeds, metToken, autonomousConverter } = await METGlobal.initContracts(accounts, getCurrentTime(currentTimeOffset), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
       assert.equal(await auctions.proceeds(), proceeds.address, 'Proceeds address isn`t setup correctly')
-      assert.equal(await auctions.token(), mtnToken.address, 'MTNToken address isn\'t setup correctly')
+      assert.equal(await auctions.token(), metToken.address, 'METToken address isn\'t setup correctly')
       assert.equal(await auctions.genesisTime(), genesisTime, 'genesisTime isn\'t setup correctly')
       assert.equal(await auctions.minimumPrice(), MINIMUM_PRICE, 'minimumPrice isn\'t setup correctly')
       assert.equal(await auctions.lastPurchasePrice(), web3.toWei(STARTING_PRICE), 'startingPrice isn\'t setup correctly')
@@ -93,13 +93,13 @@ contract('Auctions', accounts => {
         const founder = founders[i]
         const tokenLockerAddress = await auctions.tokenLockers(founder.address)
         const tokenLocker = await TokenLocker.at(tokenLockerAddress)
-        totalFounderMints += (await mtnToken.balanceOf(tokenLocker.address)).toNumber() / DECMULT
+        totalFounderMints += (await metToken.balanceOf(tokenLocker.address)).toNumber() / DECMULT
       }
       totalFounderMints *= DECMULT
       assert.equal(totalFounderMints, (reserveAmount - 1) * DECMULT, 'Reserve for founders isn\'t setup correctly')
 
       // Auctions will mint 1 token for autonomous converter
-      assert.equal(await mtnToken.balanceOf(autonomousConverter.address), (MTN_INITIAL_SUPPLY + 1) * DECMULT, 'Reserve for founders isn\'t setup correctly')
+      assert.equal(await metToken.balanceOf(autonomousConverter.address), (MET_INITIAL_SUPPLY + 1) * DECMULT, 'Reserve for founders isn\'t setup correctly')
 
       resolve()
     })
@@ -110,10 +110,10 @@ contract('Auctions', accounts => {
       // When 0 is provided for auction start time, it will be calculated
       // using block timestamp, block.timestamp + 60
       const defaultAuctionTime = getCurrentTime(currentTimeOffset) + 60
-      const defaultStartingPrice = 2 // 2 ETH per MTN
+      const defaultStartingPrice = 2 // 2 ETH per MET
       const defaultMinimumPrice = 33 * 10 ** 11
 
-      const { auctions } = await MTNGlobal.initContracts(accounts, 0, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      const { auctions } = await METGlobal.initContracts(accounts, 0, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
       assert.equal(await auctions.genesisTime(), defaultAuctionTime, 'default genesisTime isn\'t setup correctly or test took longer in execution')
       assert.equal(await auctions.minimumPrice(), defaultMinimumPrice, 'default minimumPrice isn\'t setup correctly')
@@ -125,17 +125,17 @@ contract('Auctions', accounts => {
 
   it('Should return true indicating auction is running', () => {
     return new Promise(async (resolve, reject) => {
-      const { auctions } = await MTNGlobal.initContracts(accounts, 1, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      const { auctions } = await METGlobal.initContracts(accounts, 1, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
       assert.ok(await auctions.isRunning(), 'Auctions should be running')
       resolve()
     })
   })
 
-  it('Should buy MTN every hour during initial auction until 3 days ', () => {
+  it('Should buy MET every hour during initial auction until 3 days ', () => {
     return new Promise(async (resolve, reject) => {
       // initialize auction
       await TestRPCTime.mineBlock()
-      const { auctions, mtnToken } = await MTNGlobal.initContracts(accounts, TestRPCTime.getCurrentBlockTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      const { auctions, metToken } = await METGlobal.initContracts(accounts, TestRPCTime.getCurrentBlockTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
       // advance a minute so action can start
       let advanceSeconds = SECS_IN_MINUTE
@@ -160,8 +160,8 @@ contract('Auctions', accounts => {
       let expectedToken = 0
       let expectedPrice = 2e18
       let lastPurchasePrice
-      let mtnBalanceBefore = await mtnToken.balanceOf(fromAccount)
-      let mtnBalanceAfter = mtnBalanceBefore
+      let metBalanceBefore = await metToken.balanceOf(fromAccount)
+      let metBalanceAfter = metBalanceBefore
       const MULTIPLIER = 1984320568 * 10 ** 5
       let currentAuction = 0
       for (let i = 0; i < totalHours; i++) {
@@ -190,11 +190,11 @@ contract('Auctions', accounts => {
         expectedToken = expectedToken + ((amount * 1e18) / expectedPrice)
 
         // check balances and validate pprice
-        mtnBalanceBefore = mtnBalanceAfter
-        mtnBalanceAfter = await mtnToken.balanceOf(fromAccount)
+        metBalanceBefore = metBalanceAfter
+        metBalanceAfter = await metToken.balanceOf(fromAccount)
         currentAuction = await auctions.currentAuction()
-        // console.log(i, mtnBalanceAfter.toNumber(), mtnBalanceBefore.toNumber())
-        assert(mtnBalanceAfter.toNumber() > mtnBalanceBefore.toNumber(), 'MTN not recieved at ' + i + 'th hours after auction started')
+        // console.log(i, metBalanceAfter.toNumber(), metBalanceBefore.toNumber())
+        assert(metBalanceAfter.toNumber() > metBalanceBefore.toNumber(), 'MET not recieved at ' + i + 'th hours after auction started')
 
         // check price
         lastPurchasePrice = await auctions.lastPurchasePrice()
@@ -217,7 +217,7 @@ contract('Auctions', accounts => {
       const fromAccount = accounts[6]
       const amountUsedForPurchase = 1e18
 
-      const { auctions, mtnToken } = await MTNGlobal.initContracts(accounts, getCurrentTime(currentTimeOffset), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      const { auctions, metToken } = await METGlobal.initContracts(accounts, getCurrentTime(currentTimeOffset), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
       // const startTime = currentTime() - (9 * 24 * 60 * 60) - 11 * 60
       // offset + 9 days + 10th tick
@@ -247,12 +247,12 @@ contract('Auctions', accounts => {
       assert.equal(purchaseDetail[2].valueOf(), 0, 'refund is not correct')
 
       // perform actual transaction
-      const mtTokenBalanceBefore = await mtnToken.balanceOf(fromAccount)
+      const mtTokenBalanceBefore = await metToken.balanceOf(fromAccount)
       await auctions.sendTransaction({ from: fromAccount, value: amountUsedForPurchase })
       const mintable = await auctions.mintable()
       assert.equal(mintable.toNumber() + expectedTokenPurchase, tokensInNextAuction, 'Carried over tokens are not correct')
 
-      const mtTokenBalanceAfter = await mtnToken.balanceOf(fromAccount)
+      const mtTokenBalanceAfter = await metToken.balanceOf(fromAccount)
       assert.equal(mtTokenBalanceAfter.sub(mtTokenBalanceBefore).valueOf(), expectedTokenPurchase, 'Total purchased/minted tokens are not correct')
       resolve()
     })
@@ -264,7 +264,7 @@ contract('Auctions', accounts => {
       const amount = 1e18
       await TestRPCTime.mineBlock()
       const currentBlockTime = TestRPCTime.getCurrentBlockTime()
-      const { auctions, mtnToken, proceeds } = await MTNGlobal.initContracts(accounts, currentBlockTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      const { auctions, metToken, proceeds } = await METGlobal.initContracts(accounts, currentBlockTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
       // fast forward time to opertional auction skipping first day
       const currentBlockTimeRounded = roundToNextMidnight(currentBlockTime)
@@ -305,10 +305,10 @@ contract('Auctions', accounts => {
       // validate heartbeat
       const heartbeat = await auctions.heartbeat()
 
-      var globalMtnSupply = await auctions.globalMtnSupply()
-      var totalSupplyHere = await mtnToken.totalSupply()
-      assert.equal(heartbeat[5].toNumber(), totalSupplyHere.toNumber(), 'total minted MTN is not correct')
-      assert.equal(heartbeat[4].toNumber(), globalMtnSupply.sub(totalSupplyHere).toNumber(), 'Mintable is not correct')
+      var globalMetSupply = await auctions.globalMetSupply()
+      var totalSupplyHere = await metToken.totalSupply()
+      assert.equal(heartbeat[5].toNumber(), totalSupplyHere.toNumber(), 'total minted MET is not correct')
+      assert.equal(heartbeat[4].toNumber(), globalMetSupply.sub(totalSupplyHere).toNumber(), 'Mintable is not correct')
       assert.equal(heartbeat[6].toNumber(), web3.eth.getBalance(proceeds.address).toNumber(), 'Proceed balance is not correct')
       const nextAuction = await auctions.nextAuction()
       assert(new Date(nextAuction[0] * MILLISECS_IN_A_SEC).toUTCString().indexOf('00:00:00') >= 0, 'nextAuction timestamp is not midnight')
@@ -323,7 +323,7 @@ contract('Auctions', accounts => {
     return new Promise(async (resolve, reject) => {
       // operational auction started and no purchase yet. 10th tick
       const amount = 1e18
-      const { auctions, mtnToken, proceeds } = await MTNGlobal.initContracts(accounts, TestRPCTime.getCurrentBlockTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      const { auctions, metToken, proceeds } = await METGlobal.initContracts(accounts, TestRPCTime.getCurrentBlockTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
       // fast forward time to opertional auction skipping first day
       const currentBlockTime = TestRPCTime.getCurrentBlockTime()
@@ -361,10 +361,10 @@ contract('Auctions', accounts => {
       // validate heatbeat
       const heartbeat = await auctions.heartbeat()
 
-      var globalMtnSupply = await auctions.globalMtnSupply()
-      var totalSupplyHere = await mtnToken.totalSupply()
-      assert.equal(heartbeat[5].toNumber(), totalSupplyHere.toNumber(), 'total minted MTN is not correct')
-      assert.equal(heartbeat[4].toNumber(), globalMtnSupply.sub(totalSupplyHere).toNumber(), 'Mintable is not correct')
+      var globalMetSupply = await auctions.globalMetSupply()
+      var totalSupplyHere = await metToken.totalSupply()
+      assert.equal(heartbeat[5].toNumber(), totalSupplyHere.toNumber(), 'total minted MET is not correct')
+      assert.equal(heartbeat[4].toNumber(), globalMetSupply.sub(totalSupplyHere).toNumber(), 'Mintable is not correct')
       assert.equal(heartbeat[6].toNumber(), web3.eth.getBalance(proceeds.address).toNumber(), 'Proceed balance is not correct')
       const nextAuction = await auctions.nextAuction()
       assert(new Date(nextAuction[0] * MILLISECS_IN_A_SEC).toUTCString().indexOf('00:00:00') >= 0, 'nextAuction timestamp is not midnight')
@@ -379,7 +379,7 @@ contract('Auctions', accounts => {
     return new Promise(async (resolve, reject) => {
       // await initContracts(getCurrentTime(currentTimeOffset), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
       await TestRPCTime.mineBlock()
-      const { auctions } = await MTNGlobal.initContracts(accounts, TestRPCTime.getCurrentBlockTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      const { auctions } = await METGlobal.initContracts(accounts, TestRPCTime.getCurrentBlockTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
       const amount = 1e17
       let currentBlockTime = TestRPCTime.getCurrentBlockTime()

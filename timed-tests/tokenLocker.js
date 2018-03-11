@@ -24,7 +24,7 @@
 */
 
 const assert = require('chai').assert
-const MTNToken = artifacts.require('MTNToken')
+const METToken = artifacts.require('METToken')
 const SmartToken = artifacts.require('SmartToken')
 const Proceeds = artifacts.require('Proceeds')
 const AutonomousConverter = artifacts.require('AutonomousConverter')
@@ -32,11 +32,11 @@ const Auctions = artifacts.require('Auctions')
 const TokenLocker = artifacts.require('TokenLocker')
 
 contract('TokenLocker', accounts => {
-  const MTN_INITIAL_SUPPLY = 0
+  const MET_INITIAL_SUPPLY = 0
   const SMART_INITIAL_SUPPLY = 0
   const DECMULT = 10 ** 18
   const MINIMUM_PRICE = 33 * 10 ** 11// minimum wei per token
-  const STARTING_PRICE = 2 // 2ETH per MTN
+  const STARTING_PRICE = 2 // 2ETH per MET
   const TIME_SCALE = 1
   const INITIAL_AUCTION_END_TIME = 7 * 24 * 60 * 60 // 7 days in seconds
   const SECS_IN_A_DAY = 86400
@@ -47,7 +47,7 @@ contract('TokenLocker', accounts => {
   const FOUNDER = accounts[1]
   const FOUNDER_TOKENS_HEX = '0000D3C214DE7193CD4E0000'
 
-  let mtnToken, smartToken, proceeds, autonomousConverter, auctions
+  let metToken, smartToken, proceeds, autonomousConverter, auctions
   const timeTravel = function (time) {
     return new Promise((resolve, reject) => {
       web3.currentProvider.sendAsync({
@@ -79,9 +79,9 @@ contract('TokenLocker', accounts => {
   }
 
   async function initContracts (startTime, timeScale) {
-    mtnToken = await MTNToken.new(autonomousConverter.address, auctions.address, MTN_INITIAL_SUPPLY, DECMULT, {from: OWNER})
+    metToken = await METToken.new(autonomousConverter.address, auctions.address, MET_INITIAL_SUPPLY, DECMULT, {from: OWNER})
     smartToken = await SmartToken.new(autonomousConverter.address, autonomousConverter.address, SMART_INITIAL_SUPPLY, {from: OWNER})
-    await autonomousConverter.init(mtnToken.address, smartToken.address, auctions.address,
+    await autonomousConverter.init(metToken.address, smartToken.address, auctions.address,
       { from: OWNER,
         value: web3.toWei(1, 'ether')
       })
@@ -93,7 +93,7 @@ contract('TokenLocker', accounts => {
     // 1000000e18 =  0000d3c20dee1639f99c0000
     founders.push(OWNER + OWNER_TOKENS_HEX)
     founders.push(FOUNDER + FOUNDER_TOKENS_HEX)
-    await auctions.mintInitialSupply(founders, mtnToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
+    await auctions.mintInitialSupply(founders, metToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
     await auctions.initAuctions(startTime, MINIMUM_PRICE, STARTING_PRICE, timeScale, {from: OWNER})
   }
 
@@ -131,9 +131,9 @@ contract('TokenLocker', accounts => {
         const tokenLockerAddress = await auctions.tokenLockers(founder.address)
         const tokenLocker = await TokenLocker.at(tokenLockerAddress)
         assert.equal(await tokenLocker.auctions(), auctions.address, "Auctions address isn't setup correctly")
-        assert.equal(await tokenLocker.token(), mtnToken.address, "MTNToken address isn't setup correctly")
+        assert.equal(await tokenLocker.token(), metToken.address, "METToken address isn't setup correctly")
 
-        const lockedBalance = await mtnToken.balanceOf(tokenLocker.address)
+        const lockedBalance = await metToken.balanceOf(tokenLocker.address)
         assert.equal(lockedBalance.toNumber(), founder.targetTokens, 'Minted amount is wrong for ' + i)
 
         const balance = await tokenLocker.deposited()
@@ -255,15 +255,15 @@ contract('TokenLocker', accounts => {
       let advanceSeconds = INITIAL_AUCTION_END_TIME + (2 * 60)
       await timeTravel(advanceSeconds)
       await mineBlock()
-      await mtnToken.enableMTNTransfers()
+      await metToken.enableMETTransfers()
       for (let i = 0; i < founders.length; i++) {
         const founder = founders[i]
         const tokenLockerAddress = await auctions.tokenLockers(founder.address)
         const tokenLocker = await TokenLocker.at(tokenLockerAddress)
 
         await tokenLocker.withdraw({from: founder.address})
-        let mtnBalanceAfter = await mtnToken.balanceOf(founder.address)
-        assert.equal(mtnBalanceAfter.toNumber(), founder.targetTokens * 0.25, 'initial fund withdaw  amount is not correct for founder 1')
+        let metBalanceAfter = await metToken.balanceOf(founder.address)
+        assert.equal(metBalanceAfter.toNumber(), founder.targetTokens * 0.25, 'initial fund withdaw  amount is not correct for founder 1')
 
         advanceSeconds = SECS_IN_A_DAY
         await timeTravel(advanceSeconds)

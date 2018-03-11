@@ -25,7 +25,7 @@
 
 const assert = require('chai').assert
 const ethjsABI = require('ethjs-abi')
-const MTNToken = artifacts.require('MTNToken')
+const METToken = artifacts.require('METToken')
 const SmartToken = artifacts.require('SmartToken')
 const Proceeds = artifacts.require('Proceeds')
 const AutonomousConverter = artifacts.require('AutonomousConverter')
@@ -33,11 +33,11 @@ const Auctions = artifacts.require('Auctions')
 const TokenLocker = artifacts.require('TokenLocker')
 
 contract('Proceeds - timed test', accounts => {
-  const MTN_INITIAL_SUPPLY = 0
+  const MET_INITIAL_SUPPLY = 0
   const SMART_INITIAL_SUPPLY = 0
   const DECMULT = 10 ** 18
   const MINIMUM_PRICE = 33 * 10 ** 11 // minimum wei per token
-  const STARTING_PRICE = 2 // 2 ETH per MTN
+  const STARTING_PRICE = 2 // 2 ETH per MET
   const TIME_SCALE = 1
   // const INITIAL_AUCTION_DURATION = 7 * 24 * 60// 7 days in minutes
 
@@ -46,7 +46,7 @@ contract('Proceeds - timed test', accounts => {
   const FOUNDER = accounts[1]
   const FOUNDER_TOKENS_HEX = '0000D3C214DE7193CD4E0000'
 
-  let mtnToken, smartToken, proceeds, autonomousConverter, auctions
+  let metToken, smartToken, proceeds, autonomousConverter, auctions
 
   function currentTime () {
     const timeInSeconds = new Date().getTime() / 1000
@@ -85,7 +85,7 @@ contract('Proceeds - timed test', accounts => {
   // }
 
   async function initContracts (startTime, minimumPrice, startingPrice, timeScale) {
-    mtnToken = await MTNToken.new(autonomousConverter.address, auctions.address, MTN_INITIAL_SUPPLY, DECMULT, {from: OWNER})
+    metToken = await METToken.new(autonomousConverter.address, auctions.address, MET_INITIAL_SUPPLY, DECMULT, {from: OWNER})
     smartToken = await SmartToken.new(autonomousConverter.address, autonomousConverter.address, SMART_INITIAL_SUPPLY, {from: OWNER})
     const founders = []
     // Since we are appending it with hexadecimal address so amount should also be
@@ -93,13 +93,13 @@ contract('Proceeds - timed test', accounts => {
     // 1000000e18 =  0000d3c20dee1639f99c0000
     founders.push(OWNER + OWNER_TOKENS_HEX)
     founders.push(FOUNDER + FOUNDER_TOKENS_HEX)
-    await autonomousConverter.init(mtnToken.address, smartToken.address, auctions.address,
+    await autonomousConverter.init(metToken.address, smartToken.address, auctions.address,
       {
         from: OWNER,
         value: web3.toWei(1, 'ether')
       })
     await proceeds.initProceeds(autonomousConverter.address, auctions.address, {from: OWNER})
-    await auctions.mintInitialSupply(founders, mtnToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
+    await auctions.mintInitialSupply(founders, metToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
     await auctions.initAuctions(startTime, MINIMUM_PRICE, STARTING_PRICE, timeScale, {from: OWNER})
   }
 
@@ -127,7 +127,7 @@ contract('Proceeds - timed test', accounts => {
       await initContracts(currentTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
       assert.equal(await auctions.proceeds(), proceeds.address, 'Proceeds address isn`t setup correctly')
-      assert.equal(await auctions.token(), mtnToken.address, 'MTNToken address isn\'t setup correctly')
+      assert.equal(await auctions.token(), metToken.address, 'METToken address isn\'t setup correctly')
       assert.equal(await auctions.genesisTime(), genesisTime, 'genesisTime isn\'t setup correctly')
       assert.equal(await auctions.minimumPrice(), MINIMUM_PRICE, 'minimumPrice isn\'t setup correctly')
       assert.equal(await auctions.lastPurchasePrice(), web3.toWei(STARTING_PRICE), 'startingPrice isn\'t setup correctly')
@@ -142,13 +142,13 @@ contract('Proceeds - timed test', accounts => {
         const founder = founders[i]
         const tokenLockerAddress = await auctions.tokenLockers(founder.address)
         const tokenLocker = await TokenLocker.at(tokenLockerAddress)
-        totalFounderMints += (await mtnToken.balanceOf(tokenLocker.address)).toNumber() / DECMULT
+        totalFounderMints += (await metToken.balanceOf(tokenLocker.address)).toNumber() / DECMULT
       }
       totalFounderMints *= DECMULT
       assert.equal(totalFounderMints, (reserveAmount - 1) * DECMULT, 'Reserve for founders isn\'t setup correctly')
 
       // Auctions will mint 1 token for autonomous converter
-      assert.equal(await mtnToken.balanceOf(autonomousConverter.address), (MTN_INITIAL_SUPPLY + 1) * DECMULT, 'Reserve for founders isn\'t setup correctly')
+      assert.equal(await metToken.balanceOf(autonomousConverter.address), (MET_INITIAL_SUPPLY + 1) * DECMULT, 'Reserve for founders isn\'t setup correctly')
 
       resolve()
     })
@@ -159,7 +159,7 @@ contract('Proceeds - timed test', accounts => {
       // When 0 is provided for auction start time, it will be calculated
       // using block timestamp, block.timestamp + 60
       const defaultAuctionTime = currentTime() + 60
-      const defaultStartingPrice = 2 // 2 ETH per MTN
+      const defaultStartingPrice = 2 // 2 ETH per MET
       const defaultMinimumPrice = 33 * 10 ** 11
 
       await initContracts(0, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)

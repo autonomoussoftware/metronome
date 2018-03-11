@@ -24,7 +24,7 @@
 */
 
 const assert = require('chai').assert
-const MTNToken = artifacts.require('MTNToken')
+const METToken = artifacts.require('METToken')
 const SmartToken = artifacts.require('SmartToken')
 const Proceeds = artifacts.require('Proceeds')
 const AutonomousConverter = artifacts.require('AutonomousConverter')
@@ -34,14 +34,14 @@ const ethjsABI = require('ethjs-abi')
 
 contract('TokenPorter', accounts => {
   const OWNER = accounts[0]
-  const MTN_INITIAL_SUPPLY = 0
+  const MET_INITIAL_SUPPLY = 0
   const SMART_INITIAL_SUPPLY = 0
   const DECMULT = 10 ** 18
   const MINIMUM_PRICE = 33 * 10 ** 11 // minimum wei per token
-  const STARTING_PRICE = 2 // 2ETH per MTN
+  const STARTING_PRICE = 2 // 2ETH per MET
   const TIME_SCALE = 1
 
-  let mtnToken, smartToken, proceeds, autonomousConverter, auctions, tokenPorter
+  let metToken, smartToken, proceeds, autonomousConverter, auctions, tokenPorter
 
   function getCurrentBlockTime () {
     var defaultBlock = web3.eth.defaultBlock
@@ -49,9 +49,9 @@ contract('TokenPorter', accounts => {
   }
 
   async function initContracts (startTime, minimumPrice, startingPrice, timeScale) {
-    mtnToken = await MTNToken.new(autonomousConverter.address, auctions.address, MTN_INITIAL_SUPPLY, DECMULT, {from: OWNER})
+    metToken = await METToken.new(autonomousConverter.address, auctions.address, MET_INITIAL_SUPPLY, DECMULT, {from: OWNER})
     smartToken = await SmartToken.new(autonomousConverter.address, autonomousConverter.address, SMART_INITIAL_SUPPLY, {from: OWNER})
-    await autonomousConverter.init(mtnToken.address, smartToken.address, auctions.address,
+    await autonomousConverter.init(metToken.address, smartToken.address, auctions.address,
       {
         from: OWNER,
         value: web3.toWei(1, 'ether')
@@ -63,10 +63,10 @@ contract('TokenPorter', accounts => {
     // 1000000e18 =  0000d3c20dee1639f99c0000
     founders.push(OWNER + '0000D3C214DE7193CD4E0000')
     founders.push(accounts[1] + '0000D3C214DE7193CD4E0000')
-    await auctions.mintInitialSupply(founders, mtnToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
+    await auctions.mintInitialSupply(founders, metToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
     await auctions.initAuctions(startTime, minimumPrice, startingPrice, timeScale, {from: OWNER})
-    tokenPorter = await TokenPorter.new(mtnToken.address, auctions.address)
-    await mtnToken.setTokenPorter(tokenPorter.address)
+    tokenPorter = await TokenPorter.new(metToken.address, auctions.address)
+    await metToken.setTokenPorter(tokenPorter.address)
   }
 
   // Create contracts and initilize them for each test case
@@ -85,7 +85,7 @@ contract('TokenPorter', accounts => {
         assert.equal(auctionAddr, auctions.address, 'Auctions address is not the same')
 
         const tokenAddr = await tokenPorter.token()
-        assert.equal(tokenAddr, mtnToken.address, 'Token address is not the same')
+        assert.equal(tokenAddr, metToken.address, 'Token address is not the same')
 
         resolve()
       })
@@ -97,21 +97,21 @@ contract('TokenPorter', accounts => {
       return new Promise(async (resolve, reject) => {
         await initContracts(getCurrentBlockTime() - 60, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
-        // get some balance for export, half MTN
+        // get some balance for export, half MET
         const buyer = accounts[7]
         const amount = 1e18
         await auctions.sendTransaction({ from: buyer, value: amount })
 
-        var totalSupplyBefore = await mtnToken.totalSupply()
-        var mtTokenBalanceBefore = await mtnToken.balanceOf(buyer)
-        assert.isAbove(mtTokenBalanceBefore.toNumber(), 0, 'Buyer has no MTN Tokens to export')
+        var totalSupplyBefore = await metToken.totalSupply()
+        var mtTokenBalanceBefore = await metToken.balanceOf(buyer)
+        assert.isAbove(mtTokenBalanceBefore.toNumber(), 0, 'Buyer has no MET Tokens to export')
 
         // export all tokens tokens
         const expectedDestChain = 'ETH'
         const expectedExtraData = 'extra data'
-        const tx = await mtnToken.export(
+        const tx = await metToken.export(
           web3.fromAscii(expectedDestChain),
-          mtnToken.address,
+          metToken.address,
           buyer,
           mtTokenBalanceBefore,
           web3.fromAscii(expectedExtraData),
@@ -136,7 +136,7 @@ contract('TokenPorter', accounts => {
         const destinationChain = logExportReceipt.destinationChain
         assert.equal(web3.toHex(destinationChain), web3.toHex(web3.fromAscii(expectedDestChain)) + '0000000000', 'Dest Chain is different')
         const destMetronomeAddr = logExportReceipt.destinationMetronomeAddr
-        assert.equal(destMetronomeAddr, mtnToken.address, 'Dest MetronomeAddr is different')
+        assert.equal(destMetronomeAddr, metToken.address, 'Dest MetronomeAddr is different')
         const destinationRecipientAddr = logExportReceipt.destinationRecipientAddr
         assert.equal(destinationRecipientAddr, buyer, 'Dest Recipient is different')
         const extraData = logExportReceipt.extraData
@@ -147,7 +147,7 @@ contract('TokenPorter', accounts => {
         assert.equal(burnSequence.toNumber(), 1, 'burnSequence is different')
 
         // TODO: is there a way to validate without an import?
-        var totalSupplyAfter = await mtnToken.totalSupply()
+        var totalSupplyAfter = await metToken.totalSupply()
         const currentBurnHash = logExportReceipt.currentBurnHash
         assert.isNotEmpty(currentBurnHash, 'Burn Hash is empty')
         const prevBurnHash = logExportReceipt.prevBurnHash
@@ -166,10 +166,10 @@ contract('TokenPorter', accounts => {
         assert.isAbove(logExportReceipt.genesisTime.toNumber(), 0, 'genesisTime is wrong')
 
         // reconcile balances
-        var mtTokenBalanceAfter = await mtnToken.balanceOf(buyer)
+        var mtTokenBalanceAfter = await metToken.balanceOf(buyer)
         assert.equal(totalSupplyBefore.sub(totalSupplyAfter).toNumber(), amountToBurn, 'After export, total supply is not correct')
-        assert.equal(mtTokenBalanceBefore.sub(mtTokenBalanceAfter).toNumber(), amountToBurn, 'After export, mtnTokenBalance is not correct')
-        assert.equal(mtTokenBalanceAfter.toNumber(), 0, 'mtnTokenBalance after export should be zero')
+        assert.equal(mtTokenBalanceBefore.sub(mtTokenBalanceAfter).toNumber(), amountToBurn, 'After export, metTokenBalance is not correct')
+        assert.equal(mtTokenBalanceAfter.toNumber(), 0, 'metTokenBalance after export should be zero')
 
         resolve()
       })

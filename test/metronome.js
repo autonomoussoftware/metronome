@@ -24,7 +24,7 @@
 */
 
 const assert = require('chai').assert
-const MTNToken = artifacts.require('MTNToken')
+const METToken = artifacts.require('METToken')
 const SmartToken = artifacts.require('SmartToken')
 const Proceeds = artifacts.require('Proceeds')
 const AutonomousConverter = artifacts.require('AutonomousConverter')
@@ -41,7 +41,7 @@ contract('AutonomousConverter', accounts => {
   const STARTING_PRICE = 0.5
   const TIME_SCALE = 1
 
-  let mtnToken, smartToken, proceeds, autonomousConverter, auctions
+  let metToken, smartToken, proceeds, autonomousConverter, auctions
 
   // Create contracts and initilize them for each test case
   beforeEach(async () => {
@@ -49,9 +49,9 @@ contract('AutonomousConverter', accounts => {
     autonomousConverter = await AutonomousConverter.new()
     auctions = await Auctions.new()
 
-    mtnToken = await MTNToken.new(autonomousConverter.address, auctions.address, INITIAL_SUPPLY, DECMULT, {from: OWNER})
+    metToken = await METToken.new(autonomousConverter.address, auctions.address, INITIAL_SUPPLY, DECMULT, {from: OWNER})
     smartToken = await SmartToken.new(autonomousConverter.address, autonomousConverter.address, SMART_INITIAL_SUPPLY, {from: OWNER})
-    await autonomousConverter.init(mtnToken.address, smartToken.address, auctions.address,
+    await autonomousConverter.init(metToken.address, smartToken.address, auctions.address,
       {
         from: OWNER,
         value: web3.toWei(1, 'ether')
@@ -63,92 +63,92 @@ contract('AutonomousConverter', accounts => {
     // 1000000e18 =  0000d3c20dee1639f99c0000
     founders.push(OWNER + '0000D3C214DE7193CD4E0000')
     founders.push(accounts[1] + '0000D3C214DE7193CD4E0000')
-    await auctions.mintInitialSupply(founders, mtnToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
+    await auctions.mintInitialSupply(founders, metToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
     await auctions.initAuctions(START_TIME, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE, {from: OWNER})
-    await mtnToken.enableMTNTransfers()
+    await metToken.enableMETTransfers()
   })
   it('Should verify that AutonomousConverter is initialized correctly', () => {
     return new Promise(async (resolve, reject) => {
-      assert.equal(await autonomousConverter.reserveToken(), mtnToken.address, 'MTNToken address isn\'t correct')
+      assert.equal(await autonomousConverter.reserveToken(), metToken.address, 'METToken address isn\'t correct')
       assert.equal(await autonomousConverter.smartToken(), smartToken.address, 'SmartToken address isn\'t correct')
 
       resolve()
     })
   })
 
-  it('Should return correct balance of Eth and Mtn token', () => {
+  it('Should return correct balance of Eth and Met token', () => {
     return new Promise(async (resolve, reject) => {
-      // 1 MTN is added during initilization of Auctions
-      const mtnBalance = (INITIAL_SUPPLY) * DECMULT
+      // 1 MET is added during initilization of Auctions
+      const metBalance = (INITIAL_SUPPLY) * DECMULT
 
       var balance = await autonomousConverter.getEthBalance()
       assert.equal(web3.fromWei(balance), 1, 'ETH balance should be equal to 1')
 
-      balance = await autonomousConverter.getMtnBalance()
-      assert.equal(balance, mtnBalance + 1e18, 'MTN balance should be equal to INITIAL_SUPPLY+1')
+      balance = await autonomousConverter.getMetBalance()
+      assert.equal(balance, metBalance + 1e18, 'MET balance should be equal to INITIAL_SUPPLY+1')
 
       resolve()
     })
   })
 
-  it('Should buy MTN from ETH', () => {
+  it('Should buy MET from ETH', () => {
     return new Promise(async (resolve, reject) => {
       const WEI_SENT = 10e18
-      const MIN_MTN_RETURN = 1
+      const MIN_MET_RETURN = 1
 
-      const prediction = await autonomousConverter.getMtnForEthResult(WEI_SENT, { from: OWNER })
-      assert(prediction.toNumber() > 0, 'ETH to MTN prediction is not greater than zero')
-      const reserveSupply = await autonomousConverter.getMtnBalance({ from: OWNER })
+      const prediction = await autonomousConverter.getMetForEthResult(WEI_SENT, { from: OWNER })
+      assert(prediction.toNumber() > 0, 'ETH to MET prediction is not greater than zero')
+      const reserveSupply = await autonomousConverter.getMetBalance({ from: OWNER })
       assert(prediction.toNumber() <= reserveSupply.toNumber(), 'Prediction is larger than reserve supply')
 
       const ethBalanceOfACBefore = await web3.eth.getBalance(autonomousConverter.address)
-      const mtnBalanceOfACBefore = await mtnToken.balanceOf(autonomousConverter.address)
-      const mtTokenBalanceOfOwnerBefore = await mtnToken.balanceOf(OWNER)
-      const txChange = await autonomousConverter.convertEthToMtn(MIN_MTN_RETURN, {from: OWNER, value: WEI_SENT})
-      assert(txChange, 'ETH to MTN transaction failed')
+      const metBalanceOfACBefore = await metToken.balanceOf(autonomousConverter.address)
+      const mtTokenBalanceOfOwnerBefore = await metToken.balanceOf(OWNER)
+      const txChange = await autonomousConverter.convertEthToMet(MIN_MET_RETURN, {from: OWNER, value: WEI_SENT})
+      assert(txChange, 'ETH to MET transaction failed')
 
       const ethBalanceOfACAfter = await web3.eth.getBalance(autonomousConverter.address)
-      const mtnBalanceOfACAfter = await mtnToken.balanceOf(autonomousConverter.address)
-      const mtTokenBalanceOfOwnerAfter = await mtnToken.balanceOf(OWNER)
+      const metBalanceOfACAfter = await metToken.balanceOf(autonomousConverter.address)
+      const mtTokenBalanceOfOwnerAfter = await metToken.balanceOf(OWNER)
       const smartTokenAfterBalance = await smartToken.balanceOf(OWNER, { from: autonomousConverter.address })
 
       assert.equal(mtTokenBalanceOfOwnerAfter.toNumber() - mtTokenBalanceOfOwnerBefore.toNumber(), prediction.toNumber(), 'Prediction and actual is not correct for owner')
-      assert.equal(mtnBalanceOfACBefore.toNumber() - mtnBalanceOfACAfter.toNumber(), prediction.toNumber(), 'Prediction and actual is not correct for AC')
+      assert.equal(metBalanceOfACBefore.toNumber() - metBalanceOfACAfter.toNumber(), prediction.toNumber(), 'Prediction and actual is not correct for AC')
       assert.equal(smartTokenAfterBalance.toNumber(), 0, 'Smart Tokens were not destroyed')
-      assert(mtTokenBalanceOfOwnerAfter.toNumber(), mtnBalanceOfACBefore.toNumber() - mtnBalanceOfACAfter.toNumber(), 'MTN  not recieved after ETH exchange')
+      assert(mtTokenBalanceOfOwnerAfter.toNumber(), metBalanceOfACBefore.toNumber() - metBalanceOfACAfter.toNumber(), 'MET  not recieved after ETH exchange')
       assert(ethBalanceOfACAfter.toNumber() > ethBalanceOfACBefore.toNumber(), 'ETH  not recieved after ETH exchange')
 
       resolve()
     })
   })
 
-  it('Should buy ETH from MTN ', () => {
+  it('Should buy ETH from MET ', () => {
     return new Promise(async (resolve, reject) => {
       const weiSent = 10e18
       const MIN_ETH_RETURN = 1
 
-      const txChange = await autonomousConverter.convertEthToMtn(1, {from: OWNER, value: weiSent})
-      assert(txChange, 'ETH to MTN transaction failed')
+      const txChange = await autonomousConverter.convertEthToMet(1, {from: OWNER, value: weiSent})
+      assert(txChange, 'ETH to MET transaction failed')
 
       const ethBalanceOfACBefore = await web3.eth.getBalance(autonomousConverter.address)
       const ethBalanceOfOwnerBefore = await web3.eth.getBalance(OWNER)
-      const mtnBalanceOfOwnerBefore = await mtnToken.balanceOf(OWNER)
-      const mtnBalanceOfACBefore = await mtnToken.balanceOf(autonomousConverter.address)
+      const metBalanceOfOwnerBefore = await metToken.balanceOf(OWNER)
+      const metBalanceOfACBefore = await metToken.balanceOf(autonomousConverter.address)
 
-      const prediction = await autonomousConverter.getEthForMtnResult(mtnBalanceOfOwnerBefore, { from: OWNER })
-      assert(prediction.toNumber() >= MIN_ETH_RETURN, 'ETH to MTN prediction is not greater than zero')
+      const prediction = await autonomousConverter.getEthForMetResult(metBalanceOfOwnerBefore, { from: OWNER })
+      assert(prediction.toNumber() >= MIN_ETH_RETURN, 'ETH to MET prediction is not greater than zero')
 
-      const txApprove = await mtnToken.approve(autonomousConverter.address, mtnBalanceOfOwnerBefore.valueOf(), { from: OWNER })
+      const txApprove = await metToken.approve(autonomousConverter.address, metBalanceOfOwnerBefore.valueOf(), { from: OWNER })
       let gasCost = txApprove.receipt.gasUsed * web3.eth.gasPrice
       assert(txApprove, 'Transfer Approve failed')
 
-      const txRedeem = await autonomousConverter.convertMtnToEth(mtnBalanceOfOwnerBefore.valueOf(), MIN_ETH_RETURN, { from: OWNER })
+      const txRedeem = await autonomousConverter.convertMetToEth(metBalanceOfOwnerBefore.valueOf(), MIN_ETH_RETURN, { from: OWNER })
       gasCost += txRedeem.receipt.gasUsed * web3.eth.gasPrice
-      assert(txRedeem, 'MTN to ETH transaction failed')
+      assert(txRedeem, 'MET to ETH transaction failed')
       const ethBalanceOfACAfter = await web3.eth.getBalance(autonomousConverter.address)
       const ethBalanceOfOwnerAfter = await web3.eth.getBalance(OWNER)
-      const mtnBalanceOfACAfter = await mtnToken.balanceOf(autonomousConverter.address)
-      const mtTokenBalanceOfOwnerAfter = await mtnToken.balanceOf(OWNER)
+      const metBalanceOfACAfter = await metToken.balanceOf(autonomousConverter.address)
+      const mtTokenBalanceOfOwnerAfter = await metToken.balanceOf(OWNER)
       const smartTokenAfterBalance = await smartToken.balanceOf(OWNER, { from: autonomousConverter.address })
 
       // console.log(gasCost, 'gas cost')
@@ -156,10 +156,10 @@ contract('AutonomousConverter', accounts => {
       assert.closeTo(ethBalanceOfOwnerAfter.add(gasCost).sub(ethBalanceOfOwnerBefore).toNumber(), prediction.toNumber(), 0.014e18, 'Prediction and actual is not correct for owner')
       assert.equal(ethBalanceOfACBefore.sub(ethBalanceOfACAfter).toNumber(), prediction.toNumber(), 'Prediction and actual is not correct for AC')
       assert.equal(smartTokenAfterBalance.toNumber(), 0, 'Smart Tokens were not destroyed')
-      assert.equal(mtnBalanceOfACAfter.toNumber(), mtnBalanceOfACBefore.toNumber() + mtnBalanceOfOwnerBefore.toNumber(), 'MTN not recieved after MTN exchange')
-      assert.equal(mtTokenBalanceOfOwnerAfter.toNumber(), 0, 'MTN token not sent after MTN exchange')
-      assert(ethBalanceOfACAfter.toNumber() < ethBalanceOfACBefore.toNumber(), 'ETH not sent from AC  after MTN exchange')
-      assert(ethBalanceOfOwnerBefore.toNumber() < ethBalanceOfOwnerAfter.toNumber(), 'ETH not recieved after MTN exchange')
+      assert.equal(metBalanceOfACAfter.toNumber(), metBalanceOfACBefore.toNumber() + metBalanceOfOwnerBefore.toNumber(), 'MET not recieved after MET exchange')
+      assert.equal(mtTokenBalanceOfOwnerAfter.toNumber(), 0, 'MET token not sent after MET exchange')
+      assert(ethBalanceOfACAfter.toNumber() < ethBalanceOfACBefore.toNumber(), 'ETH not sent from AC  after MET exchange')
+      assert(ethBalanceOfOwnerBefore.toNumber() < ethBalanceOfOwnerAfter.toNumber(), 'ETH not recieved after MET exchange')
 
       resolve()
     })

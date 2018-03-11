@@ -27,12 +27,12 @@ const assert = require('chai').assert
 
 const AutonomousConverter = artifacts.require('AutonomousConverter')
 const Auctions = artifacts.require('Auctions')
-const MTNToken = artifacts.require('MTNToken')
+const METToken = artifacts.require('METToken')
 const Proceeds = artifacts.require('Proceeds')
 const SmartToken = artifacts.require('SmartToken')
 
 contract('Deploy Contracts', accounts => {
-  let mtnToken, autonomousConverter, auctions, proceeds, smartToken
+  let metToken, autonomousConverter, auctions, proceeds, smartToken
   const OWNER = accounts[0]
   const BLOQ = accounts[3]
   const FOUNDER = accounts[1]
@@ -57,21 +57,21 @@ contract('Deploy Contracts', accounts => {
       auctions = await Auctions.new({from: OWNER})
       proceeds = await Proceeds.new({from: OWNER})
 
-      const MTN_INITIAL_SUPPLY = 0
+      const MET_INITIAL_SUPPLY = 0
       const DECMULT = 10 ** 18
-      mtnToken = await MTNToken.new(autonomousConverter.address, auctions.address, MTN_INITIAL_SUPPLY, DECMULT, {from: OWNER})
-      smartToken = await SmartToken.new(autonomousConverter.address, autonomousConverter.address, MTN_INITIAL_SUPPLY, {from: OWNER})
+      metToken = await METToken.new(autonomousConverter.address, auctions.address, MET_INITIAL_SUPPLY, DECMULT, {from: OWNER})
+      smartToken = await SmartToken.new(autonomousConverter.address, autonomousConverter.address, MET_INITIAL_SUPPLY, {from: OWNER})
 
       const founders = []
       founders.push(OWNER + '0000D3C214DE7193CD4E0000')
       founders.push(FOUNDER + '0000D3C214DE7193CD4E0000')
-      assert.isTrue(await auctions.mintInitialSupply.call(founders, mtnToken.address, proceeds.address, autonomousConverter.address, {from: OWNER}), 'mintInitialSupply did not return true')
-      await auctions.mintInitialSupply(founders, mtnToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
+      assert.isTrue(await auctions.mintInitialSupply.call(founders, metToken.address, proceeds.address, autonomousConverter.address, {from: OWNER}), 'mintInitialSupply did not return true')
+      await auctions.mintInitialSupply(founders, metToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
 
       //
       // change ownership to bloq for step 2
       //
-      await mtnToken.changeOwnership(BLOQ, {from: OWNER})
+      await metToken.changeOwnership(BLOQ, {from: OWNER})
       await autonomousConverter.changeOwnership(BLOQ, {from: OWNER})
       await auctions.changeOwnership(BLOQ, {from: OWNER})
       await proceeds.changeOwnership(BLOQ, {from: OWNER})
@@ -91,40 +91,40 @@ contract('Deploy Contracts', accounts => {
   })
 
   describe('AutonomousConverter is uninitialized', () => {
-    it('No one should be able to convert eth to mtn', () => {
+    it('No one should be able to convert eth to met', () => {
       return new Promise(async (resolve, reject) => {
         const amount = 1e18
 
         let thrown = false
         try {
-          await autonomousConverter.convertEthToMtn(1, {
+          await autonomousConverter.convertEthToMet(1, {
             from: BUYER,
             value: amount
           })
         } catch (error) {
           thrown = true
         }
-        assert.isTrue(thrown, 'convertEthToMtn fallback did not throw')
+        assert.isTrue(thrown, 'convertEthToMet fallback did not throw')
         resolve()
       })
     })
 
-    it('No one should be able to convert mtn to eth', () => {
+    it('No one should be able to convert met to eth', () => {
       return new Promise(async (resolve, reject) => {
         const amount = 1e18
 
-        await mtnToken.approve(autonomousConverter.address, amount, { from: BUYER })
+        await metToken.approve(autonomousConverter.address, amount, { from: BUYER })
 
         let thrown = false
         try {
-          await autonomousConverter.convertMtnToEth(amount, 1, {
+          await autonomousConverter.convertMetToEth(amount, 1, {
             from: BUYER,
             value: amount
           })
         } catch (error) {
           thrown = true
         }
-        assert.isTrue(thrown, 'convertEthToMtn fallback did not throw')
+        assert.isTrue(thrown, 'convertEthToMet fallback did not throw')
         resolve()
       })
     })
@@ -193,7 +193,7 @@ contract('Deploy Contracts', accounts => {
         //
         // Deployment Step 2
         //
-        await autonomousConverter.init(mtnToken.address, smartToken.address, auctions.address, { from: BLOQ, value: web3.toWei(1, 'ether') })
+        await autonomousConverter.init(metToken.address, smartToken.address, auctions.address, { from: BLOQ, value: web3.toWei(1, 'ether') })
         await proceeds.initProceeds(autonomousConverter.address, auctions.address, {from: BLOQ})
 
         const MINIMUM_PRICE = 1000
