@@ -80,8 +80,8 @@ library SafeMath {
 contract FixedMath {
     
     using SafeMath for uint;
-    uint constant internal MTNDECIMALS = 18;
-    uint constant internal MTNDECMULT = 10 ** MTNDECIMALS;
+    uint constant internal METDECIMALS = 18;
+    uint constant internal METDECMULT = 10 ** METDECIMALS;
     uint constant internal DECIMALS = 18;
     uint constant internal DECMULT = 10 ** DECIMALS;
 
@@ -137,7 +137,7 @@ contract FixedMath {
 /// @title A formula contract for converter
 contract Formula is FixedMath {
 
-    /// @notice Trade in reserve(ETH/MTN) and mint new smart tokens
+    /// @notice Trade in reserve(ETH/MET) and mint new smart tokens
     /// @param smartTokenSupply Total supply of smart token
     /// @param reserveTokensSent Amount of token sent by caller
     /// @param reserveTokenBalance Balance of reserve token in the contract
@@ -150,10 +150,10 @@ contract Formula is FixedMath {
         uint r = reserveTokenBalance;
         /// smartToken for mint(T) = S * (sqrt(1 + E/R) - 1)
         /// DECMULT is same as 1 for values with 18 decimal places
-        return (fMul(s, (fSub(fSqrt(fAdd(DECMULT, fDiv(e, r))), DECMULT))) * MTNDECMULT) / DECMULT;
+        return (fMul(s, (fSub(fSqrt(fAdd(DECMULT, fDiv(e, r))), DECMULT))) * METDECMULT) / DECMULT;
     }
 
-    /// @notice Redeem smart tokens, get back reserve(ETH/MTN) token
+    /// @notice Redeem smart tokens, get back reserve(ETH/MET) token
     /// @param smartTokenSupply Total supply of smart token
     /// @param smartTokensSent Smart token sent
     /// @param reserveTokenBalance Balance of reserve token in the contract
@@ -166,7 +166,7 @@ contract Formula is FixedMath {
         uint r = reserveTokenBalance;
         /// reserveToken (E) = R * (1 - (1 - T/S)**2)
         /// DECMULT is same as 1 for values with 18 decimal places
-        return (fMul(r, (fSub(DECMULT, fSqr(fSub(DECMULT, fDiv(t, s)))))) * MTNDECMULT) / DECMULT;
+        return (fMul(r, (fSub(DECMULT, fSqr(fSub(DECMULT, fDiv(t, s)))))) * METDECMULT) / DECMULT;
     }
 }
 
@@ -175,8 +175,8 @@ contract Formula is FixedMath {
 contract Pricer {
 
     using SafeMath for uint;
-    uint constant internal MTNDECIMALS = 18;
-    uint constant internal MTNDECMULT = 10 ** MTNDECIMALS;
+    uint constant internal METDECIMALS = 18;
+    uint constant internal METDECMULT = 10 ** METDECIMALS;
 
     uint public tentimes;
     uint public hundredtimes;
@@ -186,7 +186,7 @@ contract Pricer {
 
     /// @notice Pricer constructor, calculate 10, 100 and 1000 times of 0.99.
     function Pricer() public {
-        uint x = MTNDECMULT;
+        uint x = METDECMULT;
         uint i;
         
         /// Calculate 10 times of 0.99
@@ -194,32 +194,32 @@ contract Pricer {
             x = x.mul(99).div(100);
         }
         tentimes = x;
-        x = MTNDECMULT;
+        x = METDECMULT;
 
         /// Calculate 100 times of 0.99 using tentimes calculated above.
-        /// tentimes has 18 decimal places and due to this MTNDECMLT is
+        /// tentimes has 18 decimal places and due to this METDECMLT is
         /// used as divisor.
         for (i = 0; i < 10; i++) {
-            x = x.mul(tentimes).div(MTNDECMULT);
+            x = x.mul(tentimes).div(METDECMULT);
         }
         hundredtimes = x;
-        x = MTNDECMULT;
+        x = METDECMULT;
 
         /// Calculate 1000 times of 0.99 using hundredtimes calculated above.
-        /// hundredtimes has 18 decimal places and due to this MTNDECMULT is
+        /// hundredtimes has 18 decimal places and due to this METDECMULT is
         /// used as divisor.
         for (i = 0; i < 10; i++) {
-            x = x.mul(hundredtimes).div(MTNDECMULT);
+            x = x.mul(hundredtimes).div(METDECMULT);
         }
         thousandtimes = x;
     }
 
-    /// @notice Price of MTN at nth minute out during operational auction
+    /// @notice Price of MET at nth minute out during operational auction
     /// @param initialPrice The starting price ie last purchase price
     /// @param _n The number of minutes passed since last purchase
     /// @return The resulting price
     function priceAt(uint initialPrice, uint _n) public view returns (uint price) {
-        uint mult = MTNDECMULT;
+        uint mult = METDECMULT;
         uint i;
         uint n = _n;
 
@@ -228,7 +228,7 @@ contract Pricer {
         /// Also assign new value to n which is remainder of n/1000.
         if (n / 1000 > 0) {
             for (i = 0; i < n / 1000; i++) {
-                mult = mult.mul(thousandtimes).div(MTNDECMULT);
+                mult = mult.mul(thousandtimes).div(METDECMULT);
             }
             n = n % 1000;
         }
@@ -238,7 +238,7 @@ contract Pricer {
         /// Also assign new value to n which is remainder of n/100.
         if (n / 100 > 0) {
             for (i = 0; i < n / 100; i++) {
-                mult = mult.mul(hundredtimes).div(MTNDECMULT);
+                mult = mult.mul(hundredtimes).div(METDECMULT);
             }
             n = n % 100;
         }
@@ -248,7 +248,7 @@ contract Pricer {
         /// Also assign new value to n which is remainder of n/10.
         if (n / 10 > 0) {
             for (i = 0; i < n / 10; i++) {
-                mult = mult.mul(tentimes).div(MTNDECMULT);
+                mult = mult.mul(tentimes).div(METDECMULT);
             }
             n = n % 10;
         }
@@ -259,12 +259,12 @@ contract Pricer {
         }
 
         /// price is calcualted as, initialPrice multiplied by 0.99 and that too _n times.
-        /// Here mult is MTNDECMULT multiplied by 0.99 and that too _n times.
-        price = initialPrice.mul(mult).div(MTNDECMULT);
+        /// Here mult is METDECMULT multiplied by 0.99 and that too _n times.
+        price = initialPrice.mul(mult).div(METDECMULT);
     }
 
-    /// @notice Price of MTN at nth minute during initial auction.
-    /// @param lastPurchasePrice The price of MTN in last transaction
+    /// @notice Price of MET at nth minute during initial auction.
+    /// @param lastPurchasePrice The price of MET in last transaction
     /// @param numTicks The number of minutes passed since last purchase
     /// @return The resulting price
     function priceAtInitialAuction(uint lastPurchasePrice, uint numTicks) public pure returns (uint price) {
@@ -558,19 +558,19 @@ contract Token is ERC20, ERC827, Mintable {
 }
 
 
-/// @title  Smart token are intermediate token generated during conversion of MTN-ETH
+/// @title  Smart token are intermediate token generated during conversion of MET-ETH
 contract SmartToken is Mintable {
-    uint constant internal MTNDECIMALS = 18;
-    uint constant internal MTNDECMULT = 10 ** MTNDECIMALS;
+    uint constant internal METDECIMALS = 18;
+    uint constant internal METDECMULT = 10 ** METDECIMALS;
 
     function SmartToken(address _autonomousConverter, address _minter, uint _initialSupply) public 
-        Mintable(_autonomousConverter, _minter, _initialSupply, MTNDECMULT) {
+        Mintable(_autonomousConverter, _minter, _initialSupply, METDECMULT) {
     }
 }
 
 
 /// @title ERC827 token. Metronome token 
-contract MTNToken is Token {
+contract METToken is Token {
 
     string public constant name = "Metronome";
     string public constant symbol = "MET";
@@ -578,7 +578,7 @@ contract MTNToken is Token {
     
     bool public transferAllowed;
 
-    function MTNToken(address _autonomousConverter, address _minter, uint _initialSupply, uint _decmult) public 
+    function METToken(address _autonomousConverter, address _minter, uint _initialSupply, uint _decmult) public 
         Token(_autonomousConverter, _minter, _initialSupply, _decmult)
     {
 
@@ -590,7 +590,7 @@ contract MTNToken is Token {
         _;
     }
 
-    function enableMTNTransfers() public returns (bool) {
+    function enableMETTransfers() public returns (bool) {
         require(!transferAllowed && Auctions(minter).isInitialAuctionEnded());
         transferAllowed = true; 
         return true;
@@ -651,9 +651,9 @@ contract MTNToken is Token {
         return roots[a] == roots[b];
     }
 
-    /// @notice export the MTN token from the chain to other chain.
+    /// @notice export the MET token from the chain to other chain.
     /// @param _destChain destination chain address
-    /// @param _destMetronomeAddr address of Metronome contract in destination chain where this MTN can be imported.
+    /// @param _destMetronomeAddr address of Metronome contract in destination chain where this MET can be imported.
     /// @param _destRecipAddr address of account on destination chain
     /// @param _amount amount
     /// @param _extraData extradat extra information to be logged-in
@@ -742,7 +742,7 @@ contract MTNToken is Token {
         }
     }
 
-    /// @notice Trigger MTN token tranfers for all pairs of subscribers and beneficiary
+    /// @notice Trigger MET token tranfers for all pairs of subscribers and beneficiary
     /// @dev address at i index in owners and recipients array is subcriber-beneficiary pair.
     /// @param owners 
     /// @param recipients 
@@ -797,14 +797,14 @@ contract MTNToken is Token {
 }
 
 
-/// @title Autonomous Converter contract for MTN <=> ETH exchange
+/// @title Autonomous Converter contract for MET <=> ETH exchange
 contract AutonomousConverter is Formula, Owned {
 
     SmartToken public smartToken;
-    MTNToken public reserveToken;
+    METToken public reserveToken;
     Auctions public auctions;
 
-    enum WhichToken { Eth, Mtn }
+    enum WhichToken { Eth, Met }
     bool internal initialized = false;
 
     event LogFundsIn(address indexed from, uint value);
@@ -819,59 +819,59 @@ contract AutonomousConverter is Formula, Owned {
     {
         require(!initialized);
         auctions = Auctions(_auctions);
-        reserveToken = MTNToken(_reserveToken);
+        reserveToken = METToken(_reserveToken);
         smartToken = SmartToken(_smartToken);
         initialized = true;
     }
 
-    function getMtnBalance() public view returns (uint) {
-        return balanceOf(WhichToken.Mtn);
+    function getMetBalance() public view returns (uint) {
+        return balanceOf(WhichToken.Met);
     }
 
     function getEthBalance() public view returns (uint) {
         return balanceOf(WhichToken.Eth);
     }
 
-    /// @notice return the expected MTN for ETH
+    /// @notice return the expected MET for ETH
     /// @param _depositAmount ETH.
-    /// @return expected MTN value for ETH
-    function getMtnForEthResult(uint _depositAmount) public view returns (uint256) {
+    /// @return expected MET value for ETH
+    function getMetForEthResult(uint _depositAmount) public view returns (uint256) {
         return convertingReturn(WhichToken.Eth, _depositAmount);
     }
 
-    /// @notice return the expected ETH for MTN
-    /// @param _depositAmount MTN.
-    /// @return expected ETH value for MTN
-    function getEthForMtnResult(uint _depositAmount) public view returns (uint256) {
-        return convertingReturn(WhichToken.Mtn, _depositAmount);
+    /// @notice return the expected ETH for MET
+    /// @param _depositAmount MET.
+    /// @return expected ETH value for MET
+    function getEthForMetResult(uint _depositAmount) public view returns (uint256) {
+        return convertingReturn(WhichToken.Met, _depositAmount);
     }
 
-    /// @notice send Ether and get MTN
+    /// @notice send Ether and get MET
     /// @param _mintReturn execute conversion only if return is equal or more than _mintReturn
-    /// @return MTN
-    function convertEthToMtn(uint _mintReturn) public payable returns (uint) {
+    /// @return MET
+    function convertEthToMet(uint _mintReturn) public payable returns (uint) {
         return convert(WhichToken.Eth, _mintReturn, msg.value);
     }
 
-    /// @notice send MTN and get Ether
+    /// @notice send MET and get Ether
     /// @dev Caller will be required to approve the AutonomousConverter to initiate the transfer
-    /// @param _amount MTN amount
+    /// @param _amount MET amount
     /// @param _mintReturn execute conversion only if return is equal or more than _mintReturn
     /// @return ETH
-    function convertMtnToEth(uint _amount, uint _mintReturn) public returns (uint) {
-        return convert(WhichToken.Mtn, _mintReturn, _amount);
+    function convertMetToEth(uint _amount, uint _mintReturn) public returns (uint) {
+        return convert(WhichToken.Met, _mintReturn, _amount);
     }
 
     function balanceOf(WhichToken which) internal view returns (uint) {
         if (which == WhichToken.Eth) return this.balance;
-        if (which == WhichToken.Mtn) return reserveToken.balanceOf(this);
+        if (which == WhichToken.Met) return reserveToken.balanceOf(this);
         revert();
     }
 
     function convertingReturn(WhichToken whichFrom, uint _depositAmount) internal view returns (uint256) {
         
-        WhichToken to = WhichToken.Mtn;
-        if (whichFrom == WhichToken.Mtn) {
+        WhichToken to = WhichToken.Met;
+        if (whichFrom == WhichToken.Met) {
             to = WhichToken.Eth;
         }
 
@@ -887,8 +887,8 @@ contract AutonomousConverter is Formula, Owned {
     }
 
     function convert(WhichToken whichFrom, uint _minReturn, uint amnt) internal returns (uint) {
-        WhichToken to = WhichToken.Mtn;
-        if (whichFrom == WhichToken.Mtn) {
+        WhichToken to = WhichToken.Met;
+        if (whichFrom == WhichToken.Met) {
             to = WhichToken.Eth;
             require(reserveToken.transferFrom(msg.sender, this, amnt));
         }
@@ -985,11 +985,11 @@ contract Proceeds is Owned {
 }
 
 
-/// @title Auction contract. Send eth to the contract address and buy MTN. 
+/// @title Auction contract. Send eth to the contract address and buy MET. 
 contract Auctions is Pricer, Owned {
 
     using SafeMath for uint256;
-    MTNToken public token;
+    METToken public token;
     Proceeds public proceeds;
     address[] public founders;
     mapping(address => TokenLocker) public tokenLockers;
@@ -999,13 +999,13 @@ contract Auctions is Pricer, Owned {
     uint public genesisTime;
     uint public lastPurchaseTick;
     uint public lastPurchasePrice;
-    uint public constant INITIAL_GLOBAL_DAILY_SUPPLY = 2880 * MTNDECMULT;
-    uint public constant INITIAL_FOUNDER_SUPPLY = 1999999 * MTNDECMULT;
-    uint public constant INITIAL_AC_SUPPLY = 1 * MTNDECMULT;
+    uint public constant INITIAL_GLOBAL_DAILY_SUPPLY = 2880 * METDECMULT;
+    uint public constant INITIAL_FOUNDER_SUPPLY = 1999999 * METDECMULT;
+    uint public constant INITIAL_AC_SUPPLY = 1 * METDECMULT;
     uint public totalMigratedOut = 0;
     uint public totalMigratedIn = 0;
     uint public timeScale = 1;
-    uint public constant INITIAL_SUPPLY = 10000000 * MTNDECMULT;
+    uint public constant INITIAL_SUPPLY = 10000000 * METDECMULT;
     uint public mintable = INITIAL_SUPPLY;
     uint public initialAuctionDuration = 7 days;
     uint public initialAuctionEndTime;
@@ -1015,15 +1015,15 @@ contract Auctions is Pricer, Owned {
     mapping (address => uint) internal lastPurcahseAuction;
     bool public minted;
     bool public initialized;
-    uint public globalSupplyAfterPercentageLogic = 52598080 * MTNDECMULT;
+    uint public globalSupplyAfterPercentageLogic = 52598080 * METDECMULT;
     uint public constant AUCTION_WHEN_PERCENTAGE_LOGIC_STARTS = 14791;
     event LogAuctionFundsIn(address indexed sender, uint amount);
 
     function Auctions() public {
-        mintable = INITIAL_SUPPLY - 2000000 * MTNDECMULT;
+        mintable = INITIAL_SUPPLY - 2000000 * METDECMULT;
     }
 
-    /// @notice Payable function to buy MTN in descending price auction
+    /// @notice Payable function to buy MET in descending price auction
     function () public payable running {
         require(msg.value > 0);
         
@@ -1136,7 +1136,7 @@ contract Auctions is Pricer, Owned {
         address convertAddr,
         address tokenAddr,
         uint minting,
-        uint totalMTN,
+        uint totalMET,
         uint proceedsBal,
         uint currTick,
         uint currAuction,
@@ -1149,7 +1149,7 @@ contract Auctions is Pricer, Owned {
         convertAddr = proceeds.autonomousConverter();
         tokenAddr = token;
         auctionAddr = this;
-        totalMTN = token.totalSupply();
+        totalMET = token.totalSupply();
         proceedsBal = proceeds.balance;
 
         currTick = currentTick();
@@ -1176,7 +1176,7 @@ contract Auctions is Pricer, Owned {
     /// @notice Initialize Auctions parameters
     /// @param _startTime The block.timestamp when first auction starts
     /// @param _minimumPrice Nobody can buy tokens for less than this price
-    /// @param _startingPrice Start price of MTN when first auction starts
+    /// @param _startingPrice Start price of MET when first auction starts
     /// @param _timeScale time scale factor for auction. will be always 1 in live environment
     function initAuctions(uint _startTime, uint _minimumPrice, uint _startingPrice, uint _timeScale) 
         public onlyOwner returns (bool) 
@@ -1218,7 +1218,7 @@ contract Auctions is Pricer, Owned {
 
     /// @notice Mint initail supply for founder and move to tocken locker
     /// @param _founders Left 160 bits are the founder address and the right 96 bits are the token amount.
-    /// @param _token MTN token contract address
+    /// @param _token MET token contract address
     /// @param _proceeds Address of Proceeds contract
     function mintInitialSupply(uint[] _founders, address _token, 
         address _proceeds, address _autonomousConverter) public onlyOwner returns (bool) 
@@ -1229,7 +1229,7 @@ contract Auctions is Pricer, Owned {
         require(address(proceeds) == 0x0 && _proceeds != 0x0);
         require(_autonomousConverter != 0x0);
 
-        token = MTNToken(_token);
+        token = METToken(_token);
         proceeds = Proceeds(_proceeds);
 
         // _founders will be minted into individual token lockers
@@ -1278,8 +1278,8 @@ contract Auctions is Pricer, Owned {
             (now >= initialAuctionEndTime || token.totalSupply() >= INITIAL_SUPPLY));
     }
 
-    /// @notice Global MTN supply
-    function globalMtnSupply() public view returns (uint) {
+    /// @notice Global MET supply
+    function globalMetSupply() public view returns (uint) {
 
         uint currAuc = currentAuction();
         if (currAuc > AUCTION_WHEN_PERCENTAGE_LOGIC_STARTS) {
@@ -1289,7 +1289,7 @@ contract Auctions is Pricer, Owned {
         }
     }
 
-    /// @notice Global MTN daily supply. Daily supply is greater of 1) 2880 2)2% of then outstanding supply per year.
+    /// @notice Global MET daily supply. Daily supply is greater of 1) 2880 2)2% of then outstanding supply per year.
     /// @dev 2% logic will kicks in at 14792th auction. 
     function globalDailySupply() public view returns (uint) {
         uint dailySupply = INITIAL_GLOBAL_DAILY_SUPPLY;
@@ -1322,8 +1322,8 @@ contract Auctions is Pricer, Owned {
 
     /// @notice Return the information about the next auction
     /// @return _startTime Start time of next auction
-    /// @return _startPrice Start price of MTN in next auction
-    /// @return _auctionTokens  MTN supply in next auction
+    /// @return _startPrice Start price of MET in next auction
+    /// @return _auctionTokens  MET supply in next auction
     function nextAuction() public constant returns(uint _startTime, uint _startPrice, uint _auctionTokens) {
         if (block.timestamp < genesisTime) {
             _startTime = genesisTime;
@@ -1350,7 +1350,7 @@ contract Auctions is Pricer, Owned {
         }
     }
 
-    /// @notice Current price of MTN in current auction
+    /// @notice Current price of MET in current auction
     /// @return weiPerToken 
     function currentPrice() public constant returns (uint weiPerToken) {
         weiPerToken = calcPriceAt(currentTick());
@@ -1359,18 +1359,18 @@ contract Auctions is Pricer, Owned {
     /// @notice Find out what the results would be of a prospective purchase
     /// @param _wei Amount of ether the purchaser will pay
     /// @param _timestamp Prospective purchase timestamp
-    /// @return weiPerToken expected MTN token rate
+    /// @return weiPerToken expected MET token rate
     /// @return tokens Expected token for a prospective purchase
-    /// @return refund Wei refund the purchaser will get if amount is excess and MTN supply is less
+    /// @return refund Wei refund the purchaser will get if amount is excess and MET supply is less
     function whatWouldPurchaseDo(uint _wei, uint _timestamp) public constant
         returns (uint weiPerToken, uint tokens, uint refund)
     {
         weiPerToken = calcPriceAt(whichTick(_timestamp));
-        uint calctokens = MTNDECMULT.mul(_wei).div(weiPerToken);
+        uint calctokens = METDECMULT.mul(_wei).div(weiPerToken);
         tokens = calctokens;
         if (calctokens > mintable) {
             tokens = mintable;
-            uint weiPaying = mintable.mul(weiPerToken).div(MTNDECMULT);
+            uint weiPaying = mintable.mul(weiPerToken).div(METDECMULT);
             refund = _wei.sub(weiPaying);
         }
     }
@@ -1378,9 +1378,9 @@ contract Auctions is Pricer, Owned {
     /// @notice Calculate results of a purchase
     /// @param _wei Amount of wei the purchaser will pay
     /// @param _t Prospective purchase tick
-    /// @return weiPerToken expected MTN token rate
+    /// @return weiPerToken expected MET token rate
     /// @return tokens Expected token for a prospective purchase
-    /// @return refund Wei refund the purchaser will get if amount is excess and MTN supply is less
+    /// @return refund Wei refund the purchaser will get if amount is excess and MET supply is less
     function calcPurchase(uint _wei, uint _t) internal view returns (uint weiPerToken, uint tokens, uint refund)
     {
         require(_t >= lastPurchaseTick);
@@ -1395,16 +1395,16 @@ contract Auctions is Pricer, Owned {
             weiPerToken = minimumPrice;
         }
 
-        uint calctokens = MTNDECMULT.mul(_wei).div(weiPerToken);
+        uint calctokens = METDECMULT.mul(_wei).div(weiPerToken);
         tokens = calctokens;
         if (calctokens > mintable) {
             tokens = mintable;
-            uint ethPaying = mintable.mul(weiPerToken).div(MTNDECMULT);
+            uint ethPaying = mintable.mul(weiPerToken).div(METDECMULT);
             refund = _wei.sub(ethPaying);
         }
     }
 
-    /// @notice MTN supply for next Auction also considering  carry forward mtn.
+    /// @notice MET supply for next Auction also considering  carry forward met.
     /// @param totalAuctionMissed auction count when no purchase done.
     function nextAuctionSupply(uint totalAuctionMissed) internal view returns (uint supply) {
         uint thisAuction = currentAuction();
@@ -1422,9 +1422,9 @@ contract Auctions is Pricer, Owned {
             if (totalAuctionMissed > 1) {
                 supply = supply.mul(totalAuctionMissed);
             }
-            uint previousGlobalMtnSupply = 
+            uint previousGlobalMetSupply = 
             INITIAL_SUPPLY.add(INITIAL_GLOBAL_DAILY_SUPPLY.mul(whichAuction(lastPurchaseTick)));
-            supply = (supply.mul(tokensHere)).div(previousGlobalMtnSupply);
+            supply = (supply.mul(tokensHere)).div(previousGlobalMetSupply);
         
         }
     }
@@ -1498,7 +1498,7 @@ contract TokenLocker is Owned {
     uint internal constant QUARTER = 91 days + 450 minutes;
   
     Auctions public auctions;
-    MTNToken public token;
+    METToken public token;
     bool public locked = false;
   
     uint public deposited;
@@ -1525,12 +1525,12 @@ contract TokenLocker is Owned {
 
     /// @notice Constructor to initialize TokenLocker contract.
     /// @param _auctions Address of auctions contract
-    /// @param _token Address of MTNToken contract
+    /// @param _token Address of METToken contract
     function TokenLocker(address _auctions, address _token) public {
         require(_auctions != 0x0);
         require(_token != 0x0);
         auctions = Auctions(_auctions);
-        token = MTNToken(_token);
+        token = METToken(_token);
     }
 
     /// @notice If auctions is initialized, call to this function will result in
@@ -1607,20 +1607,20 @@ interface ITokenPorter {
 contract TokenPorter is ITokenPorter {
 
     Auctions public auctions;
-    MTNToken public token;
+    METToken public token;
 
     uint internal burnSequence = 1;
     bytes32[] public exportedBurns;
     uint[] supplyOnAllChains = new uint[](6);
 
     /// @notice Constructor to initialize TokenPorter contract.
-    /// @param _tokenAddr Address of mtnToken contract
+    /// @param _tokenAddr Address of metToken contract
     /// @param _auctionsAddr Address of auctions contract
     function TokenPorter(address _tokenAddr, address _auctionsAddr) public {
         require(_tokenAddr != 0x0);
         require(_auctionsAddr != 0x0);
         auctions = Auctions(_auctionsAddr);
-        token = MTNToken(_tokenAddr);
+        token = METToken(_tokenAddr);
     }
     
     /// @notice Export the token from this chain to another chain.

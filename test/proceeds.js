@@ -27,13 +27,13 @@ const assert = require('chai').assert
 
 const AutonomousConverter = artifacts.require('AutonomousConverter')
 // const Auctions = artifacts.require('Auctions')
-const MTNToken = artifacts.require('MTNToken')
+const METToken = artifacts.require('METToken')
 const Proceeds = artifacts.require('Proceeds')
 const SmartToken = artifacts.require('SmartToken')
 const Auctions = artifacts.require('Auctions')
 
 contract('Proceeds', accounts => {
-  let mtnToken, autonomousConverter, auctions, proceeds, smartToken
+  let metToken, autonomousConverter, auctions, proceeds, smartToken
   const OWNER = accounts[0]
 
   describe('Constructor and Owner only functions', () => {
@@ -42,10 +42,10 @@ contract('Proceeds', accounts => {
       proceeds = await Proceeds.new()
       auctions = await Auctions.new()
 
-      mtnToken = await MTNToken.new(autonomousConverter.address, auctions.address, 0, 0, {from: OWNER})
+      metToken = await METToken.new(autonomousConverter.address, auctions.address, 0, 0, {from: OWNER})
       smartToken = await SmartToken.new(autonomousConverter.address, autonomousConverter.address, 0, {from: OWNER})
 
-      await autonomousConverter.init(mtnToken.address, smartToken.address, auctions.address, {from: OWNER})
+      await autonomousConverter.init(metToken.address, smartToken.address, auctions.address, {from: OWNER})
       // we just need one address as auction to perform fund transfer and closeAuction
       // using contract's address make it difficult as we cannot invoke function on behalf of contract
       await proceeds.initProceeds(autonomousConverter.address, accounts[1], {from: OWNER})

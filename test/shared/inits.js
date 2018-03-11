@@ -25,7 +25,7 @@
 
 const AutonomousConverter = artifacts.require('AutonomousConverter')
 const Auctions = artifacts.require('Auctions')
-const MTNToken = artifacts.require('MTNToken')
+const METToken = artifacts.require('METToken')
 const Proceeds = artifacts.require('Proceeds')
 const SmartToken = artifacts.require('SmartToken')
 
@@ -43,19 +43,19 @@ const Tests = {
       founders.push(OWNER + '0000D3C214DE7193CD4E0000')
       founders.push(FOUNDER + '0000D3C214DE7193CD4E0000')
 
-      const MTN_INITIAL_SUPPLY = 0
+      const MET_INITIAL_SUPPLY = 0
       const ST_INITIAL_SUPPLY = 2
       const DECMULT = 10 ** 18
 
-      const mtnToken = await MTNToken.new(autonomousConverter.address, auctions.address, MTN_INITIAL_SUPPLY, DECMULT, {from: OWNER})
+      const metToken = await METToken.new(autonomousConverter.address, auctions.address, MET_INITIAL_SUPPLY, DECMULT, {from: OWNER})
       const smartToken = await SmartToken.new(autonomousConverter.address, autonomousConverter.address, ST_INITIAL_SUPPLY, {from: OWNER})
-      await autonomousConverter.init(mtnToken.address, smartToken.address, auctions.address, { from: OWNER, value: web3.toWei(1, 'ether') })
+      await autonomousConverter.init(metToken.address, smartToken.address, auctions.address, { from: OWNER, value: web3.toWei(1, 'ether') })
       await proceeds.initProceeds(autonomousConverter.address, auctions.address, {from: OWNER})
-      await auctions.mintInitialSupply(founders, mtnToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
+      await auctions.mintInitialSupply(founders, metToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
       await auctions.initAuctions(START_TIME, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE, {from: OWNER})
 
       resolve({
-        mtnToken: mtnToken,
+        metToken: metToken,
         autonomousConverter: autonomousConverter,
         auctions: auctions,
         proceeds: proceeds,

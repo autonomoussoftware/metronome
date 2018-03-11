@@ -28,13 +28,13 @@ const ethjsABI = require('ethjs-abi')
 const TestRPCTime = require('../test/shared/time')
 const AutonomousConverter = artifacts.require('AutonomousConverter')
 const Auctions = artifacts.require('Auctions')
-const MTNToken = artifacts.require('MTNToken')
+const METToken = artifacts.require('METToken')
 const Proceeds = artifacts.require('Proceeds')
 const SmartToken = artifacts.require('SmartToken')
 const TokenLocker = artifacts.require('TokenLocker')
 
 contract('AutonomousConverter Interactions', accounts => {
-  let mtnToken, autonomousConverter, auctions, proceeds, smartToken
+  let metToken, autonomousConverter, auctions, proceeds, smartToken
 
   const OWNER = accounts[0]
   const OWNER_TOKENS_HEX = '0000D3C214DE7193CD4E0000'
@@ -64,18 +64,18 @@ contract('AutonomousConverter Interactions', accounts => {
       founders.push(OWNER + '0000D3C214DE7193CD4E0000')
       founders.push(FOUNDER + '0000D3C214DE7193CD4E0000')
 
-      const MTN_INITIAL_SUPPLY = 0
+      const MET_INITIAL_SUPPLY = 0
       const DECMULT = 10 ** 18
       const MINIMUM_PRICE = 1000
       const STARTING_PRICE = 1
       const TIME_SCALE = 1
       const START_TIME = getCurrentBlockTime()
 
-      mtnToken = await MTNToken.new(autonomousConverter.address, auctions.address, MTN_INITIAL_SUPPLY, DECMULT, {from: OWNER})
-      smartToken = await SmartToken.new(autonomousConverter.address, autonomousConverter.address, MTN_INITIAL_SUPPLY, {from: OWNER})
-      await autonomousConverter.init(mtnToken.address, smartToken.address, auctions.address, { from: OWNER, value: web3.toWei(1, 'ether') })
+      metToken = await METToken.new(autonomousConverter.address, auctions.address, MET_INITIAL_SUPPLY, DECMULT, {from: OWNER})
+      smartToken = await SmartToken.new(autonomousConverter.address, autonomousConverter.address, MET_INITIAL_SUPPLY, {from: OWNER})
+      await autonomousConverter.init(metToken.address, smartToken.address, auctions.address, { from: OWNER, value: web3.toWei(1, 'ether') })
       await proceeds.initProceeds(autonomousConverter.address, auctions.address, {from: OWNER})
-      await auctions.mintInitialSupply(founders, mtnToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
+      await auctions.mintInitialSupply(founders, metToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
       await auctions.initAuctions(START_TIME, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE, {from: OWNER})
       resolve()
     })
@@ -129,10 +129,10 @@ contract('AutonomousConverter Interactions', accounts => {
             let decoder = ethjsABI.logDecoder(proceeds.abi)
             const dEvents = []
             dEvents.push(decoder(tx.receipt.logs))
-            decoder = ethjsABI.logDecoder(mtnToken.abi)
+            decoder = ethjsABI.logDecoder(metToken.abi)
             dEvents.push(decoder(tx.receipt.logs))
             // Need to figure out why its failing.
-            // assert.equal(dEvents.length, tx.receipt.logs.length - tx.logs.length, 'Incorrect number of logs for tx.receipt MTNTokens')
+            // assert.equal(dEvents.length, tx.receipt.logs.length - tx.logs.length, 'Incorrect number of logs for tx.receipt METTokens')
 
             // check that fallback function was called
             const log = tx.logs[0]
@@ -156,7 +156,7 @@ contract('AutonomousConverter Interactions', accounts => {
 
             isOver = await auctions.isInitialAuctionEnded()
             if (isOver) {
-              assert.equal((await auctions.globalMtnSupply()).toNumber(), (await mtnToken.totalSupply()).toNumber(), 'Tokens were not sold out')
+              assert.equal((await auctions.globalMetSupply()).toNumber(), (await metToken.totalSupply()).toNumber(), 'Tokens were not sold out')
 
               // attempt to purchase again, when sold out
               let thrown = false
