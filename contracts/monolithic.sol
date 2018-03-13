@@ -863,7 +863,7 @@ contract AutonomousConverter is Formula, Owned {
     }
 
     function balanceOf(WhichToken which) internal view returns (uint) {
-        if (which == WhichToken.Eth) return this.balance;
+        if (which == WhichToken.Eth) return address(this).balance;
         if (which == WhichToken.Met) return reserveToken.balanceOf(this);
         revert();
     }
@@ -948,7 +948,7 @@ contract AutonomousConverter is Formula, Owned {
 contract Proceeds is Owned {
     using SafeMath for uint256;
 
-    AutonomousConverter public autonomousConverter;
+    address public autonomousConverter;
     Auctions public auction;
     event LogProceedsIn(address indexed from, uint value); 
     event LogClosedAuction(address indexed from, uint value);
@@ -961,12 +961,12 @@ contract Proceeds is Owned {
 
     function initProceeds(address _autonomousConverter, address _auction) public onlyOwner {
         require(address(auction) == 0x0);
-        require(address(autonomousConverter) == 0x0);
+        require(autonomousConverter == 0x0);
 
         require(_autonomousConverter != 0x0);
         require(_auction != 0x0);
 
-        autonomousConverter = AutonomousConverter(_autonomousConverter);
+        autonomousConverter = _autonomousConverter;
         auction = Auctions(_auction);
     }
 
@@ -974,7 +974,7 @@ contract Proceeds is Owned {
     function closeAuction() public {
         uint lastPurchaseTick = auction.lastPurchaseTick();
         uint currentAuction = auction.currentAuction();
-        uint val = ((this.balance).mul(25)).div(10000); 
+        uint val = ((address(this).balance).mul(25)).div(10000); 
         if (val > 0 && (currentAuction > auction.whichAuction(lastPurchaseTick)) 
             && (latestAuctionClosed < currentAuction)) {
             latestAuctionClosed = currentAuction;
@@ -1073,7 +1073,7 @@ contract Auctions is Pricer, Owned {
         assert(refund <= amountForPurchase);
         uint ethForProceeds = amountForPurchase.sub(refund);
 
-        proceeds.transfer(ethForProceeds);
+        address(proceeds).transfer(ethForProceeds);
 
         require(token.mint(msg.sender, tokens));
 
@@ -1150,7 +1150,7 @@ contract Auctions is Pricer, Owned {
         tokenAddr = token;
         auctionAddr = this;
         totalMET = token.totalSupply();
-        proceedsBal = proceeds.balance;
+        proceedsBal = address(proceeds).balance;
 
         currTick = currentTick();
         currAuction = currentAuction();
