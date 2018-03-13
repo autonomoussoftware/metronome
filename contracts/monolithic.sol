@@ -1052,7 +1052,11 @@ contract Auctions is Pricer, Owned {
         }
 
         uint _currentTick = currentTick();
-        var (weiPerToken, tokens, refund) = calcPurchase(amountForPurchase, _currentTick);
+
+        uint weiPerToken;
+        uint tokens;
+        uint refund;
+        (weiPerToken, tokens, refund) = calcPurchase(amountForPurchase, _currentTick);
         require(tokens > 0);
 
         if (now < initialAuctionEndTime && (token.totalSupply()).add(tokens) >= INITIAL_SUPPLY) {
@@ -1471,7 +1475,10 @@ contract Auctions is Pricer, Owned {
 
     /// @notice start the next day's auction
     function restartAuction() private {
-        var (time, price, auctionTokens) = nextAuction();
+        uint time;
+        uint price;
+        uint auctionTokens;
+        (time, price, auctionTokens) = nextAuction();
 
         uint thisAuction = currentAuction();
         if (thisAuction > AUCTION_WHEN_PERCENTAGE_LOGIC_STARTS) {
@@ -1632,7 +1639,10 @@ contract TokenPorter is ITokenPorter {
         require(_destChain != 0x0 && _destMetronomeAddr != 0x0 && _destRecipAddr != 0x0 && _amount != 0);
         require(token.balanceOf(tokenOwner) >= _amount);
 
-        var ( , , , , , , , currentTick, , , genesisTime, , dailyMintable, ) = auctions.heartbeat();    // solhint-disable-line
+        uint currentTick;
+        uint genesisTime;
+        uint dailyMintable;
+        ( , , , , , , , currentTick, , , genesisTime, , dailyMintable, ) = auctions.heartbeat();    // solhint-disable-line
         token.destroy(tokenOwner, _amount);
         
         if (burnSequence == 1) {
