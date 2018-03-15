@@ -1607,14 +1607,18 @@ interface ITokenPorter {
 
 
 /// @title This contract will provide export functionality for tokens.
-contract TokenPorter is ITokenPorter {
+contract TokenPorter is ITokenPorter, Owned {
     using SafeMath for uint;
     Auctions public auctions;
     METToken public token;
 
+    bytes8 ETH_CHAIN = 0x4554480000000000;
     uint internal burnSequence = 1;
     bytes32[] public exportedBurns;
     uint[] supplyOnAllChains = new uint[](6);
+
+    /// @notice mapping that tracks valid destination chains for export
+    mapping(bytes8 => address) public destinationChains;
 
     /// @notice Constructor to initialize TokenPorter contract.
     /// @param _tokenAddr Address of metToken contract
@@ -1624,6 +1628,27 @@ contract TokenPorter is ITokenPorter {
         require(_auctionsAddr != 0x0);
         auctions = Auctions(_auctionsAddr);
         token = METToken(_tokenAddr);
+    }
+
+    /// @notice only owner can add destination chains
+    /// @param _chainName string of destination blockchain name
+    /// @param _contractAddress address of destination MET token to import to
+    function addDestinationChain(bytes8 _chainName, address _contractAddress) 
+        public onlyOwner returns (bool) 
+    {
+        require(_chainName != 0 && _contractAddress != address(0));
+        require(destinationChains[_chainName] == address(0));
+        destinationChains[_chainName] = _contractAddress;
+        return true;
+    }
+
+    /// @notice only owner can remove destination chains
+    /// @param _chainName string of destination blockchain name
+    function removeDestinationChain(bytes8 _chainName) public onlyOwner returns (bool) {
+        require(_chainName != 0);
+        require(destinationChains[_chainName] != address(0));
+        destinationChains[_chainName] = address(0);
+        return true;   
     }
 
     /// @notice holds claims from users that have exported on-chain
@@ -1665,6 +1690,7 @@ contract TokenPorter is ITokenPorter {
         require(msg.sender == address(token));
 
         require(_destChain != 0x0 && _destMetronomeAddr != 0x0 && _destRecipAddr != 0x0 && _amount != 0);
+        require(destinationChains[_destChain] == _destMetronomeAddr);
         require(token.balanceOf(tokenOwner) >= _amount);
 
         uint currentTick;
@@ -1677,8 +1703,7 @@ contract TokenPorter is ITokenPorter {
             exportedBurns.push(keccak256(uint8(0)));
         }
 
-        // _destChain == "ETH"    
-        if (_destChain == 0x4554480000000000) {
+        if (_destChain == ETH_CHAIN) {
             claimables[_destMetronomeAddr][_destRecipAddr] = 
                 claimables[_destMetronomeAddr][_destRecipAddr].add(_amount);
         }
