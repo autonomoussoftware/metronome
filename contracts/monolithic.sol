@@ -86,18 +86,18 @@ contract FixedMath {
     uint constant internal DECMULT = 10 ** DECIMALS;
 
     /// @notice Multiplication.
-    function fMul(uint x, uint y) public pure returns (uint) {
+    function fMul(uint x, uint y) internal pure returns (uint) {
         return (x.mul(y)).div(DECMULT);
     }
 
     /// @notice Devision.
-    function fDiv(uint numerator, uint divisor) public pure returns (uint) { 
+    function fDiv(uint numerator, uint divisor) internal pure returns (uint) {
         return (numerator.mul(DECMULT)).div(divisor);
     }
 
     /// @notice Square root.
     /// @dev Reference: https://stackoverflow.com/questions/3766020/binary-search-to-compute-square-root-java
-    function fSqrt(uint n) public pure returns (uint) {
+    function fSqrt(uint n) internal pure returns (uint) {
         if (n == 0) {
             return 0;
         }
