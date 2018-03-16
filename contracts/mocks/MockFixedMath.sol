@@ -28,15 +28,15 @@ import "../monolithic.sol";
 
 contract MockFixedMath is FixedMath {
 
-    function fMul(uint x, uint y) public pure returns (uint) {
+    function fMulMock(uint x, uint y) public pure returns (uint) {
         return super.fMul(x, y);
     }
 
-    function fDiv(uint numerator, uint divisor) public pure returns (uint) {
+    function fDivMock(uint numerator, uint divisor) public pure returns (uint) {
         return super.fDiv(numerator, divisor);
     }
 
-    function fSqrt(uint n) public pure returns (uint) {
+    function fSqrtMock(uint n) public pure returns (uint) {
         return super.fSqrt(n);
     }
 }
