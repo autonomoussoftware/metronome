@@ -24,7 +24,7 @@
 */
 
 const assert = require('chai').assert
-const FixedMath = artifacts.require('FixedMath')
+const FixedMath = artifacts.require('MockFixedMath')
 
 contract('FixedMath', accounts => {
   let fixedMath
@@ -53,7 +53,7 @@ contract('FixedMath', accounts => {
           const a = testCase.a
           const b = testCase.b
           const expectedOutput = testCase.expected
-          const output = await fixedMath.fMul(a, b)
+          const output = await fixedMath.fMulMock(a, b)
           assert.equal(output.toNumber(), expectedOutput, 'multiply math is incorrect for case ' + i)
           resolve()
         })
@@ -82,13 +82,13 @@ contract('FixedMath', accounts => {
           if (isNaN(expectedOutput)) {
             let thrown = false
             try {
-              await fixedMath.fDiv(a, b)
+              await fixedMath.fDivMock(a, b)
             } catch (error) {
               thrown = true
             }
             assert.isTrue(thrown, 'Error is not thrown when diving by 0 for case ' + i)
           } else {
-            const output = await fixedMath.fDiv(a, b)
+            const output = await fixedMath.fDivMock(a, b)
             assert.equal(output.toNumber(), expectedOutput, 'div math is incorrect for case ' + i)
           }
 
@@ -110,7 +110,7 @@ contract('FixedMath', accounts => {
         return new Promise(async (resolve, reject) => {
           const a = testCase.a
           const expectedOutput = testCase.expected
-          const output = await fixedMath.fSqrt(a)
+          const output = await fixedMath.fSqrtMock(a)
           assert.equal(output.toNumber(), expectedOutput, 'sqrt math is incorrect for case ' + i)
           resolve()
         })
