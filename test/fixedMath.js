@@ -24,7 +24,7 @@
 */
 
 const assert = require('chai').assert
-const FixedMath = artifacts.require('FixedMath')
+const FixedMath = artifacts.require('MockFixedMath')
 
 contract('FixedMath', accounts => {
   let fixedMath
