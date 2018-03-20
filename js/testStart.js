@@ -23,7 +23,7 @@
     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-/* globals eth, Auctions, Proceeds, personal, MTNToken */
+/* globals eth, Auctions, Proceeds, personal, METToken */
 
 // In Dev mode, we want to trigger timestamp updates every 2.3 seconds
 setInterval(function () {
@@ -57,22 +57,22 @@ var pingtx
 
 var pingBuy = function () {
   pingtx = eth.sendTransaction({to: Auctions.address, from: buyer1Account, value: web3.toWei(1, 'ether')})
-  console.log('pingtx', pingtx, 'buyer 1 has', MTNToken.balanceOf(buyer1Account))
+  console.log('pingtx', pingtx, 'buyer 1 has', METToken.balanceOf(buyer1Account))
 }
 
 var pingBuy2 = function () {
   pingtx = eth.sendTransaction({to: Auctions.address, from: buyer2Account, value: web3.toWei(1, 'ether')})
-  console.log('pingtx2', pingtx, 'buyer 2 has', MTNToken.balanceOf(buyer2Account));
+  console.log('pingtx2', pingtx, 'buyer 2 has', METToken.balanceOf(buyer2Account));
 }
 
 var pingBig = function () {
   pingtx = eth.sendTransaction({to: Auctions.address, from: buyer1Account, value: web3.toWei(100, 'ether')})
-  console.log('pingtx', pingtx, 'buyer 1 has', MTNToken.balanceOf(buyer1Account))
+  console.log('pingtx', pingtx, 'buyer 1 has', METToken.balanceOf(buyer1Account))
 }
 
 var pingWei = function () {
   pingtx = eth.sendTransaction({ to: Auctions.address, from: buyer1Account, value: 10000 })
-  console.log('pingtx', pingtx, 'buyer 1 has', MTNToken.balanceOf(buyer1Account))
+  console.log('pingtx', pingtx, 'buyer 1 has', METToken.balanceOf(buyer1Account))
 }
 
 // Setup: two buyers, two traders
@@ -107,8 +107,8 @@ var b1buy1 = eth.sendTransaction({to: Auctions.address, from: buyer1Account, val
 
 var b2buy1 = eth.sendTransaction({to: Auctions.address, from: buyer2Account, value: web3.toWei(200, 'ether')})
 
-console.log('Buyer 1 MTN:', MTNToken.balanceOf(buyer1Account) / 1e18)
-console.log('Buyer 2 MTN:', MTNToken.balanceOf(buyer2Account) / 1e18)
+console.log('Buyer 1 MTN:', METToken.balanceOf(buyer1Account) / 1e18)
+console.log('Buyer 2 MTN:', METToken.balanceOf(buyer2Account) / 1e18)
 
 // Check transfers can't happen yet
 

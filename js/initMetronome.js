@@ -25,7 +25,7 @@
 
 /* globals ETHER_ADDR, MINPRICE, NUMTOKENS, ONE, PRICE, START, TIMESCALE */
 /* globals eth, personal */
-/* globals Auctions, AutonomousConverter, MTNTokenJSON, Proceeds, SmartTokenJSON */
+/* globals Auctions, AutonomousConverter, METTokenJSON, Proceeds, SmartTokenJSON */
 var hash
 function waitForTx (hash) {
   var receipt = eth.getTransactionReceipt(hash)
@@ -41,12 +41,12 @@ console.log('Initializing with ', ONE, 'and ', NUMTOKENS)
 console.log('Founder is', ETHER_ADDR)
 eth.defaultAccount = ETHER_ADDR
 
-console.log('Configuring MTNToken')
-var evmDataForMTN = web3.eth.contract(MTNTokenJSON.abi).new.getData(AutonomousConverter.address, Auctions.address, 0, 0, {data: MTNTokenJSON.bytecode})
+console.log('Configuring METToken')
+var evmDataForMTN = web3.eth.contract(METTokenJSON.abi).new.getData(AutonomousConverter.address, Auctions.address, 0, 0, {data: METTokenJSON.bytecode})
 hash = eth.sendTransaction({from: ETHER_ADDR, data: evmDataForMTN, gas: 4700000})
 var receipt = waitForTx(hash)
-var MTNToken = web3.eth.contract(MTNTokenJSON.abi).at(receipt.contractAddress)
-console.log('MTNToken published at ' + MTNToken.address)
+var METToken = web3.eth.contract(METTokenJSON.abi).at(receipt.contractAddress)
+console.log('METToken published at ' + METToken.address)
 
 console.log('Configuring Smart Token')
 var evmDataForST = web3.eth.contract(SmartTokenJSON.abi).new.getData(AutonomousConverter.address, AutonomousConverter.address, 2, {data: SmartTokenJSON.bytecode})
@@ -61,9 +61,9 @@ var founders = []
 // 1000000e18 =  0000d3c20dee1639f99c0000
 founders.push(ETHER_ADDR + '0000D3C214DE7193CD4E0000')
 founders.push('0xf17f52151ebef6c7334fad080c5704d77216b732' + '0000D3C214DE7193CD4E0000')
-var gasForMint = Auctions.mintInitialSupply.estimateGas(founders, MTNToken.address, Proceeds.address, AutonomousConverter.address)
+var gasForMint = Auctions.mintInitialSupply.estimateGas(founders, METToken.address, Proceeds.address, AutonomousConverter.address)
 console.log('gas for mint', gasForMint)
-hash = Auctions.mintInitialSupply(founders, MTNToken.address, Proceeds.address, AutonomousConverter.address, {gas: gasForMint})
+hash = Auctions.mintInitialSupply(founders, METToken.address, Proceeds.address, AutonomousConverter.address, {gas: gasForMint})
 waitForTx(hash)
 
 console.log('Minted', Auctions.minted())
@@ -76,7 +76,7 @@ waitForTx(hash)
 // need to keep account unlocked since testnet txns can take a long time
 personal.unlockAccount(newOwner, 'newOwner')
 
-hash = MTNToken.changeOwnership(newOwner, {from: ETHER_ADDR})
+hash = METToken.changeOwnership(newOwner, {from: ETHER_ADDR})
 waitForTx(hash)
 personal.unlockAccount(newOwner, 'newOwner')
 hash = AutonomousConverter.changeOwnership(newOwner, {from: ETHER_ADDR})
@@ -94,9 +94,9 @@ personal.unlockAccount(newOwner, 'newOwner')
 console.log('Ownership has been transfered to', newOwner)
 
 console.log('Configuring AutonomousConverter Contract')
-var gasForAc = AutonomousConverter.init.estimateGas(MTNToken.address, SmartToken.address, Auctions.address, { from: newOwner, value: web3.toWei(1, 'ether') })
+var gasForAc = AutonomousConverter.init.estimateGas(METToken.address, SmartToken.address, Auctions.address, { from: newOwner, value: web3.toWei(1, 'ether') })
 console.log('gas for ac', gasForAc)
-hash = AutonomousConverter.init(MTNToken.address, SmartToken.address, Auctions.address, { from: newOwner, value: web3.toWei(1, 'ether'), gas: gasForAc })
+hash = AutonomousConverter.init(METToken.address, SmartToken.address, Auctions.address, { from: newOwner, value: web3.toWei(1, 'ether'), gas: gasForAc })
 waitForTx(hash)
 personal.unlockAccount(newOwner, 'newOwner')
 console.log('Configuring Proceeds')
