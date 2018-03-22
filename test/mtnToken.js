@@ -237,7 +237,7 @@ contract('METToken', accounts => {
         assert.equal(previousAllowance, 0, 'allowance is not initially zero')
 
         await metToken.approve(SPENDER, approveAmount, {from: OWNER})
-        const currentAllowance = await metToken.allowance.call(OWNER, SPENDER)
+        var currentAllowance = await metToken.allowance.call(OWNER, SPENDER)
         assert.equal(currentAllowance, approveAmount, 'allowance approved is not correct')
 
         await metToken.approveMore(SPENDER, approveAmount, {from: OWNER})
@@ -247,6 +247,11 @@ contract('METToken', accounts => {
         await metToken.approveLess(SPENDER, approveAmount, {from: OWNER})
         const currentAllowanceLess = await metToken.allowance.call(OWNER, SPENDER)
         assert.equal(currentAllowanceLess, approveAmount, 'allowance approved less is not correct')
+
+        const newApproveAmt = approveAmount * 2
+        await metToken.approve(SPENDER, newApproveAmt, {from: OWNER})
+        currentAllowance = await metToken.allowance.call(OWNER, SPENDER)
+        assert.equal(currentAllowance, newApproveAmt, 'allowance approved is not correct')
 
         const balanceBefore = await metToken.balanceOf(BENEFICIARY)
         const withdrawAmount = 1e17

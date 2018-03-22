@@ -441,7 +441,7 @@ contract('Token', accounts => {
       })
     })
 
-    it('Alice should not be able to re-approve Bob to transfer funds', () => {
+    it('Alice can re-approve Bob to transfer funds', () => {
       return new Promise(async (resolve, reject) => {
         const transferAmt = mintAmount
         const allowedBeforeAmt = await contracts.tokenMock.allowance(actors.alice, actors.bob)
@@ -450,14 +450,10 @@ contract('Token', accounts => {
         await contracts.tokenMock.approve(actors.bob, transferAmt, { from: actors.alice })
 
         // try to re-approve without first setting to zero
-        const newTransferAmt = mintAmount * 2
-        let thrown = false
-        try {
-          await contracts.tokenMock.approve(actors.bob, newTransferAmt, { from: actors.alice })
-        } catch (error) {
-          thrown = true
-        }
-        assert(thrown, 'Approve did not throw')
+        const newApproveAmt = mintAmount * 2
+        await contracts.tokenMock.approve(actors.bob, newApproveAmt, { from: actors.alice })
+        const currentAllowance = await contracts.tokenMock.allowance.call(actors.alice, actors.bob)
+        assert.equal(currentAllowance, newApproveAmt, 'allowance approved is not correct')
 
         resolve()
       })
