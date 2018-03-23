@@ -497,26 +497,20 @@ contract Token is ERC20, ERC827, Mintable {
     /// @return true/false
     function approve(address _spender, uint256 _value) public returns (bool) {
         require(_spender != address(this));
-
-        address _owner = msg.sender;
-
-        require(_value == 0 || _allowance[_owner][_spender] == 0);
-
-        _allowance[_owner][_spender] = _value;
-        Approval(_owner, _spender, _value);
+        _allowance[msg.sender][_spender] = _value;
+        Approval(msg.sender, _spender, _value);
         return true;
     }
 
     /// @notice Approve spender to spend the token ie approve allowance
     /// @param _spender Spender of the token
     /// @param _value Amount of token that can be spent by spender
-    /// @param _data Extra data for approval 
+    /// @param _data Extra data for approval
     /// @return true/false
     function approve(address _spender, uint256 _value, bytes _data) public returns (bool) {
         require(approve(_spender, _value));
         require(_spender.call(_data));
-        address _owner = msg.sender;
-        Approval(_owner, _spender, _value, _data);
+        Approval(msg.sender, _spender, _value, _data);
         return true;
     }
 
