@@ -1011,7 +1011,7 @@ contract Auctions is Pricer, Owned {
     bool public initialized;
     uint public globalSupplyAfterPercentageLogic = 52598080 * METDECMULT;
     uint public constant AUCTION_WHEN_PERCENTAGE_LOGIC_STARTS = 14791;
-    event LogAuctionFundsIn(address indexed sender, uint amount);
+    event LogAuctionFundsIn(address indexed sender, uint amount, uint tokens, uint purchasePrice, uint refund);
 
     function Auctions() public {
         mintable = INITIAL_SUPPLY - 2000000 * METDECMULT;
@@ -1078,7 +1078,7 @@ contract Auctions is Pricer, Owned {
             }
             msg.sender.transfer(refund);
         }
-        LogAuctionFundsIn(msg.sender, msg.value);
+        LogAuctionFundsIn(msg.sender, ethForProceeds, tokens, lastPurchasePrice, refund);
     }
 
     modifier running() {
