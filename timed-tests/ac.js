@@ -137,7 +137,7 @@ contract('AutonomousConverter Interactions', accounts => {
             // check that fallback function was called
             const log = tx.logs[0]
             assert.equal(log.event, 'LogAuctionFundsIn', 'LogAuctionFundsIn was not emitted')
-            assert.equal(log.args.amount.toString(), amount, 'Amount is wrong')
+            assert.closeTo(log.args.amount.toNumber(), amount - log.args.refund, 1000, 'Amount is wrong')
 
             // check for proceeds transfer
             const logP = dEvents[0][0]

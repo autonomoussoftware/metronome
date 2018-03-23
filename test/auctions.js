@@ -321,7 +321,7 @@ contract('Auctions', accounts => {
       const amountUsedForPurchase = 27e18 // 27 ETH can purchase all met after 7 days
       const totalTokenForPurchase = 8e24 // aka 8 million
       await initContracts(startTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
-      await auctions.sendTransaction({
+      const tx = await auctions.sendTransaction({
         from: fromAccount,
         value: amountUsedForPurchase
       })
@@ -333,6 +333,14 @@ contract('Auctions', accounts => {
       assert.isBelow(balanceBefore - balanceAfter, amountUsedForPurchase, 'Difference is higher than expected')
       assert.equal(metTokenBalance.valueOf(), totalTokenForPurchase, 'Total purchased/minted tokens are not correct')
 
+      assert.equal(tx.logs.length, 1, 'Incorrect number of logs emitted')
+      const log = tx.logs[0]
+      assert.equal(log.event, 'LogAuctionFundsIn', 'LogAuctionFundsIn log was not emitted')
+      let amount = log.args.amount
+      let lastPurchasePrice = await auctions.lastPurchasePrice()
+      assert.isBelow(amount.toNumber(), amountUsedForPurchase, 'Amount logged in event is not correct')
+      assert.equal(log.args.tokens, totalTokenForPurchase, 'Token logged in event is not correct')
+      assert.equal(log.args.purchasePrice, lastPurchasePrice.valueOf(), 'Purchase price logged in event is not correct')
       resolve()
     })
   })
