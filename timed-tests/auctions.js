@@ -328,6 +328,34 @@ contract('Auctions', accounts => {
     })
   })
 
+  it('Should test start price of daily auctions', () => {
+    return new Promise(async (resolve, reject) => {
+      // operational auction started and no purchase yet. 10th tick
+      const amount = 1e18
+      await TestRPCTime.mineBlock()
+      const currentBlockTime = TestRPCTime.getCurrentBlockTime()
+      const { auctions } = await METGlobal.initContracts(accounts, currentBlockTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+
+      // fast forward time to opertional auction skipping first day
+      let currentBlockTimeRounded = roundToNextMidnight(currentBlockTime)
+      let SECS_TO_NEXT_MIDNIGHT = currentBlockTimeRounded - currentBlockTime
+      // console.log('before', new Date(currentBlockTime * MILLISECS_IN_A_SEC).toUTCString())
+      let advanceSeconds = SECS_TO_NEXT_MIDNIGHT + (SECS_IN_DAY * 7) + 10
+      await TestRPCTime.timeTravel(advanceSeconds)
+      await TestRPCTime.mineBlock()
+      currentTimeOffset += advanceSeconds / SECS_IN_DAY
+      // execute transaction by the buyer
+      await auctions.sendTransaction({
+        from: BUYER1,
+        value: amount
+      })
+      let lastPurchasePrice = await auctions.lastPurchasePrice()
+      const expectedPrice = 6600000000000
+      assert.equal(lastPurchasePrice.valueOf(), expectedPrice, 'Purchase price is not correct')
+      resolve()
+    })
+  })
+
   it('Should test heart beat function during operational auction', () => {
     return new Promise(async (resolve, reject) => {
       // operational auction started and no purchase yet. 10th tick
