@@ -1340,7 +1340,26 @@ contract Auctions is Pricer, Owned {
         if (totalAuctions > 1) {
             _startPrice = lastPurchasePrice / 100 + 1;
         } else {
-            _startPrice = (lastPurchasePrice * 2) + 1;
+            if (mintable == 0 || totalAuctions == 0) {
+                // Sold out scenario or someone querying projected start price of next auction
+                _startPrice = (lastPurchasePrice * 2) + 1;   
+            } else {
+                // Timed out and all token not sold.
+                if (currAuc == 1) {
+                    // If initial auction timed out then price before start of new auction will touch floor price
+                    _startPrice = minimumPrice * 2;
+                } else {
+                    // Descending price till end of auction and then multiply by 2
+                    uint tickWhenAuctionEnded = whichTick(_startTime - 1 days);
+                    uint numTick = 0;
+                    if (tickWhenAuctionEnded > lastPurchaseTick) {
+                        numTick = tickWhenAuctionEnded - lastPurchaseTick;
+                    }
+                    _startPrice = (priceAt(lastPurchasePrice, numTick)) * 2 + 1;
+                }
+                
+                
+            }
         }
     }
 
