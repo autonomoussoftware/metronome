@@ -534,8 +534,9 @@ contract Token is ERC20, ERC827, Mintable {
     /// @return true/false
     function approveMore(address _spender, uint256 _value) public returns (bool) {
         uint previous = _allowance[msg.sender][_spender];
-        _allowance[msg.sender][_spender] = previous.add(_value);
-        Approval(msg.sender, _spender, _value);
+        uint newAllowance = previous.add(_value);
+        _allowance[msg.sender][_spender] = newAllowance;
+        Approval(msg.sender, _spender, newAllowance);
         return true;
     }
 
@@ -545,8 +546,9 @@ contract Token is ERC20, ERC827, Mintable {
     /// @return true/false
     function approveLess(address _spender, uint256 _value) public returns (bool) {
         uint previous = _allowance[msg.sender][_spender];
-        _allowance[msg.sender][_spender] = previous.sub(_value);
-        Approval(msg.sender, _spender, _value);
+        uint newAllowance = previous.sub(_value);
+        _allowance[msg.sender][_spender] = newAllowance;
+        Approval(msg.sender, _spender, newAllowance);
         return true;
     }
 }

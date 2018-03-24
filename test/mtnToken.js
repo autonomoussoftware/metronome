@@ -240,11 +240,25 @@ contract('METToken', accounts => {
         var currentAllowance = await metToken.allowance.call(OWNER, SPENDER)
         assert.equal(currentAllowance, approveAmount, 'allowance approved is not correct')
 
-        await metToken.approveMore(SPENDER, approveAmount, {from: OWNER})
+        const txMore = await metToken.approveMore(SPENDER, approveAmount, {from: OWNER})
+        assert.equal(txMore.logs.length, 1, 'incorrect number of logs')
+        const logMore = txMore.logs[0]
+        assert.equal(logMore.event, 'Approval', 'Approval event not emitted')
+        assert.equal(logMore.args._owner, OWNER, 'Owner does not match')
+        assert.equal(logMore.args._spender, SPENDER, 'Spender does not match')
+        assert.equal(logMore.args._value.toNumber(), approveAmount * 2, 'Amount does not match')
+
         const currentAllowanceMore = await metToken.allowance.call(OWNER, SPENDER)
         assert.equal(currentAllowanceMore, approveAmount * 2, 'allowance approved more is not correct')
 
-        await metToken.approveLess(SPENDER, approveAmount, {from: OWNER})
+        const txLess = await metToken.approveLess(SPENDER, approveAmount, {from: OWNER})
+        assert.equal(txLess.logs.length, 1, 'incorrect number of logs')
+        const logLess = txLess.logs[0]
+        assert.equal(logLess.event, 'Approval', 'Approval event not emitted')
+        assert.equal(logLess.args._owner, OWNER, 'Owner does not match')
+        assert.equal(logLess.args._spender, SPENDER, 'Spender does not match')
+        assert.equal(logLess.args._value.toNumber(), approveAmount, 'Amount does not match')
+
         const currentAllowanceLess = await metToken.allowance.call(OWNER, SPENDER)
         assert.equal(currentAllowanceLess, approveAmount, 'allowance approved less is not correct')
 
