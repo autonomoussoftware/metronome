@@ -31,6 +31,7 @@ const TokenLocker = artifacts.require('TokenLocker')
 contract('Auctions', accounts => {
   const BUYER1 = accounts[6]
   const BUYER2 = accounts[8]
+  const BUYER3 = accounts[7]
 
   const OWNER = accounts[0]
   const OWNER_TOKENS_HEX = '0000D3C214DE7193CD4E0000'
@@ -490,6 +491,76 @@ contract('Auctions', accounts => {
       globalDailySupply = await auctions.globalDailySupply()
 
       assert.closeTo(expectedDailySupply, globalDailySupply.toNumber(), 2e8)
+
+      resolve()
+    })
+  })
+
+  it('Should test current price at the start of 1st daily auction, initial auction not sold out', () => {
+    return new Promise(async (resolve, reject) => {
+      const amount = 1e18
+      const minimumPrice = 33e11
+      await TestRPCTime.mineBlock()
+      var currentBlockTime = TestRPCTime.getCurrentBlockTime()
+      const { auctions } = await METGlobal.initContracts(accounts, currentBlockTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+
+      let advanceSeconds = SECS_IN_DAY
+      await TestRPCTime.timeTravel(advanceSeconds)
+      await TestRPCTime.mineBlock()
+      // execute transaction by the buyer
+      await auctions.sendTransaction({
+        from: BUYER3,
+        value: amount
+      })
+
+      // fast forward to the start of 1st daily auction
+      await TestRPCTime.mineBlock()
+      currentBlockTime = TestRPCTime.getCurrentBlockTime()
+      let currentBlockTimeRounded = roundToNextMidnight(currentBlockTime)
+      let SECS_TO_NEXT_MIDNIGHT = currentBlockTimeRounded - currentBlockTime
+      advanceSeconds = SECS_TO_NEXT_MIDNIGHT + (6 * SECS_IN_DAY) + 20
+      await TestRPCTime.timeTravel(advanceSeconds)
+      await TestRPCTime.mineBlock()
+
+      const currentAuction = await auctions.currentAuction()
+      assert.equal(currentAuction.valueOf(), 1, 'Current auction is not correct')
+      const currentPrice = await auctions.currentPrice()
+      assert.equal(currentPrice.valueOf(), (minimumPrice * 2) + 1, 'Current price is not correct')
+
+      resolve()
+    })
+  })
+
+  it('Should test current price at the start of 2nd daily auction, when prev auctions sold out', () => {
+    return new Promise(async (resolve, reject) => {
+      const amount = 30e18
+      const minimumPrice = 33e11
+      await TestRPCTime.mineBlock()
+      var currentBlockTime = TestRPCTime.getCurrentBlockTime()
+      const { auctions } = await METGlobal.initContracts(accounts, currentBlockTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+
+      // fast forward towards the end of 1st daily auction
+      let currentBlockTimeRounded = roundToNextMidnight(currentBlockTime)
+      let SECS_TO_NEXT_MIDNIGHT = currentBlockTimeRounded - currentBlockTime
+      let advanceSeconds = SECS_TO_NEXT_MIDNIGHT + (8 * SECS_IN_DAY) - (2 * SECS_IN_HOUR)
+
+      await TestRPCTime.timeTravel(advanceSeconds)
+      await TestRPCTime.mineBlock()
+      // execute transaction by the buyer
+      await auctions.sendTransaction({
+        from: BUYER3,
+        value: amount
+      })
+
+      // fast forward to the start of 2nd daily auction
+      advanceSeconds = (2 * SECS_IN_HOUR) + 20
+      await TestRPCTime.timeTravel(advanceSeconds)
+      await TestRPCTime.mineBlock()
+
+      const currentAuction = await auctions.currentAuction()
+      assert.equal(currentAuction.valueOf(), 2, 'Current auction is not correct')
+      const currentPrice = await auctions.currentPrice()
+      assert.equal(currentPrice.valueOf(), (minimumPrice * 2) + 1, 'Current price is not correct')
 
       resolve()
     })
