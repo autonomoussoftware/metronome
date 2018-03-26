@@ -723,7 +723,7 @@ contract METToken is Token {
     /// @notice caller can withdraw the token from subscribers.
     /// @param _from subcriber
     /// @return true/false
-    function subWithdraw(address _from) public returns (bool) {
+    function subWithdraw(address _from) public transferable returns (bool) {
         return subWithdrawFor(_from, msg.sender);
     }
 
