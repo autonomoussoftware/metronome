@@ -240,8 +240,8 @@ contract('Auctions', accounts => {
       const previousDay = currentTime() - SECS_IN_A_DAY - 120
       await initContracts(previousDay, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
-      const nextAuction = await auctions.nextAuction()
-      assert.equal(nextAuction[2].valueOf(), dailySupply, 'auction supply is not correct')
+      const heartbeat = await auctions.heartbeat()
+      assert.equal(heartbeat[12].toNumber(), dailySupply, 'auction supply is not correct')
 
       resolve()
     })
@@ -369,66 +369,6 @@ contract('Auctions', accounts => {
     })
   })
 
-  it('Should return information for next auction, when genesisTime is in future', () => {
-    return new Promise(async (resolve, reject) => {
-      const genesisTime = currentTime() + 60 // auction start time for first auction
-      const nextPurchasePrice = 2e18 // purchase price for first auction
-      const auctionToken = 8e24 // 8 million is mintable token for first auction
-      await initContracts(0, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
-
-      const nextAuction = await auctions.nextAuction()
-
-      assert.equal(nextAuction[0].valueOf(), genesisTime, 'next auction time is not correct for first auction')
-      assert.equal(nextAuction[1].valueOf(), nextPurchasePrice, 'next purchase price is not correct for first auction')
-      assert.equal(nextAuction[2].valueOf(), auctionToken, 'next auction token is not correct for first auction')
-
-      resolve()
-    })
-  })
-
-  it('Should return information for next auction, after 1 day during initial auction', () => {
-    return new Promise(async (resolve, reject) => {
-      // set genesisTime to one day earlier (provided + 60)
-      const previousDay = currentTime() - SECS_IN_A_DAY - 60
-      const dailySupply = 2880 * DECMULT
-
-      await initContracts(previousDay, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
-      const lastPurchasePrice = await auctions.lastPurchasePrice()
-      const nextPurchasePrice = (lastPurchasePrice * 2) + 1// expected to double the price
-      const nextAuctionToken = dailySupply
-
-      const nextAuctionTime = await auctions.dailyAuctionStartTime()
-      const nextAuction = await auctions.nextAuction()
-
-      assert.equal(nextAuction[0].valueOf(), nextAuctionTime, 'next auction time is not correct for 1st daily auction')
-      assert.equal(nextAuction[1].valueOf(), nextPurchasePrice, 'next purchase price is not correct for 1st daily auction')
-      assert.equal(nextAuction[2].valueOf(), nextAuctionToken, 'next auction token is not correct for 1st daily auction')
-
-      resolve()
-    })
-  })
-
-  it('Should return information for next auction, when metronome missed one auction', () => {
-    return new Promise(async (resolve, reject) => {
-      // set genesisTime to 8 days and 1 day earlier (auction off period and few hours)
-      const startTime = currentTime() - (INITIAL_AUCTION_DURATION * 60) - 2 * SECS_IN_A_DAY
-      const dailySupply = 2880 * DECMULT
-      await initContracts(startTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
-      const lastPurchasePrice = await auctions.lastPurchasePrice()
-      const nextPurchasePrice = (lastPurchasePrice / 100) + 1// expected price when we miss auction
-      const nextAuctionToken = 2 * dailySupply// multiply by 2 as we missed one auction
-      var dailyAuctionStartTime = await auctions.dailyAuctionStartTime()
-      const nextAuctionTime = dailyAuctionStartTime.add(2 * SECS_IN_A_DAY)// dailyAuctionStartTime + 2 days for next
-      const nextAuction = await auctions.nextAuction()
-
-      assert.equal(nextAuction[0].valueOf(), nextAuctionTime.valueOf(), 'next auction time is not correct when we missed one auction')
-      assert.equal(nextAuction[1].valueOf(), nextPurchasePrice, 'next purchase price is not correct when we missed one auction')
-      assert.equal(nextAuction[2].valueOf(), nextAuctionToken, 'next auction token is not correct when we missed one auction')
-
-      resolve()
-    })
-  })
-
   it('Should test Global daily met supply', () => {
     return new Promise(async (resolve, reject) => {
       // 10th tick
@@ -460,8 +400,9 @@ contract('Auctions', accounts => {
       assert.equal(heartbeat[6].valueOf(), web3.eth.getBalance(proceeds.address), 'Proceed balance is not correct')
       assert.equal(heartbeat[7].valueOf(), await auctions.currentTick(), 'Current tick is not correct')
       assert.equal(heartbeat[8].valueOf(), await auctions.currentAuction(), 'Current auction is not correct')
-      const nextAuction = await auctions.nextAuction()
-      assert.equal(heartbeat[9].valueOf(), nextAuction[0], 'Next auction start time is not correct')
+      const dailyAuctionStartTime = (await auctions.dailyAuctionStartTime()).toNumber()
+      let nextAuctionStartTime = dailyAuctionStartTime + (heartbeat[8].toNumber() * SECS_IN_A_DAY)
+      assert.equal(heartbeat[9].valueOf(), nextAuctionStartTime, 'Next auction start time is not correct')
       assert.equal(heartbeat[11].valueOf(), expectedCurrentPrice, 'Current price is not correct')
       resolve()
     })
