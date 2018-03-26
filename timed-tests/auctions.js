@@ -31,6 +31,7 @@ const TokenLocker = artifacts.require('TokenLocker')
 contract('Auctions', accounts => {
   const BUYER1 = accounts[6]
   const BUYER2 = accounts[8]
+  const BUYER3 = accounts[7]
 
   const OWNER = accounts[0]
   const OWNER_TOKENS_HEX = '0000D3C214DE7193CD4E0000'
@@ -45,6 +46,7 @@ contract('Auctions', accounts => {
   const SECS_IN_DAY = 86400
   const SECS_IN_MINUTE = 60
   const SECS_IN_HOUR = 3600
+  const MINUTES_IN_DAY = 24 * 60
   let currentTimeOffset = 0
 
   function getCurrentTime (offsetDays) {
@@ -212,6 +214,95 @@ contract('Auctions', accounts => {
     })
   })
 
+  it('Should buy MET every  day and observe  mintable tokens', () => {
+    return new Promise(async (resolve, reject) => {
+      // initialize auction
+      await TestRPCTime.mineBlock()
+      const { auctions, metToken } = await METGlobal.initContracts(accounts, TestRPCTime.getCurrentBlockTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+
+      // advance a minute so action can start
+      let advanceSeconds = SECS_IN_MINUTE
+      await TestRPCTime.timeTravel(advanceSeconds)
+      await TestRPCTime.mineBlock()
+      currentTimeOffset += advanceSeconds / SECS_IN_DAY
+
+      // validate we are at the begining of initial auction
+      const nowTime = TestRPCTime.getCurrentBlockTime()
+      const genesisTime = (await auctions.genesisTime()).toNumber()
+      assert(nowTime > genesisTime, 'Current time is not after genesisTime')
+      const initialAuctionEndTime = (await auctions.initialAuctionEndTime()).toNumber()
+      assert(nowTime < initialAuctionEndTime, 'Current time is after the inital auction end time')
+      const dailyAuctionStartTime = (await auctions.dailyAuctionStartTime()).toNumber()
+      assert(nowTime < dailyAuctionStartTime, 'Current time is not before the next daily auction start time')
+
+      // simulate hourly buys for three days
+      const fromAccount = BUYER1
+      const amount = web3.toWei(0.001, 'ether')
+      const totalDays = 14
+      let expectedToken = 0
+      let expectedPrice = 2e18
+      let metBalanceBefore = await metToken.balanceOf(fromAccount)
+      let metBalanceAfter = metBalanceBefore
+      const MULTIPLIER = 1984320568 * 10 ** 5
+      let currentAuction = 0
+      let tx, log
+      let mintabeBefore, mintableAfter
+      mintableAfter = await auctions.mintable()
+
+      for (let i = 0; i < totalDays; i++) {
+        // peform buy
+        tx = await auctions.sendTransaction({
+          from: fromAccount,
+          value: amount
+        })
+        if (i > 0) {
+          if (i <= 7) {
+            expectedPrice = expectedPrice - (MULTIPLIER * (Math.floor(advanceSeconds / 60)))
+            if (expectedPrice < MINIMUM_PRICE) {
+              expectedPrice = MINIMUM_PRICE * 2
+            }
+          } else {
+            expectedPrice = expectedPrice * (0.99 ** MINUTES_IN_DAY)
+            if (expectedPrice < MINIMUM_PRICE) {
+              expectedPrice = MINIMUM_PRICE
+            }
+            expectedPrice = expectedPrice * 2
+          }
+        }
+
+        log = tx.logs[0]
+        mintabeBefore = mintableAfter
+        mintableAfter = await auctions.mintable()
+
+        expectedToken = expectedToken + ((amount * 1e18) / expectedPrice)
+        // check balances and validate pprice
+        metBalanceBefore = metBalanceAfter
+        metBalanceAfter = await metToken.balanceOf(fromAccount)
+        currentAuction = await auctions.currentAuction()
+        currentAuction = await auctions.currentAuction()
+        let nowTime = TestRPCTime.getCurrentBlockTime()
+        let errorDetla = 1e7
+        assert.closeTo(metBalanceAfter - metBalanceBefore, log.args.tokens.toNumber(), errorDetla, 'MET token issued is wrong at ' + i + 'th day')
+        if (currentAuction.toNumber() > 0) {
+          assert.closeTo(mintableAfter.toNumber() - mintabeBefore.toNumber() + log.args.tokens.toNumber(), 2880e18, 50e8, 'Minted token is wrong at ' + i + 'th day')
+        }
+        // advance a day
+        if (i === 6) {
+          let currentBlockTimeRounded = roundToNextMidnight(nowTime)
+          let SECS_TO_NEXT_MIDNIGHT = currentBlockTimeRounded - nowTime
+          advanceSeconds = SECS_TO_NEXT_MIDNIGHT + 10
+        } else {
+          advanceSeconds = SECS_IN_DAY
+        }
+
+        await TestRPCTime.timeTravel(advanceSeconds)
+        await TestRPCTime.mineBlock()
+        currentTimeOffset += advanceSeconds / SECS_IN_DAY
+      }
+      resolve()
+    })
+  })
+
   it('Should verify the auction behaviour at 10th tick of 3rd auction', () => {
     return new Promise(async (resolve, reject) => {
       const fromAccount = accounts[6]
@@ -259,9 +350,14 @@ contract('Auctions', accounts => {
       await TestRPCTime.timeTravel(advanceSeconds)
       await TestRPCTime.mineBlock()
       currentTimeOffset += advanceSeconds / SECS_IN_DAY
-      let nextAuc = await auctions.nextAuction()
-      const expectedNextAuctionPrice = 20736727076
-      assert.closeTo(expectedNextAuctionPrice, nextAuc[1].toNumber(), 20)
+      // const expectedNextAuctionPrice = 20736727076
+      const expectedNextAuctionPrice = MINIMUM_PRICE * 2
+      await auctions.sendTransaction({
+        from: BUYER1,
+        value: amountUsedForPurchase
+      })
+      let lastPurchasePrice = await auctions.lastPurchasePrice()
+      assert.closeTo(expectedNextAuctionPrice, lastPurchasePrice.toNumber(), 20)
       await auctions.sendTransaction({ from: fromAccount, value: amountUsedForPurchase })
       resolve()
     })
@@ -319,9 +415,8 @@ contract('Auctions', accounts => {
       assert.equal(heartbeat[5].toNumber(), totalSupplyHere.toNumber(), 'total minted MET is not correct')
       assert.equal(heartbeat[4].toNumber(), globalMetSupply.sub(totalSupplyHere).toNumber(), 'Mintable is not correct')
       assert.equal(heartbeat[6].toNumber(), web3.eth.getBalance(proceeds.address).toNumber(), 'Proceed balance is not correct')
-      const nextAuction = await auctions.nextAuction()
-      assert(new Date(nextAuction[0] * MILLISECS_IN_A_SEC).toUTCString().indexOf('00:00:00') >= 0, 'nextAuction timestamp is not midnight')
-      assert.equal(heartbeat[9].toNumber(), nextAuction[0].toNumber(), 'Next auction start time is not correct')
+      let nextAuctionStartTime = dailyAuctionStartTime + (heartbeat[8].toNumber() * SECS_IN_DAY)
+      assert.equal(heartbeat[9].toNumber(), nextAuctionStartTime, 'Next auction start time is not correct')
       assert.equal(heartbeat[11].toNumber(), expectedCurrentPrice, 'Current price is not correct')
 
       resolve()
@@ -400,9 +495,8 @@ contract('Auctions', accounts => {
       assert.equal(heartbeat[5].toNumber(), totalSupplyHere.toNumber(), 'total minted MET is not correct')
       assert.equal(heartbeat[4].toNumber(), globalMetSupply.sub(totalSupplyHere).toNumber(), 'Mintable is not correct')
       assert.equal(heartbeat[6].toNumber(), web3.eth.getBalance(proceeds.address).toNumber(), 'Proceed balance is not correct')
-      const nextAuction = await auctions.nextAuction()
-      assert(new Date(nextAuction[0] * MILLISECS_IN_A_SEC).toUTCString().indexOf('00:00:00') >= 0, 'nextAuction timestamp is not midnight')
-      assert.equal(heartbeat[9].toNumber(), nextAuction[0].toNumber(), 'Next auction start time is not correct')
+      let nextAuctionStartTime = dailyAuctionStartTime + (heartbeat[8].toNumber() * SECS_IN_DAY)
+      assert.equal(heartbeat[9].toNumber(), nextAuctionStartTime, 'Next auction start time is not correct')
       assert.equal(heartbeat[11].toNumber(), expectedCurrentPrice, 'Current price is not correct')
 
       resolve()
@@ -490,6 +584,76 @@ contract('Auctions', accounts => {
       globalDailySupply = await auctions.globalDailySupply()
 
       assert.closeTo(expectedDailySupply, globalDailySupply.toNumber(), 2e8)
+
+      resolve()
+    })
+  })
+
+  it('Should test current price at the start of 1st daily auction, initial auction not sold out', () => {
+    return new Promise(async (resolve, reject) => {
+      const amount = 1e18
+      const minimumPrice = 33e11
+      await TestRPCTime.mineBlock()
+      var currentBlockTime = TestRPCTime.getCurrentBlockTime()
+      const { auctions } = await METGlobal.initContracts(accounts, currentBlockTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+
+      let advanceSeconds = SECS_IN_DAY
+      await TestRPCTime.timeTravel(advanceSeconds)
+      await TestRPCTime.mineBlock()
+      // execute transaction by the buyer
+      await auctions.sendTransaction({
+        from: BUYER3,
+        value: amount
+      })
+
+      // fast forward to the start of 1st daily auction
+      await TestRPCTime.mineBlock()
+      currentBlockTime = TestRPCTime.getCurrentBlockTime()
+      let currentBlockTimeRounded = roundToNextMidnight(currentBlockTime)
+      let SECS_TO_NEXT_MIDNIGHT = currentBlockTimeRounded - currentBlockTime
+      advanceSeconds = SECS_TO_NEXT_MIDNIGHT + (6 * SECS_IN_DAY) + 20
+      await TestRPCTime.timeTravel(advanceSeconds)
+      await TestRPCTime.mineBlock()
+
+      const currentAuction = await auctions.currentAuction()
+      assert.equal(currentAuction.valueOf(), 1, 'Current auction is not correct')
+      const currentPrice = await auctions.currentPrice()
+      assert.equal(currentPrice.valueOf(), (minimumPrice * 2) + 1, 'Current price is not correct')
+
+      resolve()
+    })
+  })
+
+  it('Should test current price at the start of 2nd daily auction, when prev auctions sold out', () => {
+    return new Promise(async (resolve, reject) => {
+      const amount = 30e18
+      const minimumPrice = 33e11
+      await TestRPCTime.mineBlock()
+      var currentBlockTime = TestRPCTime.getCurrentBlockTime()
+      const { auctions } = await METGlobal.initContracts(accounts, currentBlockTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+
+      // fast forward towards the end of 1st daily auction
+      let currentBlockTimeRounded = roundToNextMidnight(currentBlockTime)
+      let SECS_TO_NEXT_MIDNIGHT = currentBlockTimeRounded - currentBlockTime
+      let advanceSeconds = SECS_TO_NEXT_MIDNIGHT + (8 * SECS_IN_DAY) - (2 * SECS_IN_HOUR)
+
+      await TestRPCTime.timeTravel(advanceSeconds)
+      await TestRPCTime.mineBlock()
+      // execute transaction by the buyer
+      await auctions.sendTransaction({
+        from: BUYER3,
+        value: amount
+      })
+
+      // fast forward to the start of 2nd daily auction
+      advanceSeconds = (2 * SECS_IN_HOUR) + 20
+      await TestRPCTime.timeTravel(advanceSeconds)
+      await TestRPCTime.mineBlock()
+
+      const currentAuction = await auctions.currentAuction()
+      assert.equal(currentAuction.valueOf(), 2, 'Current auction is not correct')
+      const currentPrice = await auctions.currentPrice()
+      assert.equal(currentPrice.valueOf(), (minimumPrice * 2) + 1, 'Current price is not correct')
 
       resolve()
     })
