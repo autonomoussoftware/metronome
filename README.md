@@ -1,10 +1,19 @@
-# metronome
+<h1 align="center">
+  <img src="./logo.png" alt="Metronome" width="50%">
+</h1>
 
-Metronome Token as described in the [Metronome User's Manual](https://www.metronome.io/pdf/owners_manual.pdf)
+Ⓜ️ Metronome Token Contracts as described in the [Metronome User's Manual](https://www.metronome.io/pdf/owners_manual.pdf)
 
-### Requirements
+## Index
+1. [Requirements](#requirements)
+1. [Getting Started](#getting-started)
+1. [Installation](#installation)
+1. [Test Suit](#test-suit)
+1. [License](#license)
 
-You will need a MacOS or Linux system. 
+## Requirements
+
+You will need a MacOS or Linux system.
 
 - Install the latest version of `parity`.
 - Install the latest version of `solc`.
@@ -12,14 +21,14 @@ You will need a MacOS or Linux system.
 
 Local development is worked against TestRPC (which will be installed via `npm`).   Parity is used to test against a local dev-chain (see `parity-spec.json`) and can also be used to test agains Ropsten TestNet or the Public MainNet.
 
-### Getting started
+## Getting Started
 
-#### Installation
+### Installation
 - `npm install` to install all module dependencies
 - `npm test` to compile all the contracts and run the entire test suite agains TestRPC
 - `TESTFILE=test/<testfile>.js npm run testrpc:single` to compile and run a single test file
 
-#### Parity Local Dev Chain Testing
+### Parity Local Dev Chain Testing
 - `./deploy` to compile all the contracts and deploy them to a local parity dev-chain (this script will automatically start Parity)
 - `geth attach --preload js/metronome.js,js/const.js,js/initMetronome.js` to open a geth console and start metronome
 - `geth attach --preload js/metronome.js,js/const.js,js/initPostAuction.js` to open a geth console and start metronme (bypassing the initial auction)
@@ -28,11 +37,11 @@ Here geth console commands to emulate auction transactions
 - `loadScript('js/testStart.js')` to load a geth test script for auction buys
 - call `pingBuy()` to simulate a buy (this will also initiate a buy every 30 seconds)
 
-### Test Suite
+## Test Suite
 
 Sample code of how to interact with the smart contracts can be viewed in the Truffle tests.
 
-#### Unit Tests (/test)
+### Unit Tests (`./test`)
 
 - `shared` folder contains utility code shared amongs multiple test cases
 - `auctions.js` tests for the Auction contract
@@ -49,7 +58,7 @@ Sample code of how to interact with the smart contracts can be viewed in the Tru
 - `tokenLocker.js` tests used for time locking founder tokens
 - `tokenPorter.js` tests for exporting MET tokens to be imported to another chain
 
-#### Timed Tests (/timed-tests)
+### Timed Tests (`./timed-tests`)
 
 Simuating time proved to be a challenge, so we had to migrate a seperate suite of tests so that we can take advantage of `evm_increaseTime`.  This allowed us to better test targeted scenarios that depended on system time.
 
@@ -58,3 +67,6 @@ Simuating time proved to be a challenge, so we had to migrate a seperate suite o
 - `proceeds.js` timed tests for Proceeds
 - `subscriptions.js` timed tests for MET Token subscriptions
 - `tokenLocker.js` timed tests for TokenLocker withdraws
+
+## LICENSE
+[MIT License](https://github.com/autonomoussoftware/metronome/blob/master/LICENSE).
