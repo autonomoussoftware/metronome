@@ -38,8 +38,14 @@ contract('Subscriptions', accounts => {
   const SUBSCRIBERS = [accounts[2], accounts[4], accounts[6]]
   const SPENDERS = [accounts[3], accounts[5], accounts[7]]
   const PAY_PER_WEEK = 1e10
-
+  const MET_INITIAL_SUPPLY = 0
+  const ST_INITIAL_SUPPLY = 10e6
+  const DECMULT = 10 ** 18
+  const MINIMUM_PRICE = 1000
+  const STARTING_PRICE = 1
+  const TIME_SCALE = 1
   const DAYS_IN_WEEK = 7
+  const INITIAL_AUCTION_END_TIME = 7 * 24 * 60 * 60 // 7 days in seconds
   const SECS_IN_DAY = 86400
   const TIME_DELTA = 60 // in seconds, to keep subscription startTime one minute ahead of block.timestamp
   const timeTravel = function (time) {
@@ -73,7 +79,7 @@ contract('Subscriptions', accounts => {
     return web3.eth.getBlock(defaultBlock).timestamp + TIME_DELTA
   }
 
-  beforeEach(async () => {
+  async function initContracts (startTime) {
     autonomousConverter = await AutonomousConverter.new({from: OWNER})
     auctions = await Auctions.new({from: OWNER})
     proceeds = await Proceeds.new({from: OWNER})
@@ -81,27 +87,49 @@ contract('Subscriptions', accounts => {
     const founders = []
     founders.push(OWNER + '0000D3C214DE7193CD4E0000')
     founders.push(FOUNDER + '0000D3C214DE7193CD4E0000')
-
-    const MET_INITIAL_SUPPLY = 0
-    const ST_INITIAL_SUPPLY = 10e6
-    const DECMULT = 10 ** 18
-    const MINIMUM_PRICE = 1000
-    const STARTING_PRICE = 1
-    const TIME_SCALE = 1
-    let timeInSeconds = new Date().getTime() / 1000
-    const INITIAL_AUCTION_END_TIME = 7 * 24 * 60 * 60 // 7 days in seconds
-    var START_TIME = (Math.floor(timeInSeconds / 60) * 60) - INITIAL_AUCTION_END_TIME - 120
-
     metToken = await METToken.new(autonomousConverter.address, auctions.address, MET_INITIAL_SUPPLY, DECMULT, {from: OWNER})
     smartToken = await SmartToken.new(autonomousConverter.address, autonomousConverter.address, ST_INITIAL_SUPPLY, {from: OWNER})
     await autonomousConverter.init(metToken.address, smartToken.address, auctions.address, { from: OWNER, value: web3.toWei(1, 'ether') })
     await proceeds.initProceeds(autonomousConverter.address, auctions.address, {from: OWNER})
     await auctions.mintInitialSupply(founders, metToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
-    await auctions.initAuctions(START_TIME, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE, {from: OWNER})
-    await metToken.enableMETTransfers()
+    await auctions.initAuctions(startTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE, {from: OWNER})
+  }
+
+  describe('Subscribe when transfer not enabled', () => {
+    beforeEach(async () => {
+      let timeInSeconds = new Date().getTime() / 1000
+      var startTime = (Math.floor(timeInSeconds / 60) * 60) - INITIAL_AUCTION_END_TIME - 2 * SECS_IN_DAY - 120
+      await initContracts(startTime)
+    })
+
+    it('Subwithdraw test when transfer not allowed', () => {
+      return new Promise(async (resolve, reject) => {
+        const spender = accounts[9]
+        const startTime = getCurrentBlockTime()
+        await auctions.sendTransaction({ from: OWNER, value: 1e18 })
+        await metToken.subscribe(startTime, PAY_PER_WEEK, spender, {from: OWNER})
+        await timeTravel(SECS_IN_DAY * DAYS_IN_WEEK)
+        await mineBlock()
+        let thrown = false
+        try {
+          await metToken.subWithdraw(OWNER, {from: spender})
+        } catch (error) {
+          thrown = true
+        }
+        assert(thrown, 'Subwithdraw did not throw')
+        resolve()
+      })
+    })
   })
 
   describe('Time travel', () => {
+    beforeEach(async () => {
+      let timeInSeconds = new Date().getTime() / 1000
+      var startTime = (Math.floor(timeInSeconds / 60) * 60) - INITIAL_AUCTION_END_TIME - 120
+      await initContracts(startTime)
+      await metToken.enableMETTransfers()
+    })
+
     it('Consistent Weekly Payments for a year', () => {
       return new Promise(async (resolve, reject) => {
         // subscribe users
