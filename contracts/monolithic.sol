@@ -1316,55 +1316,6 @@ contract Auctions is Pricer, Owned {
         return dailySupply;
     }
 
-    /// @notice Return the information about the next auction
-    /// @return _startTime Start time of next auction
-    /// @return _startPrice Start price of MET in next auction
-    /// @return _auctionTokens  MET supply in next auction
-    function nextAuction() public constant returns(uint _startTime, uint _startPrice, uint _auctionTokens) {
-        if (block.timestamp < genesisTime) {
-            _startTime = genesisTime;
-            _startPrice = lastPurchasePrice;
-            _auctionTokens = mintable;
-            return;
-        }
-
-        uint recentAuction = whichAuction(lastPurchaseTick);
-        uint currAuc = currentAuction();
-        uint totalAuctions = currAuc - recentAuction;
-        if (currAuc == 0) {
-            _startTime = dailyAuctionStartTime;
-        } else {
-            _startTime = (currAuc * DAY_IN_SECONDS / timeScale) + dailyAuctionStartTime;
-        }
-
-        _auctionTokens = nextAuctionSupply(totalAuctions);
-
-        if (totalAuctions > 1) {
-            _startPrice = lastPurchasePrice / 100 + 1;
-        } else {
-            if (mintable == 0 || totalAuctions == 0) {
-                // Sold out scenario or someone querying projected start price of next auction
-                _startPrice = (lastPurchasePrice * 2) + 1;   
-            } else {
-                // Timed out and all token not sold.
-                if (currAuc == 1) {
-                    // If initial auction timed out then price before start of new auction will touch floor price
-                    _startPrice = minimumPrice * 2;
-                } else {
-                    // Descending price till end of auction and then multiply by 2
-                    uint tickWhenAuctionEnded = whichTick(_startTime - 1 days);
-                    uint numTick = 0;
-                    if (tickWhenAuctionEnded > lastPurchaseTick) {
-                        numTick = tickWhenAuctionEnded - lastPurchaseTick;
-                    }
-                    _startPrice = (priceAt(lastPurchasePrice, numTick)) * 2 + 1;
-                }
-                
-                
-            }
-        }
-    }
-
     /// @notice Current price of MET in current auction
     /// @return weiPerToken 
     function currentPrice() public constant returns (uint weiPerToken) {
@@ -1387,6 +1338,58 @@ contract Auctions is Pricer, Owned {
             tokens = mintable;
             uint weiPaying = mintable.mul(weiPerToken).div(METDECMULT);
             refund = _wei.sub(weiPaying);
+        }
+    }
+    
+    /// @notice Return the information about the next auction
+    /// @return _startTime Start time of next auction
+    /// @return _startPrice Start price of MET in next auction
+    /// @return _auctionTokens  MET supply in next auction
+    function nextAuction() internal constant returns(uint _startTime, uint _startPrice, uint _auctionTokens) {
+        if (block.timestamp < genesisTime) {
+            _startTime = genesisTime;
+            _startPrice = lastPurchasePrice;
+            _auctionTokens = mintable;
+            return;
+        }
+
+        uint recentAuction = whichAuction(lastPurchaseTick);
+        uint currAuc = currentAuction();
+        uint totalAuctions = currAuc - recentAuction;
+        _startTime = dailyAuctionStartTime;
+        if (currAuc > 1) {
+            _startTime = auctionStartTime(currentTick());
+        }
+
+        _auctionTokens = nextAuctionSupply(totalAuctions);
+
+        if (totalAuctions > 1) {
+            _startPrice = lastPurchasePrice / 100 + 1;
+        } else {
+            if (mintable == 0 || totalAuctions == 0) {
+                // Sold out scenario or someone querying projected start price of next auction
+                _startPrice = (lastPurchasePrice * 2) + 1;   
+            } else {
+                // Timed out and all token not sold.
+                if (currAuc == 1) {
+                    // If initial auction timed out then price before start of new auction will touch floor price
+                    _startPrice = minimumPrice * 2;
+                } else {
+                    // Descending price till end of auction and then multiply by 2
+                    uint tickWhenAuctionEnded = whichTick(_startTime);
+                    uint numTick = 0;
+                    if (tickWhenAuctionEnded > lastPurchaseTick) {
+                        numTick = tickWhenAuctionEnded - lastPurchaseTick;
+                    }
+                    uint priceWhenPreviousAuctionEnded = priceAt(lastPurchasePrice, numTick);
+                    if (priceWhenPreviousAuctionEnded < minimumPrice) {
+                        priceWhenPreviousAuctionEnded = minimumPrice;
+                    }
+                    _startPrice = priceWhenPreviousAuctionEnded * 2;
+                }
+                
+                
+            }
         }
     }
 
@@ -1508,7 +1511,7 @@ contract Auctions is Pricer, Owned {
         uint currentAuctionStartTime = auctionStartTime(_tick);
         return _tick - whichTick(currentAuctionStartTime);
     }
-
+    
     /// @notice Calculate number of ticks elapsed between lastPurchaseTick and auctions start time of given tick.
     /// @param _tick Given metronome tick
     function numTicksTillAuctionStart(uint _tick) private view returns (uint) {
@@ -1537,7 +1540,7 @@ contract Auctions is Pricer, Owned {
 
         mintable = mintable.add(auctionTokens);
         lastPurchasePrice = price;
-        lastPurchaseTick = whichTick(time - 1 days);
+        lastPurchaseTick = whichTick(time);
     }
 }
 
