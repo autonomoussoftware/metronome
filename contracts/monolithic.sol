@@ -1358,7 +1358,7 @@ contract Auctions is Pricer, Owned {
         uint totalAuctions = currAuc - recentAuction;
         _startTime = dailyAuctionStartTime;
         if (currAuc > 1) {
-            _startTime = ((currAuc - 1) * DAY_IN_SECONDS / timeScale) + dailyAuctionStartTime;
+            _startTime = auctionStartTime(currentTick());
         }
 
         _auctionTokens = nextAuctionSupply(totalAuctions);
