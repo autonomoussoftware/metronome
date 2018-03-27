@@ -1511,7 +1511,7 @@ contract Auctions is Pricer, Owned {
         uint currentAuctionStartTime = auctionStartTime(_tick);
         return _tick - whichTick(currentAuctionStartTime);
     }
-
+    
     /// @notice Calculate number of ticks elapsed between lastPurchaseTick and auctions start time of given tick.
     /// @param _tick Given metronome tick
     function numTicksTillAuctionStart(uint _tick) private view returns (uint) {
