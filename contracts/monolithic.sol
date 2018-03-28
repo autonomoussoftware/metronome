@@ -695,7 +695,6 @@ contract METToken is Token {
     function cancelSubscription(address _recipient) public returns (bool) {
         require(subs[msg.sender][_recipient].startTime != 0);
         require(subs[msg.sender][_recipient].payPerWeek != 0);
-        require(subs[msg.sender][_recipient].lastWithdrawTime != 0);
 
         subs[msg.sender][_recipient].startTime = 0;
         subs[msg.sender][_recipient].payPerWeek = 0;
