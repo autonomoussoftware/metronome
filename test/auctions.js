@@ -345,6 +345,18 @@ contract('Auctions', accounts => {
     })
   })
 
+  it('Should test currentPrice is equal to minimumPrice during initial auction', () => {
+    return new Promise(async (resolve, reject) => {
+      const startTime = currentTime() - (5 * 24 * 60 * 60)
+
+      await initContracts(startTime, MINIMUM_PRICE, 1, TIME_SCALE)
+
+      const currentPrice = await auctions.currentPrice()
+      assert.equal(currentPrice.valueOf(), MINIMUM_PRICE, 'Current price is not equal to minimum price')
+      resolve()
+    })
+  })
+
   it('Should verify that current auction is equal to 1, for given time and timeScale', () => {
     return new Promise(async (resolve, reject) => {
       // set genesisTime to 7 days and 1 day earlier (auction off period and few hours)
