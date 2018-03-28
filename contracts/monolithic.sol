@@ -150,7 +150,7 @@ contract Formula is FixedMath {
         uint r = reserveTokenBalance;
         /// smartToken for mint(T) = S * (sqrt(1 + E/R) - 1)
         /// DECMULT is same as 1 for values with 18 decimal places
-        return (fMul(s, (fSub(fSqrt(fAdd(DECMULT, fDiv(e, r))), DECMULT))) * METDECMULT) / DECMULT;
+        return ((fMul(s, (fSub(fSqrt(fAdd(DECMULT, fDiv(e, r))), DECMULT)))).mul(METDECMULT)).div(DECMULT);
     }
 
     /// @notice Redeem smart tokens, get back reserve(ETH/MET) token
@@ -166,7 +166,7 @@ contract Formula is FixedMath {
         uint r = reserveTokenBalance;
         /// reserveToken (E) = R * (1 - (1 - T/S)**2)
         /// DECMULT is same as 1 for values with 18 decimal places
-        return (fMul(r, (fSub(DECMULT, fSqr(fSub(DECMULT, fDiv(t, s)))))) * METDECMULT) / DECMULT;
+        return ((fMul(r, (fSub(DECMULT, fSqr(fSub(DECMULT, fDiv(t, s))))))).mul(METDECMULT)).div(DECMULT);
     }
 }
 
