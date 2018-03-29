@@ -813,6 +813,8 @@ contract AutonomousConverter is Formula, Owned {
     bool internal initialized = false;
 
     event LogFundsIn(address indexed from, uint value);
+    event ConvertEthToMet(address indexed from, uint eth, uint met);
+    event ConvertMetToEth(address indexed from, uint eth, uint met);
 
     function () public payable {
         require(msg.value > 0);
@@ -853,18 +855,20 @@ contract AutonomousConverter is Formula, Owned {
 
     /// @notice send Ether and get MET
     /// @param _mintReturn execute conversion only if return is equal or more than _mintReturn
-    /// @return MET
-    function convertEthToMet(uint _mintReturn) public payable returns (uint) {
-        return convert(WhichToken.Eth, _mintReturn, msg.value);
+    /// @return returnedMet MET retured after conversion
+    function convertEthToMet(uint _mintReturn) public payable returns (uint returnedMet) {
+        returnedMet = convert(WhichToken.Eth, _mintReturn, msg.value);
+        ConvertEthToMet(msg.sender, msg.value, returnedMet);
     }
 
     /// @notice send MET and get Ether
     /// @dev Caller will be required to approve the AutonomousConverter to initiate the transfer
     /// @param _amount MET amount
     /// @param _mintReturn execute conversion only if return is equal or more than _mintReturn
-    /// @return ETH
-    function convertMetToEth(uint _amount, uint _mintReturn) public returns (uint) {
-        return convert(WhichToken.Met, _mintReturn, _amount);
+    /// @return returnedEth ETh returned after conversion
+    function convertMetToEth(uint _amount, uint _mintReturn) public returns (uint returnedEth) {
+        returnedEth = convert(WhichToken.Met, _mintReturn, _amount);
+        ConvertMetToEth(msg.sender, returnedEth, _amount);
     }
 
     function balanceOf(WhichToken which) internal view returns (uint) {
