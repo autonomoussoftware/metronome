@@ -177,6 +177,8 @@ contract Pricer {
     using SafeMath for uint;
     uint constant internal METDECIMALS = 18;
     uint constant internal METDECMULT = 10 ** METDECIMALS;
+    uint public minimumPrice = 33*10**11;
+    uint public minimumPriceInDailyAuction = 1;
 
     uint public tentimes;
     uint public hundredtimes;
@@ -261,19 +263,27 @@ contract Pricer {
         /// price is calcualted as, initialPrice multiplied by 0.99 and that too _n times.
         /// Here mult is METDECMULT multiplied by 0.99 and that too _n times.
         price = initialPrice.mul(mult).div(METDECMULT);
+        
+        if (price < minimumPriceInDailyAuction) {
+            price = minimumPriceInDailyAuction;
+        }
     }
 
     /// @notice Price of MET at nth minute during initial auction.
     /// @param lastPurchasePrice The price of MET in last transaction
     /// @param numTicks The number of minutes passed since last purchase
     /// @return The resulting price
-    function priceAtInitialAuction(uint lastPurchasePrice, uint numTicks) public pure returns (uint price) {
+    function priceAtInitialAuction(uint lastPurchasePrice, uint numTicks) public view returns (uint price) {
         /// Price will decrease linearly every minute by the factor of MULTIPLIER.
-        /// If decrease in price is more than lastPurchasePrice then return minumum purchase price.
-        if (lastPurchasePrice < MULTIPLIER.mul(numTicks)) {
-            price = 33*10**11;
-        } else {
+        /// If lastPurchasePrice is greater than decrease in price then calculated the price.
+        /// Return minimumPrice, if calculated price is less than minimumPrice.
+        /// If decrease in price is more than lastPurchasePrice then simply return the minimumPrice.
+        if (lastPurchasePrice > MULTIPLIER.mul(numTicks)) {
             price = lastPurchasePrice.sub(MULTIPLIER.mul(numTicks));
+        }
+
+        if (price < minimumPrice) {
+            price = minimumPrice;
         }
     }
 }
@@ -990,7 +1000,6 @@ contract Auctions is Pricer, Owned {
     mapping(address => TokenLocker) public tokenLockers;
     uint internal constant DAY_IN_SECONDS = 86400;
     uint internal constant DAY_IN_MINUTES = 1440;
-    uint public minimumPrice = 33*10**11;
     uint public genesisTime;
     uint public lastPurchaseTick;
     uint public lastPurchasePrice;
@@ -1383,11 +1392,7 @@ contract Auctions is Pricer, Owned {
                     if (tickWhenAuctionEnded > lastPurchaseTick) {
                         numTick = tickWhenAuctionEnded - lastPurchaseTick;
                     }
-                    uint priceWhenPreviousAuctionEnded = priceAt(lastPurchasePrice, numTick);
-                    if (priceWhenPreviousAuctionEnded < minimumPrice) {
-                        priceWhenPreviousAuctionEnded = minimumPrice;
-                    }
-                    _startPrice = priceWhenPreviousAuctionEnded * 2;
+                    _startPrice = priceAt(lastPurchasePrice, numTick) * 2;
                 }
                 
                 
@@ -1409,10 +1414,6 @@ contract Auctions is Pricer, Owned {
             weiPerToken = priceAt(lastPurchasePrice, numTicks);
         } else {
             weiPerToken = priceAtInitialAuction(lastPurchasePrice, numTicks);
-        }      
-
-        if (weiPerToken < minimumPrice) {
-            weiPerToken = minimumPrice;
         }
 
         uint calctokens = METDECMULT.mul(_wei).div(weiPerToken);
@@ -1472,18 +1473,14 @@ contract Auctions is Pricer, Owned {
             //Metronome clock is in new auction, next auction
             // previous auction sold out
             if (mintable == 0) {
-                prevPrice = (lastPurchasePrice * 2) + 1;
+                prevPrice = lastPurchasePrice * 2;
             } else {
                 //previous auctions timed out
                 // first daily auction
                 if (whichAuction(_tick) == 1) {
-                    prevPrice = (minimumPrice * 2) + 1;
+                    prevPrice = minimumPrice * 2;
                 } else {
-                    uint price = priceAt(lastPurchasePrice, numTicksTillAuctionStart(_tick));
-                    if (price < minimumPrice) {
-                        price = minimumPrice;
-                    }
-                    prevPrice = (price * 2) + 1;
+                    prevPrice = priceAt(lastPurchasePrice, numTicksTillAuctionStart(_tick)) * 2;
                 }
             }
             numTicks = numTicksSinceAuctionStart(_tick);
@@ -1499,12 +1496,7 @@ contract Auctions is Pricer, Owned {
             weiPerToken = priceAt(prevPrice, numTicks);
         } else {
             weiPerToken = priceAtInitialAuction(prevPrice, numTicks);
-        } 
-
-        if (weiPerToken < minimumPrice) {
-            weiPerToken = minimumPrice;
         }
-
     }
 
     /// @notice Calculate number of ticks elapsed between auction start time and given tick.
