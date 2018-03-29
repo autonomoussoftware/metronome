@@ -1034,8 +1034,11 @@ contract Auctions is Pricer, Owned {
         if (isInitialAuctionEnded()) {
             require(now >= dailyAuctionStartTime);
             if (lastPurcahseAuction[msg.sender] < currentAuction()) {
-                require(amountForPurchase < DAILY_PURCHASE_LIMIT);
-                purchaseInTheAuction[msg.sender] = amountForPurchase;
+                if (amountForPurchase > DAILY_PURCHASE_LIMIT) {
+                    excessAmount = amountForPurchase.sub(DAILY_PURCHASE_LIMIT);
+                    amountForPurchase = DAILY_PURCHASE_LIMIT;
+                }           
+                purchaseInTheAuction[msg.sender] = msg.value;
                 lastPurcahseAuction[msg.sender] = currentAuction();
             } else {
                 require(purchaseInTheAuction[msg.sender] < DAILY_PURCHASE_LIMIT);
