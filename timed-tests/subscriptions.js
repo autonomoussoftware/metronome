@@ -30,6 +30,7 @@ const Auctions = artifacts.require('Auctions')
 const METToken = artifacts.require('METToken')
 const Proceeds = artifacts.require('Proceeds')
 const SmartToken = artifacts.require('SmartToken')
+const TestRPCTime = require('../test/shared/time')
 
 contract('Subscriptions', accounts => {
   let metToken, autonomousConverter, auctions, proceeds, smartToken
@@ -47,37 +48,8 @@ contract('Subscriptions', accounts => {
   const DAYS_IN_WEEK = 7
   const INITIAL_AUCTION_END_TIME = 7 * 24 * 60 * 60 // 7 days in seconds
   const SECS_IN_DAY = 86400
-  const TIME_DELTA = 60 // in seconds, to keep subscription startTime one minute ahead of block.timestamp
-  const timeTravel = function (time) {
-    return new Promise((resolve, reject) => {
-      web3.currentProvider.sendAsync({
-        jsonrpc: '2.0',
-        method: 'evm_increaseTime',
-        params: [time + TIME_DELTA],
-        id: new Date().getTime()
-      }, (err, result) => {
-        if (err) { return reject(err) }
-        return resolve(result)
-      })
-    })
-  }
-
-  const mineBlock = function () {
-    return new Promise((resolve, reject) => {
-      web3.currentProvider.sendAsync({
-        jsonrpc: '2.0',
-        method: 'evm_mine'
-      }, (err, result) => {
-        if (err) { return reject(err) }
-        return resolve(result)
-      })
-    })
-  }
-
-  function getCurrentBlockTime () {
-    var defaultBlock = web3.eth.defaultBlock
-    return web3.eth.getBlock(defaultBlock).timestamp + TIME_DELTA
-  }
+  const SECS_IN_MIN = 60
+  const SECS_IN_WEEK = SECS_IN_DAY * DAYS_IN_WEEK
 
   async function initContracts (startTime) {
     autonomousConverter = await AutonomousConverter.new({from: OWNER})
@@ -97,19 +69,19 @@ contract('Subscriptions', accounts => {
 
   describe('Subscribe when transfer not enabled', () => {
     beforeEach(async () => {
-      let timeInSeconds = new Date().getTime() / 1000
-      var startTime = (Math.floor(timeInSeconds / 60) * 60) - INITIAL_AUCTION_END_TIME - 2 * SECS_IN_DAY - 120
-      await initContracts(startTime)
+      await initContracts(TestRPCTime.getCurrentBlockTime())
+      await TestRPCTime.timeTravel(INITIAL_AUCTION_END_TIME + (2 * SECS_IN_DAY))
+      await TestRPCTime.mineBlock()
     })
 
     it('Subwithdraw test when transfer not allowed', () => {
       return new Promise(async (resolve, reject) => {
         const spender = accounts[9]
-        const startTime = getCurrentBlockTime()
+        const startTime = TestRPCTime.getCurrentBlockTime() + SECS_IN_MIN
         await auctions.sendTransaction({ from: OWNER, value: 1e18 })
         await metToken.subscribe(startTime, PAY_PER_WEEK, spender, {from: OWNER})
-        await timeTravel(SECS_IN_DAY * DAYS_IN_WEEK)
-        await mineBlock()
+        await TestRPCTime.timeTravel(SECS_IN_WEEK)
+        await TestRPCTime.mineBlock()
         let thrown = false
         try {
           await metToken.subWithdraw(OWNER, {from: spender})
@@ -124,16 +96,16 @@ contract('Subscriptions', accounts => {
 
   describe('Time travel', () => {
     beforeEach(async () => {
-      let timeInSeconds = new Date().getTime() / 1000
-      var startTime = (Math.floor(timeInSeconds / 60) * 60) - INITIAL_AUCTION_END_TIME - 120
-      await initContracts(startTime)
+      await initContracts(TestRPCTime.getCurrentBlockTime())
+      await TestRPCTime.timeTravel(INITIAL_AUCTION_END_TIME + 120)
+      await TestRPCTime.mineBlock()
       await metToken.enableMETTransfers()
     })
 
     it('Consistent Weekly Payments for a year', () => {
       return new Promise(async (resolve, reject) => {
         // subscribe users
-        const startTime = getCurrentBlockTime()
+        const startTime = TestRPCTime.getCurrentBlockTime() + SECS_IN_MIN
         for (let i = 0; i < SUBSCRIBERS.length; i++) {
           await autonomousConverter.convertEthToMet(1, { from: SUBSCRIBERS[i], value: 2e18 })
           const tx = await metToken.subscribe(startTime, PAY_PER_WEEK, SPENDERS[i], {from: SUBSCRIBERS[i]})
@@ -143,14 +115,17 @@ contract('Subscriptions', accounts => {
           assert.equal(log.args.subscriber, SUBSCRIBERS[i], 'Subscriber is wrong')
           assert.equal(log.args.subscribesTo, SPENDERS[i], 'SubscribesTo is wrong')
         }
+        // forward a minute to catch up with subscribe time
+        await TestRPCTime.timeTravel(SECS_IN_MIN)
+        await TestRPCTime.mineBlock()
 
         for (let w = 0; w < 52; w++) {
           // advance a week
-          await timeTravel(SECS_IN_DAY * DAYS_IN_WEEK)
-          await mineBlock()
+          await TestRPCTime.timeTravel(SECS_IN_WEEK)
+          await TestRPCTime.mineBlock()
 
           let n = await metToken.multiSubWithdrawFor.call(SUBSCRIBERS, SPENDERS, {from: OWNER})
-          assert.equal(n, SPENDERS.length, 'Return value was incorrect')
+          assert.equal(n.valueOf(), SPENDERS.length, 'Return value was incorrect')
           let tx = await metToken.multiSubWithdrawFor(SUBSCRIBERS, SPENDERS, {from: OWNER})
           assert.equal(tx.logs.length, SPENDERS.length, 'Not all payments were processed')
 
@@ -170,17 +145,21 @@ contract('Subscriptions', accounts => {
     it('Consistent Weekly Payments for a year with a future start date', () => {
       return new Promise(async (resolve, reject) => {
         // subscribe users
-        const startTime = getCurrentBlockTime()
+        const startTime = TestRPCTime.getCurrentBlockTime() + SECS_IN_MIN
         var balance
         for (let i = 0; i < (SUBSCRIBERS.length); i++) {
           await autonomousConverter.convertEthToMet(1, { from: SUBSCRIBERS[i], value: 2e18 })
-          await metToken.subscribe(startTime + (i * SECS_IN_DAY * DAYS_IN_WEEK), PAY_PER_WEEK, SPENDERS[i], {from: SUBSCRIBERS[i]})
+          await metToken.subscribe(startTime + (i * SECS_IN_WEEK), PAY_PER_WEEK, SPENDERS[i], {from: SUBSCRIBERS[i]})
         }
+
+        // forward a minute to catch up with subscribe time
+        await TestRPCTime.timeTravel(SECS_IN_MIN)
+        await TestRPCTime.mineBlock()
 
         for (let w = 0; w < 52; w++) {
           // advance a week
-          await timeTravel(SECS_IN_DAY * DAYS_IN_WEEK)
-          await mineBlock()
+          await TestRPCTime.timeTravel(SECS_IN_WEEK)
+          await TestRPCTime.mineBlock()
 
           let tx = await metToken.multiSubWithdrawFor(SUBSCRIBERS, SPENDERS, {from: OWNER})
           if (w === 0) {
@@ -207,16 +186,20 @@ contract('Subscriptions', accounts => {
     it('Consistent Payments every other week for two years', () => {
       return new Promise(async (resolve, reject) => {
         // subscribe users, time offset starts one year ahead
-        const startTime = getCurrentBlockTime()
+        const startTime = TestRPCTime.getCurrentBlockTime() + SECS_IN_MIN
         for (let i = 0; i < SUBSCRIBERS.length; i++) {
           await autonomousConverter.convertEthToMet(1, { from: SUBSCRIBERS[i], value: 2e18 })
           await metToken.subscribe(startTime, PAY_PER_WEEK, SPENDERS[i], {from: SUBSCRIBERS[i]})
         }
 
+        // forward a minute to catch up with subscribe time
+        await TestRPCTime.timeTravel(SECS_IN_MIN)
+        await TestRPCTime.mineBlock()
+
         for (let w = 0; w < 104; w++) {
           // advance a week
-          await timeTravel(SECS_IN_DAY * DAYS_IN_WEEK)
-          await mineBlock()
+          await TestRPCTime.timeTravel(SECS_IN_WEEK)
+          await TestRPCTime.mineBlock()
 
           if (w % 2 !== 0) {
             let tx = await metToken.multiSubWithdrawFor(SUBSCRIBERS, SPENDERS, {from: OWNER})
@@ -239,16 +222,20 @@ contract('Subscriptions', accounts => {
     it('One spender will withdraw on their own for a year', () => {
       return new Promise(async (resolve, reject) => {
         // subscribe users, time offset is 3 years ahead
-        const startTime = getCurrentBlockTime()
+        const startTime = TestRPCTime.getCurrentBlockTime() + SECS_IN_MIN
         for (let i = 0; i < SUBSCRIBERS.length; i++) {
           await autonomousConverter.convertEthToMet(1, { from: SUBSCRIBERS[i], value: 2e18 })
           await metToken.subscribe(startTime, PAY_PER_WEEK, SPENDERS[i], {from: SUBSCRIBERS[i]})
         }
 
+        // forward a minute to catch up with subscribe time
+        await TestRPCTime.timeTravel(SECS_IN_MIN)
+        await TestRPCTime.mineBlock()
+
         for (let w = 0; w < 52; w++) {
           // advance a week
-          await timeTravel(SECS_IN_DAY * DAYS_IN_WEEK)
-          await mineBlock()
+          await TestRPCTime.timeTravel(SECS_IN_WEEK)
+          await TestRPCTime.mineBlock()
 
           // one spender withdraws on their own
           const diligentSpender = SPENDERS[0]
@@ -280,13 +267,13 @@ contract('Subscriptions', accounts => {
     it('Should verify subWithdraw function when subscription started', () => {
       return new Promise(async (resolve, reject) => {
         const spender = accounts[9]
-        const startTime = getCurrentBlockTime()
+        const startTime = TestRPCTime.getCurrentBlockTime() + SECS_IN_MIN
 
         await autonomousConverter.convertEthToMet(1, { from: OWNER, value: 2e18 })
         await metToken.subscribe(startTime, PAY_PER_WEEK, spender, {from: OWNER})
 
-        await timeTravel(SECS_IN_DAY * DAYS_IN_WEEK)
-        await mineBlock()
+        await TestRPCTime.timeTravel(SECS_IN_WEEK + SECS_IN_MIN)
+        await TestRPCTime.mineBlock()
 
         const balanceBefore = await metToken.balanceOf(spender)
         await metToken.subWithdraw(OWNER, {from: spender})
@@ -302,13 +289,13 @@ contract('Subscriptions', accounts => {
         const spender = accounts[9]
         const allowance = PAY_PER_WEEK * 52 // 52 weeks in 12 months
 
-        const startTime = getCurrentBlockTime()
+        const startTime = TestRPCTime.getCurrentBlockTime() + SECS_IN_MIN
 
         await autonomousConverter.convertEthToMet(1, { from: OWNER, value: 2e18 })
         await metToken.subscribe(startTime, PAY_PER_WEEK, spender, {from: OWNER})
 
-        await timeTravel(SECS_IN_DAY * DAYS_IN_WEEK * 52)
-        await mineBlock()
+        await TestRPCTime.timeTravel((SECS_IN_WEEK * 52) + SECS_IN_MIN)
+        await TestRPCTime.mineBlock()
 
         const balanceBefore = await metToken.balanceOf(spender)
         assert.equal(balanceBefore, 0, 'balance of spender is not zero')
@@ -327,7 +314,7 @@ contract('Subscriptions', accounts => {
 
         const allowance = PAY_PER_WEEK * SUBSCRIBERS.length
 
-        const startTime = getCurrentBlockTime()
+        const startTime = TestRPCTime.getCurrentBlockTime() + SECS_IN_MIN
 
         for (let i = 0; i < SUBSCRIBERS.length; i++) {
           await autonomousConverter.convertEthToMet(1, { from: SUBSCRIBERS[i], value: 2e18 })
@@ -340,15 +327,16 @@ contract('Subscriptions', accounts => {
         // await metToken.subscribe(startTime, PAY_PER_WEEK, spender, {from: subscriber})
         // await metToken.subscribe(startTime, PAY_PER_WEEK, spender, {from: otherSubscriber})
 
-        await timeTravel(SECS_IN_DAY * DAYS_IN_WEEK)
-        await mineBlock()
+        await TestRPCTime.timeTravel(SECS_IN_WEEK + SECS_IN_MIN)
+        await TestRPCTime.mineBlock()
 
         const balanceBefore = await metToken.balanceOf(spender)
         assert.equal(balanceBefore, 0, 'balance of spender is not zero')
 
-        await metToken.multiSubWithdraw(SUBSCRIBERS, {from: spender})
+        const result = await metToken.multiSubWithdraw(SUBSCRIBERS, {from: spender})
+        assert.equal(result.logs.length, SUBSCRIBERS.length, 'Not all payments were processed')
         const balanceAfter = await metToken.balanceOf(spender)
-        assert.equal(balanceAfter, allowance, 'Subscription multiSubWithdraw failed from OWNER and other_subscriber')
+        assert.equal(balanceAfter.valueOf(), allowance, 'Subscription multiSubWithdraw failed from OWNER and other_subscriber')
 
         resolve()
       })
@@ -360,7 +348,7 @@ contract('Subscriptions', accounts => {
         const subscribers = [accounts[4], accounts[6]]
         const payPerWeek = 1e17
 
-        const startTime = getCurrentBlockTime()
+        const startTime = TestRPCTime.getCurrentBlockTime() + SECS_IN_MIN
 
         await autonomousConverter.convertEthToMet(1, { from: subscribers[1], value: 2e18 })
         await metToken.transfer(subscribers[0], 1e16, {from: subscribers[1]})
@@ -370,8 +358,8 @@ contract('Subscriptions', accounts => {
           assert.equal(await metToken.balanceOf(spenders[i]), 0, 'balance is not zero for spender at ' + i)
         }
 
-        await timeTravel(SECS_IN_DAY * DAYS_IN_WEEK)
-        await mineBlock()
+        await TestRPCTime.timeTravel(SECS_IN_WEEK + SECS_IN_MIN)
+        await TestRPCTime.mineBlock()
 
         const nTransfers = await metToken.multiSubWithdrawFor.call(subscribers, spenders)
         assert.equal(nTransfers, subscribers.length - 1, 'Too many transfers accepted, possible underflow')

@@ -67,7 +67,7 @@ contract('Proceeds - timed test', accounts => {
       await TestRPCTime.mineBlock()
       let balanceOfProceed = await web3.eth.getBalance(proceeds.address)
       const tx = await proceeds.closeAuction({from: fromAccount})
-      expectedFundTranferInAC = (balanceOfProceed.mul(25)) / 10000
+      expectedFundTranferInAC = (balanceOfProceed.mul(25)).div(10000).toNumber()
       assert.equal(tx.receipt.logs.length, 2, 'Incorrect number of logs emitted')
 
       assert.equal(tx.logs.length, 1, 'Incorrect number of logs emitted')
