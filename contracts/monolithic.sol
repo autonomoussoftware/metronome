@@ -733,18 +733,21 @@ contract METToken is Token {
     /// @param _from subcriber
     /// @return true/false
     function subWithdraw(address _from) public transferable returns (bool) {
-        return subWithdrawFor(_from, msg.sender);
+        require(subWithdrawFor(_from, msg.sender));
+        return true;
     }
 
     /// @notice Allow callers to withdraw token in one go from all of its subscribers
-    /// @param bits array of uint which hold address of subscribers
-    function multiSubWithdraw(uint[] bits) public {
-        // Each uint holds just an address, not an amount
-        // Leaving it as uint to keep client code optimized
-        for (uint i=0; i < bits.length; i++) {
-            address a = address(bits[i]);
-            subWithdraw(a);
+    /// @param owners array of address of subscribers
+    /// @return number of successful transfer done
+    function multiSubWithdraw(address[] owners) public returns (uint) {
+        uint n = 0;
+        for (uint i=0; i < owners.length; i++) {
+            if (subWithdrawFor(owners[i], msg.sender)) {
+                n++;
+            }
         }
+        return n;
     }
 
     /// @notice Trigger MET token tranfers for all pairs of subscribers and beneficiary
@@ -758,22 +761,8 @@ contract METToken is Token {
 
         uint n = 0;
         for (uint i = 0; i < owners.length; i++) {
-            address from = owners[i];
-            address to = recipients[i];
-
-            Sub storage sub = subs[from][to];
-
-            // only process if subscription is active
-            if (sub.startTime > 0 && sub.startTime < block.timestamp && sub.payPerWeek > 0) {
-                uint weekElapsed = (now.sub(sub.lastWithdrawTime)).div(7 days);
-                uint amount = weekElapsed.mul(sub.payPerWeek);
-                if (weekElapsed > 0 && _balanceOf[from] >= amount) {
-                    subs[from][to].lastWithdrawTime = block.timestamp;
-                    _balanceOf[from] = _balanceOf[from].sub(amount);
-                    _balanceOf[to] = _balanceOf[to].add(amount);
-                    n++;
-                    Transfer(from, to, amount);
-                }
+            if (subWithdrawFor(owners[i], recipients[i])) {
+                n++;
             }
         }
 
@@ -782,22 +771,19 @@ contract METToken is Token {
 
     function subWithdrawFor(address _from, address _to) internal returns (bool) {
         Sub storage sub = subs[_from][_to];
-
-        require(sub.startTime < block.timestamp);
-        require(sub.payPerWeek > 0);
-
-        uint weekElapsed = (now.sub(sub.lastWithdrawTime)).div(7 days);
-        require(weekElapsed > 0);
-
-        uint amount = weekElapsed.mul(sub.payPerWeek);
-        require(_balanceOf[_from] >= amount);
-
-        subs[_from][_to].lastWithdrawTime = block.timestamp;
-        _balanceOf[_from] = _balanceOf[_from].sub(amount);
-        _balanceOf[_to] = _balanceOf[_to].add(amount);
-
-        Transfer(_from, _to, amount);
-        return true;
+        
+        if (sub.startTime > 0 && sub.startTime < block.timestamp && sub.payPerWeek > 0) {
+            uint weekElapsed = (now.sub(sub.lastWithdrawTime)).div(7 days);
+            uint amount = weekElapsed.mul(sub.payPerWeek);
+            if (weekElapsed > 0 && _balanceOf[_from] >= amount) {
+                subs[_from][_to].lastWithdrawTime = block.timestamp;
+                _balanceOf[_from] = _balanceOf[_from].sub(amount);
+                _balanceOf[_to] = _balanceOf[_to].add(amount);
+                Transfer(_from, _to, amount);
+                return true;
+            }
+        }       
+        return false;
     }
 }
 

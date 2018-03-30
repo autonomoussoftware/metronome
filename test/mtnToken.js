@@ -226,7 +226,7 @@ contract('METToken', accounts => {
         resolve()
         })
     })
-    */
+     */
 
     it('Should verify approve , approveMore and approveLess function', () => {
       return new Promise(async (resolve, reject) => {
@@ -394,7 +394,8 @@ contract('METToken', accounts => {
     it('Should verify Subscribe for future time', () => {
       return new Promise(async (resolve, reject) => {
         const payPerWeek = 1e17
-        const startTime = Math.floor((new Date(2018, 10, 8)).getTime() / 1000)
+        const date = new Date()
+        const startTime = date.setFullYear(date.getFullYear() + 1)
         await metToken.subscribe(startTime, payPerWeek, accounts[2], {from: OWNER})
         let errorMsg
         try {
