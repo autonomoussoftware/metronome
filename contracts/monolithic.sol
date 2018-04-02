@@ -715,13 +715,13 @@ contract METToken is Token {
     }
 
     /// @notice get subcription details
-    /// @param _subscriber 
-    /// @param _subscribedTo 
+    /// @param _owner 
+    /// @param _recipient 
     /// @return startTime, payPerWeek, lastWithdrawTime
-    function getSubscription(address _subscriber, address _subscribedTo) public constant
+    function getSubscription(address _owner, address _recipient) public constant
         returns (uint startTime, uint payPerWeek, uint lastWithdrawTime) 
     {
-        Sub storage sub = subs[_subscriber][_subscribedTo];
+        Sub storage sub = subs[_owner][_recipient];
         return (
             sub.startTime,
             sub.payPerWeek,
@@ -730,38 +730,38 @@ contract METToken is Token {
     }
 
     /// @notice caller can withdraw the token from subscribers.
-    /// @param _from subcriber
+    /// @param _owner subcriber
     /// @return true/false
-    function subWithdraw(address _from) public transferable returns (bool) {
-        require(subWithdrawFor(_from, msg.sender));
+    function subWithdraw(address _owner) public transferable returns (bool) {
+        require(subWithdrawFor(_owner, msg.sender));
         return true;
     }
 
     /// @notice Allow callers to withdraw token in one go from all of its subscribers
-    /// @param owners array of address of subscribers
+    /// @param _owners array of address of subscribers
     /// @return number of successful transfer done
-    function multiSubWithdraw(address[] owners) public returns (uint) {
+    function multiSubWithdraw(address[] _owners) public returns (uint) {
         uint n = 0;
-        for (uint i=0; i < owners.length; i++) {
-            if (subWithdrawFor(owners[i], msg.sender)) {
+        for (uint i=0; i < _owners.length; i++) {
+            if (subWithdrawFor(_owners[i], msg.sender)) {
                 n++;
-            }
+            } 
         }
         return n;
     }
 
     /// @notice Trigger MET token tranfers for all pairs of subscribers and beneficiary
     /// @dev address at i index in owners and recipients array is subcriber-beneficiary pair.
-    /// @param owners 
-    /// @param recipients 
+    /// @param _owners 
+    /// @param _recipients 
     /// @return number of successful transfer done
-    function multiSubWithdrawFor(address[] owners, address[] recipients) public returns (uint) {
+    function multiSubWithdrawFor(address[] _owners, address[] _recipients) public returns (uint) {
         // owners and recipients need 1-to-1 mapping, must be same length
-        require(owners.length == recipients.length);
+        require(_owners.length == _recipients.length);
 
         uint n = 0;
-        for (uint i = 0; i < owners.length; i++) {
-            if (subWithdrawFor(owners[i], recipients[i])) {
+        for (uint i = 0; i < _owners.length; i++) {
+            if (subWithdrawFor(_owners[i], _recipients[i])) {
                 n++;
             }
         }
