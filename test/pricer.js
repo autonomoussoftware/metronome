@@ -23,7 +23,7 @@
     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-const assert = require('assert')
+const assert = require('chai').assert
 const Pricer = artifacts.require('Pricer')
 
 contract('Pricer', accounts => {
@@ -43,6 +43,20 @@ contract('Pricer', accounts => {
 
       const thousandtimes = 43171247410657
       assert.equal(await pricer.thousandtimes(), thousandtimes, 'thousandtimes 0.99 is not calculated correctly')
+
+      resolve()
+    })
+  })
+
+  it('Should test correct priceAt every minute for 2 ETH', () => {
+    return new Promise(async (resolve, reject) => {
+      var initialPrice = 2e18
+      const delta = 1400
+      for (var i = 1; i <= 1440; i++) {
+        const expectedPrice = initialPrice * Math.pow(0.99, i)
+        const actualPrice = await pricer.priceAt(initialPrice, i)
+        assert.closeTo(actualPrice.toNumber(), expectedPrice, delta, 'Price calculation is not correct for i = ' + i)
+      }
 
       resolve()
     })
