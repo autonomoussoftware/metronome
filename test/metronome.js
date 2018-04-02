@@ -29,6 +29,34 @@ const SmartToken = artifacts.require('SmartToken')
 const Proceeds = artifacts.require('Proceeds')
 const AutonomousConverter = artifacts.require('AutonomousConverter')
 const Auctions = artifacts.require('Auctions')
+const BigNumber = require('bignumber.js')
+
+function exchange (S, E, R, R2) {
+  S = new BigNumber(S)
+  E = new BigNumber(E)
+  R = new BigNumber(R)
+  R2 = new BigNumber(R2)
+  S = S.dividedBy(1e18)
+  E = E.dividedBy(1e18)
+  R = R.dividedBy(1e18)
+  R2 = R2.dividedBy(1e18)
+  let one = new BigNumber(1)
+  let temp = new BigNumber(0)
+  temp = E.dividedBy(R)
+  temp = temp.plus(one)
+  let T = new BigNumber(0)
+  temp = temp.squareRoot()
+  temp = temp.minus(one)
+  T = temp.multipliedBy(S)
+  S = S.plus(T)
+  temp = T.dividedBy(S)
+  temp = one.minus(temp)
+  temp = temp.multipliedBy(temp)
+  temp = one.minus(temp)
+  E = R2.multipliedBy(temp)
+  E = E.multipliedBy(1e18)
+  return E
+}
 
 contract('AutonomousConverter', accounts => {
   const OWNER = accounts[0]
@@ -106,9 +134,16 @@ contract('AutonomousConverter', accounts => {
       const mtTokenBalanceOfOwnerBefore = await metToken.balanceOf(OWNER)
       const txChange = await autonomousConverter.convertEthToMet(MIN_MET_RETURN, {from: OWNER, value: WEI_SENT})
       assert(txChange, 'ETH to MET transaction failed')
+      let log = txChange.logs[0]
 
       const ethBalanceOfACAfter = await web3.eth.getBalance(autonomousConverter.address)
       const metBalanceOfACAfter = await metToken.balanceOf(autonomousConverter.address)
+      let S = await smartToken.totalSupply()
+      let R = ethBalanceOfACAfter
+      let E = WEI_SENT
+      let expectedMet = exchange(S, E, R, metBalanceOfACBefore)
+      // Due to rounding effect , there is delta around 0-1000 wei
+      assert.closeTo(log.args.met.toNumber(), expectedMet.toNumber(), 1000)
       const mtTokenBalanceOfOwnerAfter = await metToken.balanceOf(OWNER)
       const smartTokenAfterBalance = await smartToken.balanceOf(OWNER, { from: autonomousConverter.address })
 
@@ -150,9 +185,13 @@ contract('AutonomousConverter', accounts => {
       const metBalanceOfACAfter = await metToken.balanceOf(autonomousConverter.address)
       const mtTokenBalanceOfOwnerAfter = await metToken.balanceOf(OWNER)
       const smartTokenAfterBalance = await smartToken.balanceOf(OWNER, { from: autonomousConverter.address })
-
-      // console.log(gasCost, 'gas cost')
-      // console.log('diff owner', ((ethBalanceOfOwnerAfter.toNumber() + gasCost - ethBalanceOfOwnerBefore.toNumber()) - prediction.toNumber()) / DECMULT)
+      let log = txRedeem.logs[0]
+      let S = await smartToken.totalSupply()
+      let R = metBalanceOfACBefore.add(metBalanceOfOwnerBefore)
+      let E = metBalanceOfOwnerBefore
+      let expectedEth = exchange(S, E, R, ethBalanceOfACBefore)
+      // Due to rounding effect , there may be delta around 0-1000 wei
+      assert.closeTo(log.args.eth.toNumber(), expectedEth.toNumber(), 1000)
       assert.closeTo(ethBalanceOfOwnerAfter.add(gasCost).sub(ethBalanceOfOwnerBefore).toNumber(), prediction.toNumber(), 0.014e18, 'Prediction and actual is not correct for owner')
       assert.equal(ethBalanceOfACBefore.sub(ethBalanceOfACAfter).toNumber(), prediction.toNumber(), 'Prediction and actual is not correct for AC')
       assert.equal(smartTokenAfterBalance.toNumber(), 0, 'Smart Tokens were not destroyed')
