@@ -59,5 +59,26 @@ contract('Proceeds', accounts => {
         resolve()
       })
     })
+
+    it('Should verify that only Auctions can send fund to Proceeds', () => {
+      return new Promise(async (resolve, reject) => {
+        const amount = 1e18
+        const auctionsMock = accounts[1]
+        const proceedsBalanceBefore = await metToken.balanceOf(proceeds.address)
+        await proceeds.sendTransaction({from: auctionsMock, value: amount})
+        const proceedsBalanceAfter = await metToken.balanceOf(autonomousConverter.address)
+
+        assert(proceedsBalanceAfter.sub(proceedsBalanceBefore).valueOf(), amount, 'Auctions to Proceeds fund transfer failed')
+
+        let thrown = false
+        try {
+          await proceeds.sendTransaction({from: accounts[2], value: 1e18})
+        } catch (error) {
+          thrown = true
+        }
+        assert.isTrue(thrown, 'Proceeds should throw error')
+        resolve()
+      })
+    })
   })
 })
