@@ -104,6 +104,37 @@ contract('AutonomousConverter', accounts => {
     })
   })
 
+  it('Should verify that only Proceeds can send fund to AC', () => {
+    return new Promise(async (resolve, reject) => {
+      proceeds = await Proceeds.new()
+      autonomousConverter = await AutonomousConverter.new()
+      auctions = await Auctions.new()
+      metToken = await METToken.new(autonomousConverter.address, auctions.address, INITIAL_SUPPLY, DECMULT, {from: OWNER})
+      await autonomousConverter.init(metToken.address, smartToken.address, auctions.address, { from: OWNER, value: web3.toWei(1, 'ether') })
+      const founders = []
+      founders.push(OWNER + '0000D3C214DE7193CD4E0000')
+      founders.push(accounts[1] + '0000D3C214DE7193CD4E0000')
+      const proceedsMock = accounts[3]
+      await auctions.mintInitialSupply(founders, metToken.address, proceedsMock, autonomousConverter.address, {from: OWNER})
+
+      const amount = 1e18
+      const acBalanceBefore = await metToken.balanceOf(autonomousConverter.address)
+      await autonomousConverter.sendTransaction({from: proceedsMock, value: amount})
+      const acBalanceAfter = await metToken.balanceOf(autonomousConverter.address)
+
+      assert(acBalanceAfter.sub(acBalanceBefore).valueOf(), amount, 'Proceeds to AC fund transfer failed')
+
+      let thrown = false
+      try {
+        await autonomousConverter.sendTransaction({from: accounts[2], value: 1e18})
+      } catch (error) {
+        thrown = true
+      }
+      assert.isTrue(thrown, 'AC should throw error')
+      resolve()
+    })
+  })
+
   it('Should return correct balance of Eth and Met token', () => {
     return new Promise(async (resolve, reject) => {
       // 1 MET is added during initilization of Auctions

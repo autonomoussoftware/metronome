@@ -803,7 +803,7 @@ contract AutonomousConverter is Formula, Owned {
     event ConvertMetToEth(address indexed from, uint eth, uint met);
 
     function () public payable {
-        require(msg.value > 0);
+        require(msg.value > 0 && msg.sender == address(auctions.proceeds()));
         LogFundsIn(msg.sender, msg.value);
     }
 
@@ -950,7 +950,7 @@ contract Proceeds is Owned {
     uint latestAuctionClosed;
 
     function () public payable {
-        require(msg.value > 0);
+        require(msg.value > 0 && msg.sender == address(auction));
         LogProceedsIn(msg.sender, msg.value);
     }
 
