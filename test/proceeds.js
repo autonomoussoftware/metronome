@@ -54,8 +54,29 @@ contract('Proceeds', accounts => {
     it('Should initialize proceeds correctly', () => {
       return new Promise(async (resolve, reject) => {
         assert.equal(await proceeds.autonomousConverter(), autonomousConverter.address, 'autonomousConverter is not setup correctly')
-        assert.equal(await proceeds.auction(), accounts[1], 'Auctions is not set up correctly')
+        assert.equal(await proceeds.auctions(), accounts[1], 'Auctions is not set up correctly')
 
+        resolve()
+      })
+    })
+
+    it('Should verify that only Auctions can send fund to Proceeds', () => {
+      return new Promise(async (resolve, reject) => {
+        const amount = 1e18
+        const auctionsMock = accounts[1]
+        const proceedsBalanceBefore = await metToken.balanceOf(proceeds.address)
+        await proceeds.handleFund({from: auctionsMock, value: amount})
+        const proceedsBalanceAfter = await metToken.balanceOf(autonomousConverter.address)
+
+        assert(proceedsBalanceAfter.sub(proceedsBalanceBefore).valueOf(), amount, 'Auctions to Proceeds fund transfer failed')
+
+        let thrown = false
+        try {
+          await proceeds.handleFund({from: accounts[2], value: 1e18})
+        } catch (error) {
+          thrown = true
+        }
+        assert.isTrue(thrown, 'Proceeds should throw error')
         resolve()
       })
     })

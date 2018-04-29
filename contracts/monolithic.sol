@@ -802,11 +802,6 @@ contract AutonomousConverter is Formula, Owned {
     event ConvertEthToMet(address indexed from, uint eth, uint met);
     event ConvertMetToEth(address indexed from, uint eth, uint met);
 
-    function () public payable {
-        require(msg.value > 0);
-        LogFundsIn(msg.sender, msg.value);
-    }
-
     function init(address _reserveToken, address _smartToken, address _auctions) 
         public onlyOwner payable 
     {
@@ -815,6 +810,11 @@ contract AutonomousConverter is Formula, Owned {
         reserveToken = METToken(_reserveToken);
         smartToken = SmartToken(_smartToken);
         initialized = true;
+    }
+
+    function handleFund() public payable {
+        require(msg.sender == address(auctions.proceeds()));
+        LogFundsIn(msg.sender, msg.value);
     }
 
     function getMetBalance() public view returns (uint) {
@@ -943,37 +943,34 @@ contract AutonomousConverter is Formula, Owned {
 contract Proceeds is Owned {
     using SafeMath for uint256;
 
-    address public autonomousConverter;
-    Auctions public auction;
+    AutonomousConverter public autonomousConverter;
+    Auctions public auctions;
     event LogProceedsIn(address indexed from, uint value); 
     event LogClosedAuction(address indexed from, uint value);
     uint latestAuctionClosed;
 
-    function () public payable {
-        require(msg.value > 0);
-        LogProceedsIn(msg.sender, msg.value);
+    function initProceeds(address _autonomousConverter, address _auctions) public onlyOwner {
+        require(address(auctions) == 0x0 && _auctions != 0x0);
+        require(address(autonomousConverter) == 0x0 && _autonomousConverter != 0x0);
+
+        autonomousConverter = AutonomousConverter(_autonomousConverter);
+        auctions = Auctions(_auctions);
     }
 
-    function initProceeds(address _autonomousConverter, address _auction) public onlyOwner {
-        require(address(auction) == 0x0);
-        require(autonomousConverter == 0x0);
-
-        require(_autonomousConverter != 0x0);
-        require(_auction != 0x0);
-
-        autonomousConverter = _autonomousConverter;
-        auction = Auctions(_auction);
+    function handleFund() public payable {
+        require(msg.sender == address(auctions));
+        LogProceedsIn(msg.sender, msg.value);
     }
 
     /// @notice Forward 0.25% of total eth balance of proceeds to AutonomousConverter contract
     function closeAuction() public {
-        uint lastPurchaseTick = auction.lastPurchaseTick();
-        uint currentAuction = auction.currentAuction();
+        uint lastPurchaseTick = auctions.lastPurchaseTick();
+        uint currentAuction = auctions.currentAuction();
         uint val = ((address(this).balance).mul(25)).div(10000); 
-        if (val > 0 && (currentAuction > auction.whichAuction(lastPurchaseTick)) 
+        if (val > 0 && (currentAuction > auctions.whichAuction(lastPurchaseTick)) 
             && (latestAuctionClosed < currentAuction)) {
             latestAuctionClosed = currentAuction;
-            autonomousConverter.transfer(val);
+            autonomousConverter.handleFund.value(val)();
             LogClosedAuction(msg.sender, val);
         }
     }
@@ -1070,7 +1067,7 @@ contract Auctions is Pricer, Owned {
         assert(refund <= amountForPurchase);
         uint ethForProceeds = amountForPurchase.sub(refund);
 
-        address(proceeds).transfer(ethForProceeds);
+        proceeds.handleFund.value(ethForProceeds)();
 
         require(token.mint(msg.sender, tokens));
 
