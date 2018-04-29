@@ -98,7 +98,7 @@ contract('TokenPorter', accounts => {
 
     beforeEach(async () => {
       await initContracts(getCurrentBlockTime() - 60, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
-      destAddr = accounts[10]
+      destAddr = accounts[2]
     })
 
     it('cant add zero chain', () => {
@@ -175,7 +175,7 @@ contract('TokenPorter', accounts => {
 
     beforeEach(async () => {
       await initContracts(getCurrentBlockTime() - 60, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
-      destAddr = accounts[10]
+      destAddr = accounts[2]
       await tokenPorter.addDestinationChain(destChain, destAddr, { from: OWNER })
     })
 
@@ -275,7 +275,7 @@ contract('TokenPorter', accounts => {
     it('successful export', () => {
       return new Promise(async (resolve, reject) => {
         await initContracts(getCurrentBlockTime() - 60, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
-        destAddr = accounts[12]
+        destAddr = accounts[2]
         await tokenPorter.addDestinationChain(destChain, destAddr, { from: OWNER })
 
         // get some balance for export, half MET
@@ -367,7 +367,7 @@ contract('TokenPorter', accounts => {
     it('successful export', () => {
       return new Promise(async (resolve, reject) => {
         await initContracts(getCurrentBlockTime() - 60, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
-        destAddr = accounts[13]
+        destAddr = accounts[6]
         await tokenPorter.addDestinationChain(destChain, destAddr, { from: OWNER })
 
         // get some balance for export, half MET
