@@ -447,6 +447,9 @@ contract Token is ERC20, ERC827, Mintable {
         require(_to != address(0));
         require(_to != minter);
         require(_to != address(this));
+        require(_to != autonomousConverter);
+        Proceeds proceeds = Auctions(minter).proceeds();
+        require((_to != address(proceeds)));
 
         _balanceOf[msg.sender] = _balanceOf[msg.sender].sub(_value);
         _balanceOf[_to] = _balanceOf[_to].add(_value);
@@ -475,10 +478,14 @@ contract Token is ERC20, ERC827, Mintable {
     /// @return true/false
     function transferFrom(address _from, address _to, uint256 _value) public returns (bool) { 
         require(_to != address(0));       
-        require(_to != minter);
-        require(_to != address(this));
+        require(_to != minter && _from != minter);
+        require(_to != address(this) && _from != address(this));
+        Proceeds proceeds = Auctions(minter).proceeds();
+        require(_to != address(proceeds) && _from != address(proceeds));
+        //AC can accept MET via this function, needed for MetToEth conversion
+        require(_from != autonomousConverter);
         require(_allowance[_from][msg.sender] >= _value);
-
+        
         _balanceOf[_from] = _balanceOf[_from].sub(_value);
         _balanceOf[_to] = _balanceOf[_to].add(_value);
         _allowance[_from][msg.sender] = _allowance[_from][msg.sender].sub(_value);

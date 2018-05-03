@@ -74,7 +74,7 @@ contract('Proceeds - timed test', accounts => {
       const log = tx.logs[0]
       assert.equal(log.event, 'LogClosedAuction', 'Log name is wrong')
       assert.equal(log.args.from, fromAccount, 'From is wrong')
-      assert.equal(log.args.value.valueOf(), expectedFundTranferInAC, 'Value is wrong')
+      assert.equal(log.args.value.toNumber(), expectedFundTranferInAC, 'Value is wrong')
 
       balanceACAfter = await web3.eth.getBalance(autonomousConverter.address)
       assert.equal(balanceACAfter.sub(balanceACBefore).valueOf(), expectedFundTranferInAC, 'Incorrect fund transffered to AC')

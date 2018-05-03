@@ -27,6 +27,7 @@
 const assert = require('assert')
 const ethjsABI = require('ethjs-abi')
 const Token = artifacts.require('Token')
+const Auctions = artifacts.require('Auctions')
 const MockContractReceiver = artifacts.require('MockContractReceiver')
 
 contract('Token', accounts => {
@@ -39,7 +40,8 @@ contract('Token', accounts => {
     autonomousConverter: accounts[4],
     tokenPorter: accounts[5],
     badAutonomousConverter: accounts[6],
-    badMinter: accounts[7]
+    badMinter: accounts[7],
+    proceesds: accounts[9]
   }
 
   const contracts = {
@@ -262,6 +264,21 @@ contract('Token', accounts => {
   })
 
   describe('Transfers', () => {
+    beforeEach(async () => {
+      const auctions = await Auctions.new()
+
+      contracts.tokenMock = await Token.new(actors.autonomousConverter, auctions.address, 0, decMult, { from: actors.owner })
+      const founders = []
+      founders.push(actors.owner + '0000D3C214DE7193CD4E0000')
+      founders.push(actors.alice + '0000D3C214DE7193CD4E0000')
+      await auctions.mintInitialSupply(founders, contracts.tokenMock.address, actors.proceesds, actors.autonomousConverter, {from: actors.owner})
+
+      // // set token porter
+      assert(await contracts.tokenMock.setTokenPorter.call(actors.tokenPorter, { from: actors.owner }), 'setTokenPorter did not return true')
+      await contracts.tokenMock.setTokenPorter(actors.tokenPorter, { from: actors.owner })
+      assert(await contracts.tokenMock.tokenPorter(), actors.tokenPorter, 'tokenPorter was not set')
+    })
+
     it('Alice should not be able to send tokens to Bob with insufficient funds', () => {
       return new Promise(async (resolve, reject) => {
         const transferAmount = 1 * decMult
@@ -306,7 +323,7 @@ contract('Token', accounts => {
         const mintAmount = 1 * decMult
 
         // give alice tokens for test
-        await contracts.tokenMock.mint(actors.alice, mintAmount, { from: actors.minter })
+        await contracts.tokenMock.mint(actors.alice, mintAmount, { from: actors.tokenPorter })
 
         const beforeBalances = { alice: 0, bob: 0 }
         beforeBalances.alice = await contracts.tokenMock.balanceOf(actors.alice)
@@ -340,12 +357,27 @@ contract('Token', accounts => {
   })
 
   describe('Transfers with data', () => {
+    beforeEach(async () => {
+      const auctions = await Auctions.new()
+
+      contracts.tokenMock = await Token.new(actors.autonomousConverter, auctions.address, 0, decMult, { from: actors.owner })
+      const founders = []
+      founders.push(actors.owner + '0000D3C214DE7193CD4E0000')
+      founders.push(actors.alice + '0000D3C214DE7193CD4E0000')
+      await auctions.mintInitialSupply(founders, contracts.tokenMock.address, actors.proceesds, actors.autonomousConverter, {from: actors.owner})
+
+      // // set token porter
+      assert(await contracts.tokenMock.setTokenPorter.call(actors.tokenPorter, { from: actors.owner }), 'setTokenPorter did not return true')
+      await contracts.tokenMock.setTokenPorter(actors.tokenPorter, { from: actors.owner })
+      assert(await contracts.tokenMock.tokenPorter(), actors.tokenPorter, 'tokenPorter was not set')
+    })
+
     it('Alice should be able to send tokens to contract with function call', () => {
       return new Promise(async (resolve, reject) => {
         const mintAmount = 1 * decMult
 
         // give alice tokens for test
-        await contracts.tokenMock.mint(actors.alice, mintAmount, { from: actors.minter })
+        await contracts.tokenMock.mint(actors.alice, mintAmount, { from: actors.tokenPorter })
 
         const beforeBalances = { alice: 0, contract: 0 }
         beforeBalances.alice = await contracts.tokenMock.balanceOf(actors.alice)
@@ -575,6 +607,21 @@ contract('Token', accounts => {
   })
 
   describe('Transfer from', () => {
+    beforeEach(async () => {
+      const auctions = await Auctions.new()
+
+      contracts.tokenMock = await Token.new(actors.autonomousConverter, auctions.address, 0, decMult, { from: actors.owner })
+      const founders = []
+      founders.push(actors.owner + '0000D3C214DE7193CD4E0000')
+      founders.push(actors.alice + '0000D3C214DE7193CD4E0000')
+      await auctions.mintInitialSupply(founders, contracts.tokenMock.address, actors.proceesds, actors.autonomousConverter, {from: actors.owner})
+
+      // // set token porter
+      assert(await contracts.tokenMock.setTokenPorter.call(actors.tokenPorter, { from: actors.owner }), 'setTokenPorter did not return true')
+      await contracts.tokenMock.setTokenPorter(actors.tokenPorter, { from: actors.owner })
+      assert(await contracts.tokenMock.tokenPorter(), actors.tokenPorter, 'tokenPorter was not set')
+    })
+
     it('Bob should not be able to transfer over the authorized amount for Alice', () => {
       return new Promise(async (resolve, reject) => {
         const mintAmount = 5 * decMult
@@ -582,7 +629,7 @@ contract('Token', accounts => {
         const transferAmount = 2 * decMult
 
         // give alice tokens for test
-        await contracts.tokenMock.mint(actors.alice, mintAmount, { from: actors.minter })
+        await contracts.tokenMock.mint(actors.alice, mintAmount, { from: actors.tokenPorter })
 
         // approve bob for the lower amount
         await contracts.tokenMock.approve(actors.bob, approvedAmount, { from: actors.alice })
@@ -606,7 +653,7 @@ contract('Token', accounts => {
         const transferAmount = 5 * decMult
 
         // give alice tokens for test
-        await contracts.tokenMock.mint(actors.alice, mintAmount, { from: actors.minter })
+        await contracts.tokenMock.mint(actors.alice, mintAmount, { from: actors.tokenPorter })
 
         // approve bob for the higher amount
         await contracts.tokenMock.approve(actors.bob, transferAmount, { from: actors.alice })
@@ -630,7 +677,7 @@ contract('Token', accounts => {
         const transferAmount = 1 * decMult
 
         // give alice tokens for test
-        await contracts.tokenMock.mint(actors.alice, mintAmount, { from: actors.minter })
+        await contracts.tokenMock.mint(actors.alice, mintAmount, { from: actors.tokenPorter })
 
         const approvedAccounts = [contracts.tokenMock.address, actors.bob, actors.minter]
         for (let idx = 0; idx < approvedAccounts.length; idx++) {
@@ -657,7 +704,7 @@ contract('Token', accounts => {
         const transferAmount = 1 * decMult
 
         // give alice tokens for test
-        await contracts.tokenMock.mint(actors.alice, mintAmount, { from: actors.minter })
+        await contracts.tokenMock.mint(actors.alice, mintAmount, { from: actors.tokenPorter })
         await contracts.tokenMock.approve(actors.bob, transferAmount, { from: actors.alice })
 
         const beforeBalances = { alice: 0, bob: 0, charlie: 0 }
@@ -703,7 +750,7 @@ contract('Token', accounts => {
         const transferAmount = 1 * decMult
 
         // give alice tokens for test
-        await contracts.tokenMock.mint(actors.alice, mintAmount, { from: actors.minter })
+        await contracts.tokenMock.mint(actors.alice, mintAmount, { from: actors.tokenPorter })
         await contracts.tokenMock.approve(actors.bob, transferAmount, { from: actors.alice })
 
         const beforeBalances = { alice: 0, bob: 0 }
@@ -742,12 +789,27 @@ contract('Token', accounts => {
   })
 
   describe('Transfer from with data', () => {
+    beforeEach(async () => {
+      const auctions = await Auctions.new()
+
+      contracts.tokenMock = await Token.new(actors.autonomousConverter, auctions.address, 0, decMult, { from: actors.owner })
+      const founders = []
+      founders.push(actors.owner + '0000D3C214DE7193CD4E0000')
+      founders.push(actors.alice + '0000D3C214DE7193CD4E0000')
+      await auctions.mintInitialSupply(founders, contracts.tokenMock.address, actors.proceesds, actors.autonomousConverter, {from: actors.owner})
+
+      // // set token porter
+      assert(await contracts.tokenMock.setTokenPorter.call(actors.tokenPorter, { from: actors.owner }), 'setTokenPorter did not return true')
+      await contracts.tokenMock.setTokenPorter(actors.tokenPorter, { from: actors.owner })
+      assert(await contracts.tokenMock.tokenPorter(), actors.tokenPorter, 'tokenPorter was not set')
+    })
+
     it('Bob should be able to send tokens to a contract with a function call on Alice\'s behalf', () => {
       return new Promise(async (resolve, reject) => {
         const mintAmount = 1 * decMult
 
         // give alice tokens for test
-        await contracts.tokenMock.mint(actors.alice, mintAmount, { from: actors.minter })
+        await contracts.tokenMock.mint(actors.alice, mintAmount, { from: actors.tokenPorter })
 
         const beforeBalances = { alice: 0, contract: 0, bob: 0 }
         beforeBalances.alice = await contracts.tokenMock.balanceOf(actors.alice)

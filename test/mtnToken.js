@@ -201,6 +201,19 @@ contract('METToken', accounts => {
         })
     })
 
+    it('Should throw when any metronome contract is recipient of transfer', () => {
+      return new Promise(async (resolve, reject) => {
+        let thrown
+        try {
+          await metToken.transfer(proceeds.address, 1000, {from: OWNER})
+        } catch (error) {
+          thrown = true
+        }
+        assert.isTrue(thrown, 'Transfer to contract should throw error')
+        resolve()
+      })
+    })
+
     it('Should verify transfer function without data', () => {
       return new Promise(async (resolve, reject) => {
         const metTransferAmount = 1e17
