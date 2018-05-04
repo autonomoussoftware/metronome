@@ -24,9 +24,9 @@
 */
 
 const assert = require('chai').assert
+const Metronome = require('../test/shared/inits')
 const METToken = artifacts.require('METToken')
 const SmartToken = artifacts.require('SmartToken')
-const Proceeds = artifacts.require('Proceeds')
 const AutonomousConverter = artifacts.require('AutonomousConverter')
 const Auctions = artifacts.require('Auctions')
 const BigNumber = require('bignumber.js')
@@ -60,8 +60,7 @@ function exchange (S, E, R, R2) {
 
 contract('AutonomousConverter', accounts => {
   const OWNER = accounts[0]
-  const INITIAL_SUPPLY = 1000
-  const SMART_INITIAL_SUPPLY = 1000
+  const INITIAL_SUPPLY = 0
   const DECMULT = 10 ** 18
   let timeInSeconds = new Date().getTime() / 1000
   const START_TIME = (Math.floor(timeInSeconds / 60) * 60) - (7 * 24 * 60 * 60) - 120
@@ -69,34 +68,33 @@ contract('AutonomousConverter', accounts => {
   const STARTING_PRICE = 0.5
   const TIME_SCALE = 1
 
-  let metToken, smartToken, proceeds, autonomousConverter, auctions
+  let metToken, auctions, smartToken, autonomousConverter
+  const proceedsMock = accounts[3]
 
-  // Create contracts and initilize them for each test case
-  beforeEach(async () => {
-    proceeds = await Proceeds.new()
-    autonomousConverter = await AutonomousConverter.new()
-    auctions = await Auctions.new()
+  async function initWithMockProceeds () {
+    const FOUNDER = accounts[1]
 
-    metToken = await METToken.new(autonomousConverter.address, auctions.address, INITIAL_SUPPLY, DECMULT, {from: OWNER})
-    smartToken = await SmartToken.new(autonomousConverter.address, autonomousConverter.address, SMART_INITIAL_SUPPLY, {from: OWNER})
-    await autonomousConverter.init(metToken.address, smartToken.address, auctions.address,
-      {
-        from: OWNER,
-        value: web3.toWei(1, 'ether')
-      })
-    await proceeds.initProceeds(autonomousConverter.address, auctions.address, {from: OWNER})
+    autonomousConverter = await AutonomousConverter.new({from: OWNER})
+    auctions = await Auctions.new({from: OWNER})
+    metToken = await METToken.new({from: OWNER})
+    smartToken = await SmartToken.new({from: OWNER})
+
     const founders = []
-    // Since we are appending it with hexadecimal address so amount should also be
-    // in hexa decimal. Hence 999999e18 = 0000d3c20dee1639f99c0000 in 24 character ( 96 bits)
-    // 1000000e18 =  0000d3c20dee1639f99c0000
     founders.push(OWNER + '0000D3C214DE7193CD4E0000')
-    founders.push(accounts[1] + '0000D3C214DE7193CD4E0000')
-    await auctions.mintInitialSupply(founders, metToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
-    await auctions.initAuctions(START_TIME, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE, {from: OWNER})
-    await metToken.enableMETTransfers()
-  })
+    founders.push(FOUNDER + '0000D3C214DE7193CD4E0000')
+
+    const MET_INITIAL_SUPPLY = 0
+    const DECMULT = 10 ** 18
+
+    await metToken.initMETToken(autonomousConverter.address, auctions.address, MET_INITIAL_SUPPLY, DECMULT, {from: OWNER})
+    await autonomousConverter.init(metToken.address, smartToken.address, auctions.address, { from: OWNER, value: web3.toWei(1, 'ether') })
+    await auctions.mintInitialSupply(founders, metToken.address, proceedsMock, autonomousConverter.address, {from: OWNER})
+  }
+
   it('Should verify that AutonomousConverter is initialized correctly', () => {
     return new Promise(async (resolve, reject) => {
+      const {metToken, smartToken, autonomousConverter} = await Metronome.initContracts(accounts, START_TIME, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+
       assert.equal(await autonomousConverter.reserveToken(), metToken.address, 'METToken address isn\'t correct')
       assert.equal(await autonomousConverter.smartToken(), smartToken.address, 'SmartToken address isn\'t correct')
 
@@ -106,17 +104,7 @@ contract('AutonomousConverter', accounts => {
 
   it('Should verify that only Proceeds can send fund to AC', () => {
     return new Promise(async (resolve, reject) => {
-      proceeds = await Proceeds.new()
-      autonomousConverter = await AutonomousConverter.new()
-      auctions = await Auctions.new()
-      metToken = await METToken.new(autonomousConverter.address, auctions.address, INITIAL_SUPPLY, DECMULT, {from: OWNER})
-      await autonomousConverter.init(metToken.address, smartToken.address, auctions.address, { from: OWNER, value: web3.toWei(1, 'ether') })
-      const founders = []
-      founders.push(OWNER + '0000D3C214DE7193CD4E0000')
-      founders.push(accounts[1] + '0000D3C214DE7193CD4E0000')
-      const proceedsMock = accounts[3]
-      await auctions.mintInitialSupply(founders, metToken.address, proceedsMock, autonomousConverter.address, {from: OWNER})
-
+      await initWithMockProceeds()
       const amount = 1e18
       const acBalanceBefore = await metToken.balanceOf(autonomousConverter.address)
       await autonomousConverter.handleFund({from: proceedsMock, value: amount})
@@ -137,6 +125,7 @@ contract('AutonomousConverter', accounts => {
 
   it('Should return correct balance of Eth and Met token', () => {
     return new Promise(async (resolve, reject) => {
+      const {autonomousConverter} = await Metronome.initContracts(accounts, START_TIME, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
       // 1 MET is added during initilization of Auctions
       const metBalance = (INITIAL_SUPPLY) * DECMULT
 
@@ -154,6 +143,10 @@ contract('AutonomousConverter', accounts => {
     return new Promise(async (resolve, reject) => {
       const WEI_SENT = 10e18
       const MIN_MET_RETURN = 1
+
+      const {metToken, smartToken, autonomousConverter} =
+        await Metronome.initContracts(accounts, START_TIME, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      await metToken.enableMETTransfers()
 
       const prediction = await autonomousConverter.getMetForEthResult(WEI_SENT, { from: OWNER })
       assert(prediction.toNumber() > 0, 'ETH to MET prediction is not greater than zero')
@@ -193,6 +186,10 @@ contract('AutonomousConverter', accounts => {
       const weiSent = 10e18
       const MIN_ETH_RETURN = 1
 
+      const {metToken, smartToken, autonomousConverter} =
+       await Metronome.initContracts(accounts, START_TIME, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      await metToken.enableMETTransfers()
+
       const txChange = await autonomousConverter.convertEthToMet(1, {from: OWNER, value: weiSent})
       assert(txChange, 'ETH to MET transaction failed')
 
@@ -205,11 +202,9 @@ contract('AutonomousConverter', accounts => {
       assert(prediction.toNumber() >= MIN_ETH_RETURN, 'ETH to MET prediction is not greater than zero')
 
       const txApprove = await metToken.approve(autonomousConverter.address, metBalanceOfOwnerBefore.valueOf(), { from: OWNER })
-      // let gasCost = txApprove.receipt.gasUsed * web3.eth.gasPrice
       assert(txApprove, 'Transfer Approve failed')
 
       const txRedeem = await autonomousConverter.convertMetToEth(metBalanceOfOwnerBefore.valueOf(), MIN_ETH_RETURN, { from: OWNER })
-      // gasCost += txRedeem.receipt.gasUsed * web3.eth.gasPrice
       assert(txRedeem, 'MET to ETH transaction failed')
       const ethBalanceOfACAfter = await web3.eth.getBalance(autonomousConverter.address)
       const ethBalanceOfOwnerAfter = await web3.eth.getBalance(OWNER)
@@ -223,7 +218,6 @@ contract('AutonomousConverter', accounts => {
       let expectedEth = exchange(S, E, R, ethBalanceOfACBefore)
       // Due to rounding effect , there may be delta around 0-1000 wei
       assert.closeTo(log.args.eth.toNumber(), expectedEth.toNumber(), 1000)
-      // assert.closeTo(ethBalanceOfOwnerAfter.add(gasCost).sub(ethBalanceOfOwnerBefore).toNumber(), prediction.toNumber(), 0.014e18, 'Prediction and actual is not correct for owner')
       assert.equal(ethBalanceOfACBefore.sub(ethBalanceOfACAfter).toNumber(), prediction.toNumber(), 'Prediction and actual is not correct for AC')
       assert.equal(smartTokenAfterBalance.toNumber(), 0, 'Smart Tokens were not destroyed')
       assert.equal(metBalanceOfACAfter.toNumber(), metBalanceOfACBefore.toNumber() + metBalanceOfOwnerBefore.toNumber(), 'MET not recieved after MET exchange')

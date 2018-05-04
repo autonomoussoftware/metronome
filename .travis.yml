@@ -19,7 +19,8 @@ addons:
 before_install:
   - export CXX="g++-4.8"
   - npm install -g npm@latest
-  - npm install -g ethereumjs-testrpc truffle
+  - npm install -g truffle
+  - npm install -g ganache-cli
 
 install:
   - npm install 
@@ -27,12 +28,7 @@ install:
 script:
   - npm run solhint
   - npm run eslint
-  - npm run testrpc
-  - npm run testrpc:subs
-  - npm run testrpc:ac
-  - npm run testrpc:auctions
-  - npm run testrpc:proceeds
-  - npm run testrpc:tokenLocker
+  - npm run test
 
 notifications:
   slack:

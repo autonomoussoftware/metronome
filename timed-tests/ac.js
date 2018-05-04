@@ -25,66 +25,28 @@
 
 const assert = require('chai').assert
 const ethjsABI = require('ethjs-abi')
-const TestRPCTime = require('../test/shared/time')
-const AutonomousConverter = artifacts.require('AutonomousConverter')
-const Auctions = artifacts.require('Auctions')
-const METToken = artifacts.require('METToken')
-const Proceeds = artifacts.require('Proceeds')
-const SmartToken = artifacts.require('SmartToken')
 const TokenLocker = artifacts.require('TokenLocker')
+const Metronome = require('../test/shared/inits')
+const BlockTime = require('../test/shared/time')
 
 contract('AutonomousConverter Interactions', accounts => {
-  let metToken, autonomousConverter, auctions, proceeds, smartToken
-
-  const OWNER = accounts[0]
-  const OWNER_TOKENS_HEX = '0000D3C214DE7193CD4E0000'
-  const FOUNDER = accounts[1]
-  const FOUNDER_TOKENS_HEX = '0000D3C214DE7193CD4E0000'
-
   const DAYS_IN_WEEK = 7
   const SECS_IN_DAY = 86400
 
-  function getCurrentBlockTime () {
-    var defaultBlock = web3.eth.defaultBlock
-    return web3.eth.getBlock(defaultBlock).timestamp
-  }
+  const MINIMUM_PRICE = 1000
+  const STARTING_PRICE = 1
+  const TIME_SCALE = 1
 
   function roundToMidNightNextDay (t) {
     let remainderSeconds = Math.ceil(t / SECS_IN_DAY)
     return (remainderSeconds * SECS_IN_DAY)
   }
 
-  const initContracts = function () {
-    return new Promise(async (resolve, reject) => {
-      autonomousConverter = await AutonomousConverter.new({from: OWNER})
-      auctions = await Auctions.new({from: OWNER})
-      proceeds = await Proceeds.new({from: OWNER})
-
-      const founders = []
-      founders.push(OWNER + '0000D3C214DE7193CD4E0000')
-      founders.push(FOUNDER + '0000D3C214DE7193CD4E0000')
-
-      const MET_INITIAL_SUPPLY = 0
-      const DECMULT = 10 ** 18
-      const MINIMUM_PRICE = 1000
-      const STARTING_PRICE = 1
-      const TIME_SCALE = 1
-      const START_TIME = getCurrentBlockTime()
-
-      metToken = await METToken.new(autonomousConverter.address, auctions.address, MET_INITIAL_SUPPLY, DECMULT, {from: OWNER})
-      smartToken = await SmartToken.new(autonomousConverter.address, autonomousConverter.address, MET_INITIAL_SUPPLY, {from: OWNER})
-      await autonomousConverter.init(metToken.address, smartToken.address, auctions.address, { from: OWNER, value: web3.toWei(1, 'ether') })
-      await proceeds.initProceeds(autonomousConverter.address, auctions.address, {from: OWNER})
-      await auctions.mintInitialSupply(founders, metToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
-      await auctions.initAuctions(START_TIME, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE, {from: OWNER})
-      resolve()
-    })
-  }
-
   describe('Proceeds -> AutonomousConverter', () => {
     it('Initial Auction should end after 7 days', () => {
       return new Promise(async (resolve, reject) => {
-        await initContracts()
+        const {auctions} =
+        await Metronome.initContracts(accounts, BlockTime.getCurrentBlockTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
         const genesisTime = await auctions.genesisTime()
         const initialAuctionEndTime = await auctions.initialAuctionEndTime()
@@ -96,8 +58,8 @@ contract('AutonomousConverter Interactions', accounts => {
         assert.equal(await auctions.isInitialAuctionEnded(), false, 'Inital auction should not have ended')
 
         const advDays = 8 // adv 1 day to start auction, then 7 days, plus a few seconds
-        await TestRPCTime.timeTravel((SECS_IN_DAY * advDays) + 60)
-        await TestRPCTime.mineBlock()
+        await BlockTime.timeTravel((SECS_IN_DAY * advDays) + 60)
+        await BlockTime.mineBlock()
 
         assert.equal(await auctions.isInitialAuctionEnded(), true, 'Inital auction did not end after 7 days')
 
@@ -107,11 +69,11 @@ contract('AutonomousConverter Interactions', accounts => {
 
     it('Initial Auction should end early, if all tokens are sold', () => {
       return new Promise(async (resolve, reject) => {
-        await initContracts()
-
+        const {metToken, auctions, proceeds, founders} =
+        await Metronome.initContracts(accounts, BlockTime.getCurrentBlockTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
         const advDays = 1 // adv 1 day plus a few seconds to start auction
-        await TestRPCTime.timeTravel((SECS_IN_DAY * advDays) + 60)
-        await TestRPCTime.mineBlock()
+        await BlockTime.timeTravel((SECS_IN_DAY * advDays) + 60)
+        await BlockTime.mineBlock()
 
         // sell all tokens in three days
         const amount = web3.toWei(2, 'ether')
@@ -171,17 +133,13 @@ contract('AutonomousConverter Interactions', accounts => {
           }
 
           const advDays = 1 // adv 1 day, plus a few seconds
-          await TestRPCTime.timeTravel((SECS_IN_DAY * advDays) + 60)
-          await TestRPCTime.mineBlock()
+          await BlockTime.timeTravel((SECS_IN_DAY * advDays) + 60)
+          await BlockTime.mineBlock()
 
           if (isOver) {
-            const founders = [
-              { address: await auctions.founders(0), targetTokens: parseInt(OWNER_TOKENS_HEX, 16) },
-              { address: await auctions.founders(1), targetTokens: parseInt(FOUNDER_TOKENS_HEX, 16) }]
-
             for (let i = 0; i < founders.length; i++) {
-              const founder = founders[i]
-              const tokenLockerAddress = await auctions.tokenLockers(founder.address)
+              const founderAddress = founders[i].slice(0, 42)
+              const tokenLockerAddress = await auctions.tokenLockers(founderAddress)
               const tokenLocker = await TokenLocker.at(tokenLockerAddress)
 
               const locked = await tokenLocker.locked()

@@ -24,9 +24,8 @@
 */
 
 const assert = require('chai').assert
-
+const Metronome = require('../test/shared/inits')
 const AutonomousConverter = artifacts.require('AutonomousConverter')
-// const Auctions = artifacts.require('Auctions')
 const METToken = artifacts.require('METToken')
 const Proceeds = artifacts.require('Proceeds')
 const SmartToken = artifacts.require('SmartToken')
@@ -35,26 +34,29 @@ const Auctions = artifacts.require('Auctions')
 contract('Proceeds', accounts => {
   let metToken, autonomousConverter, auctions, proceeds, smartToken
   const OWNER = accounts[0]
+  const auctionsMock = accounts[1]
 
+  async function initWithMockAuctions () {
+    metToken = await METToken.new()
+    auctions = await Auctions.new()
+    smartToken = await SmartToken.new()
+    autonomousConverter = await AutonomousConverter.new()
+    proceeds = await Proceeds.new()
+
+    await metToken.initMETToken(autonomousConverter.address, auctions.address, 0, 1e18, {from: OWNER})
+    await autonomousConverter.init(metToken.address, smartToken.address, auctions.address, { from: OWNER, value: web3.toWei(1, 'ether') })
+
+    // we just need one address as auction to perform fund transfer and closeAuction
+    // using contract's address make it difficult as we cannot invoke function on behalf of contract
+    await proceeds.initProceeds(autonomousConverter.address, auctionsMock, {from: OWNER})
+  }
   describe('Constructor and Owner only functions', () => {
-    beforeEach(async () => {
-      autonomousConverter = await AutonomousConverter.new()
-      proceeds = await Proceeds.new()
-      auctions = await Auctions.new()
-
-      metToken = await METToken.new(autonomousConverter.address, auctions.address, 0, 0, {from: OWNER})
-      smartToken = await SmartToken.new(autonomousConverter.address, autonomousConverter.address, 0, {from: OWNER})
-
-      await autonomousConverter.init(metToken.address, smartToken.address, auctions.address, {from: OWNER})
-      // we just need one address as auction to perform fund transfer and closeAuction
-      // using contract's address make it difficult as we cannot invoke function on behalf of contract
-      await proceeds.initProceeds(autonomousConverter.address, accounts[1], {from: OWNER})
-    })
-
     it('Should initialize proceeds correctly', () => {
       return new Promise(async (resolve, reject) => {
+        const time = new Date().getTime() / 1000
+        const {auctions, proceeds, autonomousConverter} = await Metronome.initContracts(accounts, time, 0, 0, 1)
         assert.equal(await proceeds.autonomousConverter(), autonomousConverter.address, 'autonomousConverter is not setup correctly')
-        assert.equal(await proceeds.auctions(), accounts[1], 'Auctions is not set up correctly')
+        assert.equal(await proceeds.auctions(), auctions.address, 'Auctions is not set up correctly')
 
         resolve()
       })
@@ -63,7 +65,7 @@ contract('Proceeds', accounts => {
     it('Should verify that only Auctions can send fund to Proceeds', () => {
       return new Promise(async (resolve, reject) => {
         const amount = 1e18
-        const auctionsMock = accounts[1]
+        await initWithMockAuctions()
         const proceedsBalanceBefore = await metToken.balanceOf(proceeds.address)
         await proceeds.handleFund({from: auctionsMock, value: amount})
         const proceedsBalanceAfter = await metToken.balanceOf(autonomousConverter.address)

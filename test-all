@@ -27,10 +27,10 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 LICENSE
 
-npm run testrpc:auctions && \
-npm run testrpc && \
-npm run testrpc:subs && \
-npm run testrpc:ac &&  \
-npm run testrpc:proceeds && \
-npm run testrpc:tokenLocker
+npm run ganache:auctions && \
+npm run ganache && \
+npm run ganache:subs && \
+npm run ganache:ac &&  \
+npm run ganache:proceeds && \
+npm run ganache:tokenLocker
 exit 0

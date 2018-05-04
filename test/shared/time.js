@@ -23,7 +23,7 @@
     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-const TestRPCTime = {
+const BlockTime = {
   getCurrentBlockTime: () => {
     const defaultBlock = web3.eth.defaultBlock
     return web3.eth.getBlock(defaultBlock).timestamp
@@ -53,7 +53,22 @@ const TestRPCTime = {
         return resolve(result)
       })
     })
+  },
+
+  roundToNextMidnight: (currentTime) => {
+    // round to prev midnight, then add a day
+    const SECS_IN_DAY = 86400
+    const nextMidnight = (currentTime - (currentTime % SECS_IN_DAY)) + SECS_IN_DAY
+    return nextMidnight
+  },
+
+  getSecondsToNextMidnight: () => {
+    return new Promise(async (resolve, reject) => {
+      const currentTime = BlockTime.getCurrentBlockTime()
+      const nextMidnight = BlockTime.roundToNextMidnight(currentTime)
+      return resolve((nextMidnight - currentTime))
+    })
   }
 }
 
-module.exports = TestRPCTime
+module.exports = BlockTime

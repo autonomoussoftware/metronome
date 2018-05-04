@@ -22,7 +22,7 @@
     TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-pragma solidity ^0.4.19;
+pragma solidity ^0.4.21;
 
 import "../monolithic.sol";
 
@@ -44,7 +44,7 @@ contract MockFixedSupplyToken is ERC20, Owned {
         decimals = 18;
         _totalSupply = 100 * 10**uint(decimals);
         balances[owner] = _totalSupply;
-        Transfer(address(0), owner, _totalSupply);
+        emit Transfer(address(0), owner, _totalSupply);
     }
 
     function totalSupply() public constant returns (uint) {
@@ -58,13 +58,13 @@ contract MockFixedSupplyToken is ERC20, Owned {
     function transfer(address to, uint tokens) public returns (bool success) {
         balances[msg.sender] = balances[msg.sender].sub(tokens);
         balances[to] = balances[to].add(tokens);
-        Transfer(msg.sender, to, tokens);
+        emit Transfer(msg.sender, to, tokens);
         return true;
     }
 
     function approve(address spender, uint tokens) public returns (bool success) {
         allowed[msg.sender][spender] = tokens;
-        Approval(msg.sender, spender, tokens);
+        emit Approval(msg.sender, spender, tokens);
         return true;
     }
 
@@ -72,7 +72,7 @@ contract MockFixedSupplyToken is ERC20, Owned {
         balances[from] = balances[from].sub(tokens);
         allowed[from][msg.sender] = allowed[from][msg.sender].sub(tokens);
         balances[to] = balances[to].add(tokens);
-        Transfer(from, to, tokens);
+        emit Transfer(from, to, tokens);
         return true;
     }
 
