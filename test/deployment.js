@@ -56,11 +56,13 @@ contract('Deploy Contracts', accounts => {
       autonomousConverter = await AutonomousConverter.new({from: OWNER})
       auctions = await Auctions.new({from: OWNER})
       proceeds = await Proceeds.new({from: OWNER})
+      metToken = await METToken.new({from: OWNER})
+      smartToken = await SmartToken.new({from: OWNER})
 
       const MET_INITIAL_SUPPLY = 0
       const DECMULT = 10 ** 18
-      metToken = await METToken.new(autonomousConverter.address, auctions.address, MET_INITIAL_SUPPLY, DECMULT, {from: OWNER})
-      smartToken = await SmartToken.new(autonomousConverter.address, autonomousConverter.address, MET_INITIAL_SUPPLY, {from: OWNER})
+      await metToken.initMETToken(autonomousConverter.address, auctions.address, MET_INITIAL_SUPPLY, DECMULT, {from: OWNER})
+      await smartToken.initSmartToken(autonomousConverter.address, autonomousConverter.address, MET_INITIAL_SUPPLY, {from: OWNER})
 
       const founders = []
       founders.push(OWNER + '0000D3C214DE7193CD4E0000')
@@ -72,10 +74,15 @@ contract('Deploy Contracts', accounts => {
       // change ownership to bloq for step 2
       //
       await metToken.changeOwnership(BLOQ, {from: OWNER})
+      await metToken.acceptOwnership({from: BLOQ})
       await autonomousConverter.changeOwnership(BLOQ, {from: OWNER})
+      await autonomousConverter.acceptOwnership({from: BLOQ})
       await auctions.changeOwnership(BLOQ, {from: OWNER})
+      await auctions.acceptOwnership({from: BLOQ})
       await proceeds.changeOwnership(BLOQ, {from: OWNER})
+      await proceeds.acceptOwnership({from: BLOQ})
       await smartToken.changeOwnership(BLOQ, {from: OWNER})
+      await smartToken.acceptOwnership({from: BLOQ})
       resolve()
     })
   }

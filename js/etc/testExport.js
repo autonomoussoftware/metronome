@@ -22,19 +22,32 @@
     TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-pragma solidity ^0.4.21;
 
+/* globals personal, waitForTx, METToken, web3, TokenPorter */
+// var funder = eth.accounts[0]
 
-contract MockContractReceiver {
-    event TestLog(uint n);
+var exportMETFromAddress = function (address) {
+  personal.unlockAccount(address, 'password')
 
-    function onTokenTransfer(uint n) public returns (bool) {
-        emit TestLog(n);
-        return true;
-    }
+  var destChain = 'ETH'
 
-    function onTokenApprove(uint n) public returns (bool) {
-        emit TestLog(n);
-        return true;
-    }
+  var destMETAddr = TokenPorter.destinationChains(web3.fromAscii(destChain)) // using same contract ideally replace with mock contract
+  console.log('destMETAddr=', destMETAddr)
+  var destRecipAddr = '0x00a329c0648769a73afac7f9381e08fb43dbea72'
+
+  var amount = METToken.balanceOf(address)
+  console.log(address, 'has', amount, 'before export')
+  var extraData = 'extra data'
+  var tx = METToken.export(
+    web3.fromAscii(destChain),
+    destMETAddr,
+    destRecipAddr,
+    amount,
+    0,
+    web3.fromAscii(extraData),
+    { from: address })
+  waitForTx(tx)
+  console.log(address, 'has', METToken.balanceOf(address), 'after burn')
 }
+
+console.log('export tests are ready, invoke exportMETFor(i), to test for export receipt monitoring')

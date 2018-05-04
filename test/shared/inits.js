@@ -28,8 +28,11 @@ const Auctions = artifacts.require('Auctions')
 const METToken = artifacts.require('METToken')
 const Proceeds = artifacts.require('Proceeds')
 const SmartToken = artifacts.require('SmartToken')
+const TokenPorter = artifacts.require('TokenPorter')
+const Validator = artifacts.require('Validator')
+const ChainLedger = artifacts.require('ChainLedger')
 
-const Tests = {
+const Metronome = {
   initContracts: (accounts, START_TIME, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE) => {
     return new Promise(async (resolve, reject) => {
       const OWNER = accounts[0]
@@ -38,31 +41,96 @@ const Tests = {
       const autonomousConverter = await AutonomousConverter.new({from: OWNER})
       const auctions = await Auctions.new({from: OWNER})
       const proceeds = await Proceeds.new({from: OWNER})
+      const metToken = await METToken.new({from: OWNER})
+      const smartToken = await SmartToken.new({from: OWNER})
+      const tokenPorter = await TokenPorter.new({from: OWNER})
+      const validator = await Validator.new({from: OWNER})
+      const chainLedger = await ChainLedger.new({from: OWNER})
 
       const founders = []
-      founders.push(OWNER + '0000D3C214DE7193CD4E0000')
-      founders.push(FOUNDER + '0000D3C214DE7193CD4E0000')
+      founders.push(OWNER + '0000D3C21BCECCEDA1000000') // 1000000e18
+      founders.push(FOUNDER + '0000D3C20DEE1639F99C0000') // 999999e18
 
       const MET_INITIAL_SUPPLY = 0
       const ST_INITIAL_SUPPLY = 2
       const DECMULT = 10 ** 18
 
-      const metToken = await METToken.new(autonomousConverter.address, auctions.address, MET_INITIAL_SUPPLY, DECMULT, {from: OWNER})
-      const smartToken = await SmartToken.new(autonomousConverter.address, autonomousConverter.address, ST_INITIAL_SUPPLY, {from: OWNER})
+      await metToken.initMETToken(autonomousConverter.address, auctions.address, MET_INITIAL_SUPPLY, DECMULT, {from: OWNER})
+      await metToken.setTokenPorter(tokenPorter.address, {from: OWNER})
+
+      await smartToken.initSmartToken(autonomousConverter.address, autonomousConverter.address, ST_INITIAL_SUPPLY, {from: OWNER})
+
       await autonomousConverter.init(metToken.address, smartToken.address, auctions.address, { from: OWNER, value: web3.toWei(1, 'ether') })
       await proceeds.initProceeds(autonomousConverter.address, auctions.address, {from: OWNER})
       await auctions.mintInitialSupply(founders, metToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
       await auctions.initAuctions(START_TIME, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE, {from: OWNER})
 
+      await tokenPorter.initTokenPorter(metToken.address, auctions.address, {from: OWNER})
+      await tokenPorter.setValidator(validator.address, {from: OWNER})
+      await tokenPorter.setChainLedger(chainLedger.address, {from: OWNER})
+      await validator.initValidator(OWNER, accounts[1], accounts[2], {from: OWNER})
+      await validator.setTokenPorter(tokenPorter.address, {from: OWNER})
+      await chainLedger.initChainLedger(tokenPorter.address, auctions.address, {from: OWNER})
+      await chainLedger.registerChain(web3.fromAscii('ETH'), 10e24, {from: OWNER})
+      await chainLedger.registerChain(web3.fromAscii('ETC'), 0, {from: OWNER})
       resolve({
         metToken: metToken,
         autonomousConverter: autonomousConverter,
         auctions: auctions,
         proceeds: proceeds,
-        smartToken: smartToken
+        smartToken: smartToken,
+        tokenPorter: tokenPorter,
+        validator: validator,
+        chainLedger: chainLedger,
+        founders: founders
+      })
+    })
+  },
+  initNonOGContracts: (accounts, START_TIME, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE, INITIAL_AUCTION_END_TIME) => {
+    return new Promise(async (resolve, reject) => {
+      const OWNER = accounts[0]
+
+      const autonomousConverter = await AutonomousConverter.new({from: OWNER})
+      const auctions = await Auctions.new({from: OWNER})
+      const proceeds = await Proceeds.new({from: OWNER})
+      const metToken = await METToken.new({from: OWNER})
+      const smartToken = await SmartToken.new({from: OWNER})
+      const tokenPorter = await TokenPorter.new({from: OWNER})
+      const validator = await Validator.new({from: OWNER})
+      const MET_INITIAL_SUPPLY = 0
+      const chainLedger = await ChainLedger.new({from: OWNER})
+      const ST_INITIAL_SUPPLY = 2
+      const DECMULT = 10 ** 18
+
+      await metToken.initMETToken(autonomousConverter.address, auctions.address, MET_INITIAL_SUPPLY, DECMULT, {from: OWNER})
+      await metToken.setTokenPorter(tokenPorter.address, {from: OWNER})
+
+      await smartToken.initSmartToken(autonomousConverter.address, autonomousConverter.address, ST_INITIAL_SUPPLY, {from: OWNER})
+
+      await autonomousConverter.init(metToken.address, smartToken.address, auctions.address, { from: OWNER, value: web3.toWei(1, 'ether') })
+      await proceeds.initProceeds(autonomousConverter.address, auctions.address, {from: OWNER})
+      await auctions.skipInitBecauseIAmNotOg(metToken.address, proceeds.address, START_TIME, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE, web3.fromAscii('ETC'), INITIAL_AUCTION_END_TIME, {from: OWNER})
+
+      await tokenPorter.initTokenPorter(metToken.address, auctions.address, {from: OWNER})
+      await tokenPorter.setValidator(validator.address, {from: OWNER})
+      await tokenPorter.setChainLedger(chainLedger.address, {from: OWNER})
+      await validator.initValidator(OWNER, accounts[1], accounts[2], {from: OWNER})
+      await validator.setTokenPorter(tokenPorter.address, {from: OWNER})
+      await chainLedger.initChainLedger(tokenPorter.address, auctions.address, {from: OWNER})
+      await chainLedger.registerChain(web3.fromAscii('ETH'), 10e24, {from: OWNER})
+      await chainLedger.registerChain(web3.fromAscii('ETC'), 0, {from: OWNER})
+      resolve({
+        etcMetToken: metToken,
+        etcAutonomousConverter: autonomousConverter,
+        etcAuctions: auctions,
+        etcProceeds: proceeds,
+        etcSmartToken: smartToken,
+        etcTokenPorter: tokenPorter,
+        etcValidator: validator,
+        etcChainLedger: chainLedger
       })
     })
   }
 }
 
-module.exports = Tests
+module.exports = Metronome

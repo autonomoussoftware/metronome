@@ -24,16 +24,11 @@
 */
 
 const assert = require('chai').assert
-const METToken = artifacts.require('METToken')
-const SmartToken = artifacts.require('SmartToken')
-const Proceeds = artifacts.require('Proceeds')
-const AutonomousConverter = artifacts.require('AutonomousConverter')
-const Auctions = artifacts.require('Auctions')
+const Metronome = require('../test/shared/inits')
 
 contract('AutonomousConverter', accounts => {
   const OWNER = accounts[0]
-  const INITIAL_SUPPLY = 1000
-  const SMART_INITIAL_SUPPLY = 1000
+  const INITIAL_SUPPLY = 0
   const DECMULT = 10 ** 18
   let timeInSeconds = new Date().getTime() / 1000
   const START_TIME = (Math.floor(timeInSeconds / 60) * 60) - (7 * 24 * 60 * 60) - 120
@@ -41,34 +36,10 @@ contract('AutonomousConverter', accounts => {
   const STARTING_PRICE = 0.5
   const TIME_SCALE = 1
 
-  let metToken, smartToken, proceeds, autonomousConverter, auctions
-
-  // Create contracts and initilize them for each test case
-  beforeEach(async () => {
-    proceeds = await Proceeds.new()
-    autonomousConverter = await AutonomousConverter.new()
-    auctions = await Auctions.new()
-
-    metToken = await METToken.new(autonomousConverter.address, auctions.address, INITIAL_SUPPLY, DECMULT, {from: OWNER})
-    smartToken = await SmartToken.new(autonomousConverter.address, autonomousConverter.address, SMART_INITIAL_SUPPLY, {from: OWNER})
-    await autonomousConverter.init(metToken.address, smartToken.address, auctions.address,
-      {
-        from: OWNER,
-        value: web3.toWei(1, 'ether')
-      })
-    await proceeds.initProceeds(autonomousConverter.address, auctions.address, {from: OWNER})
-    const founders = []
-    // Since we are appending it with hexadecimal address so amount should also be
-    // in hexa decimal. Hence 999999e18 = 0000d3c20dee1639f99c0000 in 24 character ( 96 bits)
-    // 1000000e18 =  0000d3c20dee1639f99c0000
-    founders.push(OWNER + '0000D3C214DE7193CD4E0000')
-    founders.push(accounts[1] + '0000D3C214DE7193CD4E0000')
-    await auctions.mintInitialSupply(founders, metToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
-    await auctions.initAuctions(START_TIME, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE, {from: OWNER})
-    await metToken.enableMETTransfers()
-  })
   it('Should verify that AutonomousConverter is initialized correctly', () => {
     return new Promise(async (resolve, reject) => {
+      const {metToken, smartToken, autonomousConverter} = await Metronome.initContracts(accounts, START_TIME, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+
       assert.equal(await autonomousConverter.reserveToken(), metToken.address, 'METToken address isn\'t correct')
       assert.equal(await autonomousConverter.smartToken(), smartToken.address, 'SmartToken address isn\'t correct')
 
@@ -78,6 +49,7 @@ contract('AutonomousConverter', accounts => {
 
   it('Should return correct balance of Eth and Met token', () => {
     return new Promise(async (resolve, reject) => {
+      const {autonomousConverter} = await Metronome.initContracts(accounts, START_TIME, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
       // 1 MET is added during initilization of Auctions
       const metBalance = (INITIAL_SUPPLY) * DECMULT
 
@@ -95,6 +67,10 @@ contract('AutonomousConverter', accounts => {
     return new Promise(async (resolve, reject) => {
       const WEI_SENT = 10e18
       const MIN_MET_RETURN = 1
+
+      const {metToken, smartToken, autonomousConverter} =
+        await Metronome.initContracts(accounts, START_TIME, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      await metToken.enableMETTransfers()
 
       const prediction = await autonomousConverter.getMetForEthResult(WEI_SENT, { from: OWNER })
       assert(prediction.toNumber() > 0, 'ETH to MET prediction is not greater than zero')
@@ -127,6 +103,10 @@ contract('AutonomousConverter', accounts => {
       const weiSent = 10e18
       const MIN_ETH_RETURN = 1
 
+      const {metToken, smartToken, autonomousConverter} =
+       await Metronome.initContracts(accounts, START_TIME, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      await metToken.enableMETTransfers()
+
       const txChange = await autonomousConverter.convertEthToMet(1, {from: OWNER, value: weiSent})
       assert(txChange, 'ETH to MET transaction failed')
 
@@ -151,8 +131,6 @@ contract('AutonomousConverter', accounts => {
       const mtTokenBalanceOfOwnerAfter = await metToken.balanceOf(OWNER)
       const smartTokenAfterBalance = await smartToken.balanceOf(OWNER, { from: autonomousConverter.address })
 
-      // console.log(gasCost, 'gas cost')
-      // console.log('diff owner', ((ethBalanceOfOwnerAfter.toNumber() + gasCost - ethBalanceOfOwnerBefore.toNumber()) - prediction.toNumber()) / DECMULT)
       assert.closeTo(ethBalanceOfOwnerAfter.add(gasCost).sub(ethBalanceOfOwnerBefore).toNumber(), prediction.toNumber(), 0.014e18, 'Prediction and actual is not correct for owner')
       assert.equal(ethBalanceOfACBefore.sub(ethBalanceOfACAfter).toNumber(), prediction.toNumber(), 'Prediction and actual is not correct for AC')
       assert.equal(smartTokenAfterBalance.toNumber(), 0, 'Smart Tokens were not destroyed')

@@ -24,8 +24,8 @@
 */
 
 const assert = require('chai').assert
-const METGlobal = require('../test/shared/inits')
-const TestRPCTime = require('../test/shared/time')
+const Metronome = require('../test/shared/inits')
+const BlockTime = require('../test/shared/time')
 
 contract('Proceeds - timed test', accounts => {
   const MINIMUM_PRICE = 33 * 10 ** 11 // minimum wei per token
@@ -37,20 +37,20 @@ contract('Proceeds - timed test', accounts => {
       const fromAccount = accounts[7]
       const amount = web3.toWei(10, 'ether')
       let expectedFundTranferInAC = (amount * 0.25) / 100
-      await TestRPCTime.mineBlock()
-      const { auctions, proceeds, autonomousConverter } = await METGlobal.initContracts(accounts, TestRPCTime.getCurrentBlockTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      await BlockTime.mineBlock()
+      const { auctions, proceeds, autonomousConverter } = await Metronome.initContracts(accounts, BlockTime.getCurrentBlockTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
       // await initContracts(auctionStartTime - 60, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
       // advance a minute so action can start and one hour for purchase, ie 61 mins
-      await TestRPCTime.timeTravel(61 * 60)
-      await TestRPCTime.mineBlock()
+      await BlockTime.timeTravel(61 * 60)
+      await BlockTime.mineBlock()
       var balanceACBefore = await web3.eth.getBalance(autonomousConverter.address).valueOf()
       await auctions.sendTransaction({
         from: fromAccount,
         value: amount
       })
-      await TestRPCTime.timeTravel(8 * 24 * 60 * 60)
-      await TestRPCTime.mineBlock()
+      await BlockTime.timeTravel(8 * 24 * 60 * 60)
+      await BlockTime.mineBlock()
       await auctions.sendTransaction({
         from: fromAccount,
         value: amount
@@ -63,8 +63,8 @@ contract('Proceeds - timed test', accounts => {
       balanceACAfter = await web3.eth.getBalance(autonomousConverter.address).valueOf()
       assert.equal(balanceACAfter - balanceACBefore, 0, 'Incorrect fund transffered to AC')
       balanceACBefore = await web3.eth.getBalance(autonomousConverter.address)
-      await TestRPCTime.timeTravel(2 * 24 * 60 * 60)
-      await TestRPCTime.mineBlock()
+      await BlockTime.timeTravel(2 * 24 * 60 * 60)
+      await BlockTime.mineBlock()
       let balanceOfProceed = await web3.eth.getBalance(proceeds.address)
       const tx = await proceeds.closeAuction({from: fromAccount})
       expectedFundTranferInAC = (balanceOfProceed.mul(25)).div(10000).toNumber()

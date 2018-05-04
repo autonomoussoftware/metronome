@@ -1,0 +1,62 @@
+#!/bin/bash
+
+cat <<- _EOM_
+
+**** WARNING *** **** WARNING *** **** WARNING *** **** WARNING *** **** WARNING ***
+About to deploy ETH and ETC local metronomes. This will wipe anything in local 
+parity files under /tmp/paritydev and /tmp/paritydev-etc. Stop now if this is not
+what you want!
+
+Note that you must have tmux installed. 
+
+_EOM_
+
+read -p "Press enter to continue destroying parity local dev environments"
+
+rm ./js/eth/const.js
+rm ./js/etc/const.js
+rm ./js/etc/launched
+rm ./js/eth/launched
+
+echo "Killing any old Metronome tmux sessions."
+tmux kill-session -t Metronome
+
+echo "Launching New Session."
+
+tmux new-session -d -s Metronome 
+tmux send-keys 'echo y|./deploy' 'C-m'
+tmux rename-window 'MET ETH'
+tmux send-keys 'geth --exec 'eth.blockNumber' attach http://127.0.0.1:8545 --preload js/eth/metronome.js,js/eth/const.js,js/common.js,js/eth/initMetronome.js,js/eth/launchMetronome.js; touch js/eth/launched' 'C-m' 
+
+tmux new-window 
+tmux send-keys 'echo y|./deploy --chain etc' 'C-m'
+tmux rename-window 'MET ETC'
+tmux send-keys 'geth --exec 'eth.blockNumber' attach http://127.0.0.1:8555 --preload js/etc/metronome.js,js/etc/const.js,js/common.js,js/etc/initMetronome.js,js/etc/launchMetronome.js; touch js/etc/launched' 'C-m' 
+
+echo "Waiting for ETH and ETC To Deploy."
+while ! [ -f ./js/eth/launched ]
+do
+  echo -n "#"
+  sleep 1
+done
+
+while ! [ -f ./js/etc/launched ]
+do
+  echo -n "#"
+  sleep 1
+done
+
+tmux new-window 
+tmux send-keys 'node export-tests/offchain/validator.js' 'C-m'
+tmux rename-window 'Validation'
+
+tmux new-window 
+tmux send-keys 'node export-tests/offchain/claimer.js' 'C-m'
+tmux rename-window 'Claiming'
+
+tmux new-window
+tmux send-keys 'cat welcome.msg' 'C-m'
+tmux send-keys 'npm run testExport ./export-tests/testCases/crossChainImportExportTest.js' 'C-m'
+
+tmux -2 attach-session -t Metronome
+

@@ -23,9 +23,7 @@
     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-/* globals _ */
 const assert = require('assert')
-const ethjsABI = require('ethjs-abi')
 const Token = artifacts.require('Token')
 const MockContractReceiver = artifacts.require('MockContractReceiver')
 
@@ -49,19 +47,19 @@ contract('Token', accounts => {
 
   const decMult = 10 ** 18
 
-  function findMethod (abi, name, args) {
-    for (var i = 0; i < abi.length; i++) {
-      const methodArgs = _.map(abi[i].inputs, 'type').join(',')
-      if ((abi[i].name === name) && (methodArgs === args)) {
-        return abi[i]
-      }
-    }
-  }
+  // function findMethod (abi, name, args) {
+  //   for (var i = 0; i < abi.length; i++) {
+  //     const methodArgs = _.map(abi[i].inputs, 'type').join(',')
+  //     if ((abi[i].name === name) && (methodArgs === args)) {
+  //       return abi[i]
+  //     }
+  //   }
+  // }
 
   beforeEach(async () => {
     const initialSupply = 1000
-
-    contracts.tokenMock = await Token.new(actors.autonomousConverter, actors.minter, initialSupply, decMult, { from: actors.owner })
+    contracts.tokenMock = await Token.new({from: actors.owner})
+    await contracts.tokenMock.initToken(actors.autonomousConverter, actors.minter, initialSupply, decMult, { from: actors.owner })
     contracts.receiverMock = await MockContractReceiver.new({ from: actors.owner })
 
     assert.equal(await contracts.tokenMock.autonomousConverter(), actors.autonomousConverter, 'autonomousConverter was not set')
@@ -86,7 +84,7 @@ contract('Token', accounts => {
         const newDecMult = 10 ** 8
         let thrown = false
         try {
-          await contracts.tokenMock.init(newAutonomousConverter, newMinter, newInitialSupply, newDecMult, { from: actors.owner })
+          await contracts.tokenMock.initToken(newAutonomousConverter, newMinter, newInitialSupply, newDecMult, { from: actors.owner })
         } catch (error) {
           thrown = true
         }
@@ -261,6 +259,7 @@ contract('Token', accounts => {
     })
   })
 
+  // Truffle doesnt support overloaded function, this is an open issue and will be fixed in truffle 5.x.x
   describe('Transfers', () => {
     it('Alice should not be able to send tokens to Bob with insufficient funds', () => {
       return new Promise(async (resolve, reject) => {
@@ -334,70 +333,6 @@ contract('Token', accounts => {
         afterBalances.bob = await contracts.tokenMock.balanceOf(actors.bob)
         assert.equal(afterBalances.alice.toNumber() - beforeBalances.alice.toNumber(), -transferAmount, 'Alice balance is incorrect')
         assert.equal(afterBalances.bob.toNumber() - beforeBalances.bob.toNumber(), transferAmount, 'Bob balance is incorrect')
-        resolve()
-      })
-    })
-  })
-
-  describe('Transfers with data', () => {
-    it('Alice should be able to send tokens to contract with function call', () => {
-      return new Promise(async (resolve, reject) => {
-        const mintAmount = 1 * decMult
-
-        // give alice tokens for test
-        await contracts.tokenMock.mint(actors.alice, mintAmount, { from: actors.minter })
-
-        const beforeBalances = { alice: 0, contract: 0 }
-        beforeBalances.alice = await contracts.tokenMock.balanceOf(actors.alice)
-        beforeBalances.contract = await contracts.tokenMock.balanceOf(contracts.receiverMock.address)
-
-        const transferAmount = 1 * decMult
-
-        // create raw transaction with contract data
-        const testNumber = 24
-        const extraData = contracts.receiverMock.contract.onTokenTransfer.getData(testNumber)
-        const abiMethod = findMethod(contracts.tokenMock.abi, 'transfer', 'address,uint256,bytes')
-        const transferData = ethjsABI.encodeMethod(abiMethod, [contracts.receiverMock.contract.address, transferAmount, extraData])
-        const tx = await contracts.tokenMock.sendTransaction({ from: actors.alice, data: transferData })
-
-        // check logs for event triggered in receiver contract
-        assert.equal(tx.receipt.logs.length, 3, 'Incorrect number of logs emitted for tx.receipt')
-        assert.equal(tx.receipt.logs[1].data, testNumber, 'TestLog did not emit with correct value')
-        assert.equal(tx.logs.length, 2, 'Incorrect number of logs emitted for tx')
-
-        // check standard transfer event
-        const log0 = tx.logs[0]
-        assert.equal(log0.event, 'Transfer', 'Transfer event was not emitted')
-        const log0Args = {
-          from: log0.args._from,
-          to: log0.args._to,
-          value: log0.args._value
-        }
-        assert.equal(log0Args.from, actors.alice, 'From is wrong')
-        assert.equal(log0Args.to, contracts.receiverMock.address, 'To is wrong')
-        assert.equal(log0Args.value.toNumber(), transferAmount, 'Transfer amount is wrong')
-
-        // check new data transfer event
-        const log1 = tx.logs[1]
-        assert.equal(log1.event, 'Transfer', 'Transfer event was not emitted')
-        const log1Args = {
-          from: log1.args._from,
-          to: log1.args._to,
-          value: log1.args._value,
-          data: log1.args._data
-        }
-        assert.equal(log1Args.from, actors.alice, 'From is wrong')
-        assert.equal(log1Args.to, contracts.receiverMock.address, 'To is wrong')
-        assert.equal(log1Args.value.toNumber(), transferAmount, 'Transfer amount is wrong')
-        assert.equal(log1Args.data, extraData, 'Data is wrong')
-
-        // reconcile balances
-        const afterBalances = { alice: 0, contract: 0 }
-        afterBalances.alice = await contracts.tokenMock.balanceOf(actors.alice)
-        afterBalances.contract = await contracts.tokenMock.balanceOf(contracts.receiverMock.address)
-        assert.equal(afterBalances.alice.toNumber() - beforeBalances.alice.toNumber(), -transferAmount, 'Alice balance is incorrect')
-        assert.equal(afterBalances.contract.toNumber() - beforeBalances.contract.toNumber(), transferAmount, 'Contract balance is incorrect')
-
         resolve()
       })
     })
@@ -513,61 +448,6 @@ contract('Token', accounts => {
           thrown = true
         }
         assert(thrown, 'Approve did not throw')
-
-        resolve()
-      })
-    })
-  })
-
-  describe('Approve with data', () => {
-    it('Alice should be able to approve contract transfers with function call', () => {
-      return new Promise(async (resolve, reject) => {
-        const allowedBeforeAmt = await contracts.tokenMock.allowance(actors.alice, contracts.receiverMock.address)
-        assert.equal(allowedBeforeAmt, 0, 'Contract should not already be allowed to transfer Alice\'s funds')
-
-        const approveAmount = 1 * decMult
-
-        // create raw transaction with contract data
-        const testNumber = 8
-        const extraData = contracts.receiverMock.contract.onTokenApprove.getData(testNumber)
-        const abiMethod = findMethod(contracts.tokenMock.abi, 'approve', 'address,uint256,bytes')
-        const transferData = ethjsABI.encodeMethod(abiMethod, [contracts.receiverMock.contract.address, approveAmount, extraData])
-        const tx = await contracts.tokenMock.sendTransaction({ from: actors.alice, data: transferData })
-
-        // check logs for event triggered in receiver contract
-        assert.equal(tx.receipt.logs.length, 3, 'Incorrect number of logs emitted for tx.receipt')
-        assert.equal(tx.receipt.logs[1].data, testNumber, 'TestLog did not emit with correct value')
-        assert.equal(tx.logs.length, 2, 'Incorrect number of logs emitted for tx')
-
-        // check standard transfer event
-        const log0 = tx.logs[0]
-        assert.equal(log0.event, 'Approval', 'Approval event was not emitted')
-        const log0Args = {
-          owner: log0.args._owner,
-          spender: log0.args._spender,
-          value: log0.args._value
-        }
-        assert.equal(log0Args.owner, actors.alice, 'Owner is wrong')
-        assert.equal(log0Args.spender, contracts.receiverMock.address, 'Spender is wrong')
-        assert.equal(log0Args.value.toNumber(), approveAmount, 'Approval amount is wrong')
-
-        // check new data transfer event
-        const log1 = tx.logs[1]
-        assert.equal(log1.event, 'Approval', 'Approval event was not emitted')
-        const log1Args = {
-          owner: log1.args._owner,
-          spender: log1.args._spender,
-          value: log1.args._value,
-          data: log1.args._data
-        }
-        assert.equal(log1Args.owner, actors.alice, 'Owner is wrong')
-        assert.equal(log1Args.spender, contracts.receiverMock.address, 'Spender is wrong')
-        assert.equal(log1Args.value.toNumber(), approveAmount, 'Approval amount is wrong')
-        assert.equal(log1Args.data, extraData, 'Data is wrong')
-
-        // reconcile balances
-        const allowedAfterAmt = await contracts.tokenMock.allowance(actors.alice, contracts.receiverMock.address)
-        assert.equal(allowedAfterAmt.toNumber() - allowedBeforeAmt.toNumber(), approveAmount, 'Contract approval amount is incorrect')
 
         resolve()
       })
@@ -735,75 +615,6 @@ contract('Token', accounts => {
 
         const allowedAfterAmt = await contracts.tokenMock.allowance(actors.alice, actors.bob)
         assert.equal(allowedBeforeAmt.toNumber() - allowedAfterAmt.toNumber(), transferAmount, 'Bob allowance did not update after the transfer')
-
-        resolve()
-      })
-    })
-  })
-
-  describe('Transfer from with data', () => {
-    it('Bob should be able to send tokens to a contract with a function call on Alice\'s behalf', () => {
-      return new Promise(async (resolve, reject) => {
-        const mintAmount = 1 * decMult
-
-        // give alice tokens for test
-        await contracts.tokenMock.mint(actors.alice, mintAmount, { from: actors.minter })
-
-        const beforeBalances = { alice: 0, contract: 0, bob: 0 }
-        beforeBalances.alice = await contracts.tokenMock.balanceOf(actors.alice)
-        beforeBalances.bob = await contracts.tokenMock.balanceOf(actors.bob)
-        beforeBalances.contract = await contracts.tokenMock.balanceOf(contracts.receiverMock.address)
-
-        // approve bob for the transfer
-        const transferAmount = 1 * decMult
-        await contracts.tokenMock.approve(actors.bob, transferAmount, { from: actors.alice })
-
-        // create raw transaction with contract data
-        const testNumber = 32
-        const extraData = contracts.receiverMock.contract.onTokenTransfer.getData(testNumber)
-        const abiMethod = findMethod(contracts.tokenMock.abi, 'transferFrom', 'address,address,uint256,bytes')
-        const transferData = ethjsABI.encodeMethod(abiMethod, [actors.alice, contracts.receiverMock.contract.address, transferAmount, extraData])
-        const tx = await contracts.tokenMock.sendTransaction({ from: actors.bob, data: transferData })
-
-        // check logs for event triggered in receiver contract
-        assert.equal(tx.receipt.logs.length, 3, 'Incorrect number of logs emitted for tx.receipt')
-        assert.equal(tx.receipt.logs[1].data, testNumber, 'TestLog did not emit with correct value')
-        assert.equal(tx.logs.length, 2, 'Incorrect number of logs emitted for tx')
-
-        // check standard transfer event
-        const log0 = tx.logs[0]
-        assert.equal(log0.event, 'Transfer', 'Transfer event was not emitted')
-        const log0Args = {
-          from: log0.args._from,
-          to: log0.args._to,
-          value: log0.args._value
-        }
-        assert.equal(log0Args.from, actors.alice, 'From is wrong')
-        assert.equal(log0Args.to, contracts.receiverMock.address, 'To is wrong')
-        assert.equal(log0Args.value.toNumber(), transferAmount, 'Transfer amount is wrong')
-
-        // check new data transfer event
-        const log1 = tx.logs[1]
-        assert.equal(log1.event, 'Transfer', 'Transfer event was not emitted')
-        const log1Args = {
-          from: log1.args._from,
-          to: log1.args._to,
-          value: log1.args._value,
-          data: log1.args._data
-        }
-        assert.equal(log1Args.from, actors.alice, 'From is wrong')
-        assert.equal(log1Args.to, contracts.receiverMock.address, 'To is wrong')
-        assert.equal(log1Args.value.toNumber(), transferAmount, 'Transfer amount is wrong')
-        assert.equal(log1Args.data, extraData, 'Data is wrong')
-
-        // reconcile balances
-        const afterBalances = { alice: 0, contract: 0, bob: 0 }
-        afterBalances.alice = await contracts.tokenMock.balanceOf(actors.alice)
-        afterBalances.bob = await contracts.tokenMock.balanceOf(actors.bob)
-        afterBalances.contract = await contracts.tokenMock.balanceOf(contracts.receiverMock.address)
-        assert.equal(afterBalances.alice.toNumber() - beforeBalances.alice.toNumber(), -transferAmount, 'Alice balance is incorrect')
-        assert.equal(afterBalances.contract.toNumber() - beforeBalances.contract.toNumber(), transferAmount, 'Contract balance is incorrect')
-        assert.equal(afterBalances.bob.toNumber(), beforeBalances.bob.toNumber(), transferAmount, 'Bob balance is incorrect')
 
         resolve()
       })

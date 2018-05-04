@@ -25,7 +25,7 @@
 
 const assert = require('chai').assert
 const Owned = artifacts.require('Owned')
-
+const Ownable = artifacts.require('Ownable')
 contract('Owned', accounts => {
   const actors = {
     owner: accounts[0],
@@ -34,11 +34,13 @@ contract('Owned', accounts => {
   }
 
   const contracts = {
-    owned: null
+    owned: null,
+    ownable: null
   }
 
   beforeEach(async () => {
     contracts.owned = await Owned.new({ from: actors.owner })
+    contracts.ownable = await Ownable.new({ from: actors.owner })
   })
 
   it('should have an owner', () => {
@@ -50,12 +52,12 @@ contract('Owned', accounts => {
     })
   })
 
-  it('change owners', () => {
+  it('Owned contract: change owners', () => {
     return new Promise(async (resolve, reject) => {
       const success = await contracts.owned.changeOwnership.call(actors.alice, {from: actors.owner})
       assert.isTrue(success, 'changeOwnership did not return true')
-      const tx = await contracts.owned.changeOwnership(actors.alice, {from: actors.owner})
-
+      await contracts.owned.changeOwnership(actors.alice, {from: actors.owner})
+      const tx = await contracts.owned.acceptOwnership({from: actors.alice})
       assert.equal(tx.logs.length, 1, 'Incorrect number of logs emitted')
       const log = tx.logs[0]
       assert.equal(log.event, 'OwnershipChanged', 'OwnershipChanged log was not emitted')
@@ -69,22 +71,7 @@ contract('Owned', accounts => {
     })
   })
 
-  it('cannot change owner to 0x0', () => {
-    return new Promise(async (resolve, reject) => {
-      let thrown = false
-      try {
-        await contracts.owned.changeOwnership(0x0, {from: actors.owner})
-      } catch (error) {
-        thrown = true
-      }
-
-      assert.isTrue(thrown, 'changeOwnership did not throw')
-
-      resolve()
-    })
-  })
-
-  it('cannot change to the same owner', () => {
+  it('Owned contract: cannot change to the same owner', () => {
     return new Promise(async (resolve, reject) => {
       let thrown = false
       try {
@@ -99,13 +86,29 @@ contract('Owned', accounts => {
     })
   })
 
-  it('cannot change owner more than once', () => {
+  it('Owned contract: can change owner more than once', () => {
     return new Promise(async (resolve, reject) => {
       await contracts.owned.changeOwnership(actors.alice, {from: actors.owner})
+      await contracts.owned.acceptOwnership({from: actors.alice})
+      await contracts.owned.changeOwnership(actors.bob, {from: actors.alice})
+      const tx = await contracts.owned.acceptOwnership({from: actors.bob})
+      const log = tx.logs[0]
+      assert.equal(log.event, 'OwnershipChanged', 'OwnershipChanged log was not emitted')
+      assert.equal(log.args.prevOwner, actors.alice, 'prevOwner is incorrect')
+      assert.equal(log.args.newOwner, actors.bob, 'newOwner is incorrect')
 
+      const owner = await contracts.owned.owner()
+      assert.equal(owner, actors.bob, 'Ownership did not change correctly')
+
+      resolve()
+    })
+  })
+
+  it('Owned contract: only owner is allowed to change', () => {
+    return new Promise(async (resolve, reject) => {
       let thrown = false
       try {
-        await contracts.owned.changeOwnership(actors.bob, {from: actors.alice})
+        await contracts.owned.changeOwnership(actors.alice, {from: actors.alice})
       } catch (error) {
         thrown = true
       }
@@ -116,11 +119,60 @@ contract('Owned', accounts => {
     })
   })
 
-  it('only owner is allowed to change', () => {
+  it('Ownable contract: change owners', () => {
+    return new Promise(async (resolve, reject) => {
+      const success = await contracts.ownable.changeOwnership.call(actors.alice, {from: actors.owner})
+      assert.isTrue(success, 'changeOwnership did not return true')
+      const tx = await contracts.ownable.changeOwnership(actors.alice, {from: actors.owner})
+      assert.equal(tx.logs.length, 1, 'Incorrect number of logs emitted')
+      const log = tx.logs[0]
+      assert.equal(log.event, 'OwnershipChanged', 'OwnershipChanged log was not emitted')
+      assert.equal(log.args.prevOwner, actors.owner, 'prevOwner is incorrect')
+      assert.equal(log.args.newOwner, actors.alice, 'newOwner is incorrect')
+
+      const owner = await contracts.ownable.owner()
+      assert.equal(owner, actors.alice, 'Ownership did not change correctly')
+
+      resolve()
+    })
+  })
+
+  it('Ownable contract: cannot change to the same owner', () => {
     return new Promise(async (resolve, reject) => {
       let thrown = false
       try {
-        await contracts.owned.changeOwnership(actors.alice, {from: actors.alice})
+        await contracts.ownable.changeOwnership(actors.owner, {from: actors.owner})
+      } catch (error) {
+        thrown = true
+      }
+
+      assert.isTrue(thrown, 'changeOwnership did not throw')
+
+      resolve()
+    })
+  })
+
+  it('Ownable contract: can change owner more than once', () => {
+    return new Promise(async (resolve, reject) => {
+      await contracts.ownable.changeOwnership(actors.alice, {from: actors.owner})
+      const tx = await contracts.ownable.changeOwnership(actors.bob, {from: actors.alice})
+      const log = tx.logs[0]
+      assert.equal(log.event, 'OwnershipChanged', 'OwnershipChanged log was not emitted')
+      assert.equal(log.args.prevOwner, actors.alice, 'prevOwner is incorrect')
+      assert.equal(log.args.newOwner, actors.bob, 'newOwner is incorrect')
+
+      const owner = await contracts.ownable.owner()
+      assert.equal(owner, actors.bob, 'Ownership did not change correctly')
+
+      resolve()
+    })
+  })
+
+  it('Ownable contract: only owner is allowed to change', () => {
+    return new Promise(async (resolve, reject) => {
+      let thrown = false
+      try {
+        await contracts.ownable.changeOwnership(actors.alice, {from: actors.alice})
       } catch (error) {
         thrown = true
       }
