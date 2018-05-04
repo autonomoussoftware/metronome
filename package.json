@@ -12,24 +12,25 @@
     "migrate:clean": "truffle migrate --reset",
     "solhint": "solhint contracts/*.sol",
     "eslint": "eslint test/*.js timed-tests/*.js",
-    "testrpc": "kill -9 $(lsof -ti :8545) & (testrpc -e 1000 -a 15 > /dev/null & truffle test) && kill -9 $(lsof -ti :8545)",
-    "testrpc:single": "kill -9 $(lsof -ti :8545) & (testrpc -e 1000 -a 15 > /dev/null & truffle test $TESTFILE) && kill -9 $(lsof -ti :8545)",
-    "testrpc:subs": "kill -9 $(lsof -ti :8545) & (testrpc -e 1000 -a 15 > /dev/null & truffle test timed-tests/subscriptions.js) && kill -9 $(lsof -ti :8545)",
-    "testrpc:ac": "kill -9 $(lsof -ti :8545) & (testrpc -e 1000 -a 100 > /dev/null & truffle test timed-tests/ac.js) && kill -9 $(lsof -ti :8545)",
-    "testrpc:auctions": "kill -9 $(lsof -ti :8545) & (testrpc -e 1000 -a 15 > /dev/null & truffle test timed-tests/auctions.js) && kill -9 $(lsof -ti :8545)",
-    "testrpc:proceeds": "kill -9 $(lsof -ti :8545) & (testrpc -e 1000 -a 15 > /dev/null & truffle test timed-tests/proceeds.js) && kill -9 $(lsof -ti :8545)",
-    "testrpc:tokenLocker": "kill -9 $(lsof -ti :8545) & (testrpc -e 1000 -a 15 > /dev/null & truffle test timed-tests/tokenLocker.js) && kill -9 $(lsof -ti :8545)",
-    "precommit-msg": "echo 'Pre-commit checks...' && exit 0"
+    "ganache": "kill -9 $(lsof -ti :8545) & (ganache-cli -p 8545 -e 1000 -a 15 > /dev/null & truffle test) && kill -9 $(lsof -ti :8545)",
+    "ganache:single": "kill -9 $(lsof -ti :8545) & (ganache-cli -p 8545 -e 1000 -a 15 > /dev/null & truffle test $TESTFILE) && kill -9 $(lsof -ti :8545)",
+    "ganache:subs": "kill -9 $(lsof -ti :8545) & (ganache-cli -p 8545 -e 1000 -a 15 > /dev/null & truffle test timed-tests/subscriptions.js) && kill -9 $(lsof -ti :8545)",
+    "ganache:ac": "kill -9 $(lsof -ti :8545) & (ganache-cli -p 8545 -e 1000 -a 100 > /dev/null & truffle test timed-tests/ac.js) && kill -9 $(lsof -ti :8545)",
+    "ganache:auctions": "kill -9 $(lsof -ti :8545) & (ganache-cli -p 8545 -e 1000 -a 15 > /dev/null & truffle test timed-tests/auctions.js) && kill -9 $(lsof -ti :8545)",
+    "ganache:proceeds": "kill -9 $(lsof -ti :8545) & (ganache-cli -p 8545 -e 1000 -a 15 > /dev/null & truffle test timed-tests/proceeds.js) && kill -9 $(lsof -ti :8545)",
+    "ganache:tokenLocker": "kill -9 $(lsof -ti :8545) & (ganache-cli -p 8545 -e 1000 -a 15 > /dev/null & truffle test timed-tests/tokenLocker.js) && kill -9 $(lsof -ti :8545)",
+    "precommit-msg": "echo 'Pre-commit checks...' && exit 0",
+    "testExport": "./node_modules/mocha/bin/mocha --timeout 10000"
   },
   "pre-commit": [
     "eslint",
     "solhint",
-    "testrpc:auctions",
-    "testrpc",
-    "testrpc:subs",
-    "testrpc:ac",
-    "testrpc:proceeds",
-    "testrpc:tokenLocker"
+    "ganache:auctions",
+    "ganache",
+    "ganache:subs",
+    "ganache:ac",
+    "ganache:proceeds",
+    "ganache:tokenLocker"
   ],
   "repository": {
     "type": "git",
@@ -54,7 +55,8 @@
     "eslint-plugin-standard": "^3.0.1",
     "pre-commit": "^1.2.2",
     "solhint": "^1.1.10",
-    "truffle": "^4.0.6"
+    "truffle": "4.1.5",
+    "minimist": "^1.2.0"
   },
   "engines": {
     "node": "8",
@@ -64,7 +66,9 @@
     "bignumber.js": "^6.0.0",
     "chai": "^4.1.2",
     "ethjs-abi": "^0.2.1",
+    "fs": "0.0.1-security",
     "lodash": "^4.17.5",
+    "mocha": "^5.1.1",
     "web3": "^0.19.0"
   }
 }

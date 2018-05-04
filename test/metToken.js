@@ -51,8 +51,11 @@ contract('METToken', accounts => {
     autonomousConverter = await AutonomousConverter.new()
     auctions = await Auctions.new()
     proceeds = await Proceeds.new()
-    metToken = await METToken.new(autonomousConverter.address, auctions.address, MET_INITIAL_SUPPLY, DECMULT, {from: OWNER})
-    smartToken = await SmartToken.new(autonomousConverter.address, autonomousConverter.address, SMART_TOKEN_INITIAL_SUPPLY, {from: OWNER})
+    metToken = await METToken.new()
+    smartToken = await SmartToken.new()
+
+    await metToken.initMETToken(autonomousConverter.address, auctions.address, MET_INITIAL_SUPPLY, DECMULT, {from: OWNER})
+    await smartToken.initSmartToken(autonomousConverter.address, autonomousConverter.address, SMART_TOKEN_INITIAL_SUPPLY, {from: OWNER})
     await autonomousConverter.init(metToken.address, smartToken.address, auctions.address,
       {
         from: OWNER,

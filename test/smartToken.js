@@ -47,8 +47,9 @@ contract('SmartToken', accounts => {
   const initialSupply = 1000
 
   beforeEach(async () => {
+    contracts.smartToken = await SmartToken.new()
     contracts.receiverMock = await MockContractReceiver.new({ from: actors.owner })
-    contracts.smartToken = await SmartToken.new(actors.autonomousConverter, actors.minter, initialSupply, { from: actors.owner })
+    await contracts.smartToken.initSmartToken(actors.autonomousConverter, actors.minter, initialSupply, { from: actors.owner })
 
     await contracts.smartToken.mint(actors.alice, mintAmount, { from: actors.minter })
     await contracts.smartToken.mint(actors.autonomousConverter, mintAmount, { from: actors.minter })

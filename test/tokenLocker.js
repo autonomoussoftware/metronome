@@ -24,33 +24,23 @@
 */
 
 const assert = require('chai').assert
-const METToken = artifacts.require('METToken')
-const SmartToken = artifacts.require('SmartToken')
-const Proceeds = artifacts.require('Proceeds')
-const AutonomousConverter = artifacts.require('AutonomousConverter')
-const Auctions = artifacts.require('Auctions')
 const TokenLocker = artifacts.require('TokenLocker')
+const Metronome = require('../test/shared/inits')
 
 contract('TokenLocker', accounts => {
-  const MET_INITIAL_SUPPLY = 0
-  const SMART_INITIAL_SUPPLY = 0
   const DECMULT = 10 ** 18
   const MINIMUM_PRICE = 33 * 10 ** 11// minimum wei per token
   const STARTING_PRICE = 2 // 2ETH per MET
   const TIME_SCALE = 1
 
   const OWNER = accounts[0]
-  const OWNER_TOKENS_HEX = '0000d3c20dee1639f99c0000'
   const FOUNDER = accounts[1]
-  const FOUNDER_TOKENS_HEX = '0000D3C21BCECCEDA1000000'
 
   const SECS_IN_A_DAY = 86400
   const SECS_IN_A_MIN = 60
   const INITIAL_AUCTION_END_TIME = 7 * SECS_IN_A_DAY // 7 days in seconds
   const ONE_QUARTER = (91 * SECS_IN_A_DAY) + (450 * SECS_IN_A_MIN)// 91 days + 450 minutes in seconds
   const MILLISECS_IN_A_SEC = 1000
-
-  let metToken, smartToken, proceeds, autonomousConverter, auctions
 
   function currentTime () {
     const timeInSeconds = new Date().getTime() / MILLISECS_IN_A_SEC
@@ -60,48 +50,25 @@ contract('TokenLocker', accounts => {
   function roundToPrevMidnight (t) {
     // round to prev midnight
     const prevMidnight = t - (t % SECS_IN_A_DAY)
-    assert(new Date(prevMidnight * MILLISECS_IN_A_SEC).toUTCString().indexOf('00:00:00') >= 0, 'timestamp is not midnight')
     return prevMidnight
   }
 
-  async function initContracts (startTime, timeScale) {
-    metToken = await METToken.new(autonomousConverter.address, auctions.address, MET_INITIAL_SUPPLY, DECMULT, {from: OWNER})
-    smartToken = await SmartToken.new(autonomousConverter.address, autonomousConverter.address, SMART_INITIAL_SUPPLY, {from: OWNER})
-    await autonomousConverter.init(metToken.address, smartToken.address, auctions.address,
-      { from: OWNER,
-        value: web3.toWei(1, 'ether')
-      })
-    await proceeds.initProceeds(autonomousConverter.address, auctions.address, {from: OWNER})
-
-    const founders = []
-    // Since we are appending it with hexadecimal address so amount should also be
-    // in hexa decimal. Hence 999999e18 = 0000d3c20dee1639f99c0000 in 24 character ( 96 bits)
-    // 1000000e18 =  0000d3c20dee1639f99c0000
-    founders.push(OWNER + OWNER_TOKENS_HEX)
-    founders.push(FOUNDER + FOUNDER_TOKENS_HEX)
-    await auctions.mintInitialSupply(founders, metToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
-    await auctions.initAuctions(startTime, MINIMUM_PRICE, STARTING_PRICE, timeScale, {from: OWNER})
+  function parseAddress (founder) {
+    return founder.slice(0, 42)
   }
 
-  // Create contracts and initilize them for each test case
-  beforeEach(async () => {
-    proceeds = await Proceeds.new()
-    autonomousConverter = await AutonomousConverter.new()
-    auctions = await Auctions.new()
-  })
+  function parseToken (founder) {
+    return parseInt(founder.slice(42), 16)
+  }
 
   it('Should verify that TokenLocker contract is initialized correctly', () => {
     return new Promise(async (resolve, reject) => {
-      await initContracts(currentTime(), TIME_SCALE)
+      const {metToken, auctions, founders} = await Metronome.initContracts(accounts, currentTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
-      // console.log('totalSupply=', (await metToken.totalSupply()).valueOf())
       const firstFounder = await auctions.founders(0)
       assert.equal(firstFounder, OWNER, 'First founder is wrong')
       const secondFounder = await auctions.founders(1)
       assert.equal(secondFounder, FOUNDER, 'Second founder is wrong')
-      const founders = [
-        { address: firstFounder, targetTokens: parseInt(OWNER_TOKENS_HEX, 16) },
-        { address: secondFounder, targetTokens: parseInt(FOUNDER_TOKENS_HEX, 16) }]
 
       let thrown = false
       try {
@@ -112,30 +79,35 @@ contract('TokenLocker', accounts => {
       assert.isTrue(thrown, 'There are more than two founders')
 
       let grandTotalDeposited = 0
+      let foundersTotal = 0
       let totalMinted = 0
       totalMinted = totalMinted / DECMULT
       for (let i = 0; i < founders.length; i++) {
-        const founder = founders[i]
-        const tokenLockerAddress = await auctions.tokenLockers(founder.address)
+        const foundersAddress = parseAddress(founders[i])
+        const foundersToken = parseToken(founders[i])
+        const tokenLockerAddress = await auctions.tokenLockers(foundersAddress)
         const tokenLocker = await TokenLocker.at(tokenLockerAddress)
+        let owner = await tokenLocker.owner()
+        assert.equal(owner, foundersAddress, 'Owner of token locker is wrong')
         assert.equal(await tokenLocker.auctions(), auctions.address, "Auctions address isn't setup correctly")
         assert.equal(await tokenLocker.token(), metToken.address, "METToken address isn't setup correctly")
 
         let lockedBalance = await metToken.balanceOf(tokenLocker.address)
-        assert.equal(lockedBalance.toNumber(), founder.targetTokens, 'Minted amount is wrong for ' + i)
+        assert.equal(lockedBalance.toNumber(), foundersToken, 'Minted amount is wrong for ' + i)
 
         const balance = await tokenLocker.deposited()
-        assert.equal(balance.toNumber(), founder.targetTokens, 'Deposited amount is not correct.')
+        assert.equal(balance.toNumber(), foundersToken, 'Deposited amount is not correct.')
 
         const locked = await tokenLocker.locked()
         assert.isTrue(locked, 'Token Locker is not locked')
         grandTotalDeposited += balance.toNumber()
         lockedBalance = lockedBalance / DECMULT
         totalMinted += lockedBalance
+        foundersTotal += foundersToken
       }
       totalMinted = totalMinted * DECMULT
-      assert.equal(grandTotalDeposited, founders[0].targetTokens + founders[1].targetTokens, 'Total deposit is not correct')
-      assert.equal(totalMinted, founders[0].targetTokens + founders[1].targetTokens, 'Total minted is not correct')
+      assert.equal(grandTotalDeposited, foundersTotal, 'Total deposit is not correct')
+      assert.equal(totalMinted, foundersTotal, 'Total minted is not correct')
 
       const reserveAmount = 2000000
       assert.equal(totalMinted, (reserveAmount - 1) * DECMULT, 'Total minted for all founders is not correct')
@@ -148,7 +120,7 @@ contract('TokenLocker', accounts => {
     return new Promise(async (resolve, reject) => {
       // seven days in past, round to prev midnight plus a few minutes
       const sevenDaysAgo = roundToPrevMidnight(currentTime() - INITIAL_AUCTION_END_TIME) - 120
-      await initContracts(sevenDaysAgo, TIME_SCALE)
+      const {metToken, auctions, founders} = await Metronome.initContracts(accounts, sevenDaysAgo, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
       await metToken.enableMETTransfers()
 
       // Transaction in auction will enable withdraw
@@ -157,27 +129,24 @@ contract('TokenLocker', accounts => {
         value: 1e18
       })
 
-      const founders = [
-        { address: await auctions.founders(0), targetTokens: parseInt(OWNER_TOKENS_HEX, 16) },
-        { address: await auctions.founders(1), targetTokens: parseInt(FOUNDER_TOKENS_HEX, 16) }]
-
       for (let i = 0; i < founders.length; i++) {
-        const founder = founders[i]
-        const tokenLockerAddress = await auctions.tokenLockers(founder.address)
+        const foundersAddress = parseAddress(founders[i])
+        const foundersToken = parseToken(founders[i])
+        const tokenLockerAddress = await auctions.tokenLockers(foundersAddress)
         const tokenLocker = await TokenLocker.at(tokenLockerAddress)
 
-        const balanceBefore = await metToken.balanceOf(founder.address)
+        const balanceBefore = await metToken.balanceOf(foundersAddress)
 
-        const tx = await tokenLocker.withdraw({from: founder.address})
+        const tx = await tokenLocker.withdraw({from: foundersAddress})
         assert.equal(tx.logs.length, 1, 'Incorrect number of logs emitted for withdraw on founder ' + i)
 
         const log = tx.logs[0]
-        const expectedWithdrawn = founder.targetTokens * 0.25
+        const expectedWithdrawn = foundersToken * 0.25
         assert.equal(log.event, 'Withdrawn', 'Withdrawn log was not emitted')
-        assert.equal(log.args.who, founder.address, 'Who is wrong')
+        assert.equal(log.args.who, foundersAddress, 'Who is wrong')
         assert.equal(log.args.amount.toNumber(), expectedWithdrawn, 'Amount is wrong')
 
-        const balanceAfter = await metToken.balanceOf(founder.address)
+        const balanceAfter = await metToken.balanceOf(foundersAddress)
         assert.equal(balanceAfter.toNumber() - balanceBefore.toNumber(), expectedWithdrawn, 'Initial fund withdraw was not correct')
       }
 
@@ -189,7 +158,7 @@ contract('TokenLocker', accounts => {
     return new Promise(async (resolve, reject) => {
       // seven days in past, round to prev midnight plus a few minutes
       const sevenDaysAgo = roundToPrevMidnight(currentTime() - INITIAL_AUCTION_END_TIME) - 120
-      await initContracts(sevenDaysAgo, TIME_SCALE)
+      const {metToken, auctions, founders} = await Metronome.initContracts(accounts, sevenDaysAgo, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
       await metToken.enableMETTransfers()
 
       // Transaction in auction will enable withdraw
@@ -198,30 +167,27 @@ contract('TokenLocker', accounts => {
         value: 1e18
       })
 
-      const founders = [
-        { address: await auctions.founders(0), targetTokens: parseInt(OWNER_TOKENS_HEX, 16) },
-        { address: await auctions.founders(1), targetTokens: parseInt(FOUNDER_TOKENS_HEX, 16) }]
-
       for (let i = 0; i < founders.length; i++) {
-        const founder = founders[i]
-        const tokenLockerAddress = await auctions.tokenLockers(founder.address)
+        const foundersAddress = parseAddress(founders[i])
+        const foundersToken = parseToken(founders[i])
+        const tokenLockerAddress = await auctions.tokenLockers(foundersAddress)
         const tokenLocker = await TokenLocker.at(tokenLockerAddress)
 
-        let balanceBefore = await metToken.balanceOf(founder.address)
-        let tx = await tokenLocker.withdraw({from: founder.address})
+        let balanceBefore = await metToken.balanceOf(foundersAddress)
+        let tx = await tokenLocker.withdraw({from: foundersAddress})
         assert.equal(tx.logs.length, 1, 'Incorrect number of logs emitted for withdraw on founder ' + i)
         const log = tx.logs[0]
-        const expectedWithdrawn = founder.targetTokens * 0.25
+        const expectedWithdrawn = foundersToken * 0.25
         assert.equal(log.event, 'Withdrawn', 'Withdrawn log was not emitted')
-        assert.equal(log.args.who, founder.address, 'Who is wrong')
+        assert.equal(log.args.who, foundersAddress, 'Who is wrong')
         assert.equal(log.args.amount.toNumber(), expectedWithdrawn, 'Amount is wrong')
-        let balanceAfter = await metToken.balanceOf(founder.address)
+        let balanceAfter = await metToken.balanceOf(foundersAddress)
         assert.equal(balanceAfter.toNumber() - balanceBefore.toNumber(), expectedWithdrawn, 'Initial fund withdraw was not correct')
 
-        balanceBefore = await metToken.balanceOf(founder.address)
-        tx = await tokenLocker.withdraw({from: founder.address})
+        balanceBefore = await metToken.balanceOf(foundersAddress)
+        tx = await tokenLocker.withdraw({from: foundersAddress})
         assert.equal(tx.logs.length, 0, 'Incorrect number of logs emitted for 2nd withdraw on founder ' + i)
-        balanceAfter = await metToken.balanceOf(founder.address)
+        balanceAfter = await metToken.balanceOf(foundersAddress)
         assert.equal(balanceAfter.toNumber() - balanceBefore.toNumber(), 0, 'Balance should not have changed after 2nd withdraw')
       }
 
@@ -233,7 +199,7 @@ contract('TokenLocker', accounts => {
     return new Promise(async (resolve, reject) => {
       // seven days and one quarter in the past, plus a few minutes
       const genesisTime = roundToPrevMidnight(currentTime() - ONE_QUARTER - INITIAL_AUCTION_END_TIME) - 120
-      await initContracts(genesisTime, TIME_SCALE)
+      const {metToken, auctions, founders} = await Metronome.initContracts(accounts, genesisTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
       await metToken.enableMETTransfers()
 
       // Transaction in auction will enable withdraw
@@ -242,37 +208,34 @@ contract('TokenLocker', accounts => {
         value: 1e18
       })
 
-      const founders = [
-        { address: await auctions.founders(0), targetTokens: parseInt(OWNER_TOKENS_HEX, 16) },
-        { address: await auctions.founders(1), targetTokens: parseInt(FOUNDER_TOKENS_HEX, 16) }]
-
       for (let i = 0; i < founders.length; i++) {
-        const founder = founders[i]
-        const tokenLockerAddress = await auctions.tokenLockers(founder.address)
+        const foundersAddress = parseAddress(founders[i])
+        const foundersToken = parseToken(founders[i])
+        const tokenLockerAddress = await auctions.tokenLockers(foundersAddress)
         const tokenLocker = await TokenLocker.at(tokenLockerAddress)
 
-        const balanceBefore = await metToken.balanceOf(founder.address)
-        const tx = await tokenLocker.withdraw({from: founder.address})
+        const balanceBefore = await metToken.balanceOf(foundersAddress)
+        const tx = await tokenLocker.withdraw({from: foundersAddress})
         assert.equal(tx.logs.length, 1, 'Incorrect number of logs emitted for withdraw on founder ' + i)
         const log = tx.logs[0]
 
-        var expectedWithdrawn = (founder.targetTokens * 0.25) + ((founder.targetTokens * 0.75) / 12)
+        var expectedWithdrawn = (foundersToken * 0.25) + ((foundersToken * 0.75) / 12)
         expectedWithdrawn = (expectedWithdrawn / DECMULT) * DECMULT
 
         assert.equal(log.event, 'Withdrawn', 'Withdrawn log was not emitted')
-        assert.equal(log.args.who, founder.address, 'Who is wrong')
+        assert.equal(log.args.who, foundersAddress, 'Who is wrong')
         let errorMargin = 67108864
         assert.closeTo(log.args.amount.toNumber(), expectedWithdrawn, errorMargin, 'Amount is wrong')
-        let balanceAfter = await metToken.balanceOf(founder.address)
+        let balanceAfter = await metToken.balanceOf(foundersAddress)
         assert.closeTo(balanceAfter.toNumber() - balanceBefore.toNumber(), expectedWithdrawn, errorMargin, 'Quarterly withdraw was not correct')
 
         const remainingBalance = await tokenLocker.deposited()
-        const QrtlyWithdrawable = await tokenLocker.quarterlyWithdrable()
-        const expectedRemaingBalance = (founder.targetTokens - expectedWithdrawn)
+        const QrtlyWithdrawable = await tokenLocker.quarterlyWithdrawable()
+        const expectedRemaingBalance = (foundersToken - expectedWithdrawn)
         errorMargin = 134217728
         assert.closeTo(remainingBalance.toNumber(), expectedRemaingBalance, errorMargin, 'Remaining fund after withdraw is not correct')
 
-        const expectedQtrlyWithdrawable = ((founder.targetTokens * 0.75) / 12)
+        const expectedQtrlyWithdrawable = ((foundersToken * 0.75) / 12)
         assert.equal(QrtlyWithdrawable.toNumber(), expectedQtrlyWithdrawable, 'Quarterly withdrawable is not correct')
       }
 
@@ -284,7 +247,7 @@ contract('TokenLocker', accounts => {
     return new Promise(async (resolve, reject) => {
       // seven days and two quarters in the past, plus a few minutes
       const genesisTime = roundToPrevMidnight(currentTime() - (2 * ONE_QUARTER) - INITIAL_AUCTION_END_TIME) - 120
-      await initContracts(genesisTime, TIME_SCALE)
+      const {metToken, auctions, founders} = await Metronome.initContracts(accounts, genesisTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
       await metToken.enableMETTransfers()
 
       // Transaction in auction will enable withdraw
@@ -293,34 +256,31 @@ contract('TokenLocker', accounts => {
         value: 1e18
       })
 
-      const founders = [
-        { address: await auctions.founders(0), targetTokens: parseInt(OWNER_TOKENS_HEX, 16) },
-        { address: await auctions.founders(1), targetTokens: parseInt(FOUNDER_TOKENS_HEX, 16) }]
-
       for (let i = 0; i < founders.length; i++) {
-        const founder = founders[i]
-        const tokenLockerAddress = await auctions.tokenLockers(founder.address)
+        const foundersAddress = parseAddress(founders[i])
+        const foundersToken = parseToken(founders[i])
+        const tokenLockerAddress = await auctions.tokenLockers(foundersAddress)
         const tokenLocker = await TokenLocker.at(tokenLockerAddress)
 
-        const balanceBefore = await metToken.balanceOf(founder.address)
-        const tx = await tokenLocker.withdraw({from: founder.address})
+        const balanceBefore = await metToken.balanceOf(foundersAddress)
+        const tx = await tokenLocker.withdraw({from: foundersAddress})
         assert.equal(tx.logs.length, 1, 'Incorrect number of logs emitted for withdraw on founder ' + i)
         const log = tx.logs[0]
-        const expectedWithdrawn = (founder.targetTokens * 0.25) + (2 * ((founder.targetTokens * 0.75) / 12))
+        const expectedWithdrawn = (foundersToken * 0.25) + (2 * ((foundersToken * 0.75) / 12))
         assert.equal(log.event, 'Withdrawn', 'Withdrawn log was not emitted')
-        assert.equal(log.args.who, founder.address, 'Who is wrong')
+        assert.equal(log.args.who, foundersAddress, 'Who is wrong')
         assert.equal(log.args.amount.toNumber(), expectedWithdrawn, 'Amount is wrong')
-        const balanceAfter = await metToken.balanceOf(founder.address)
+        const balanceAfter = await metToken.balanceOf(foundersAddress)
         assert.equal(balanceAfter.toNumber() - balanceBefore.toNumber(), expectedWithdrawn, 'Quarterly withdraw was not correct')
 
         const remainingBalance = await tokenLocker.deposited()
-        const QrtlyWithdrawable = await tokenLocker.quarterlyWithdrable()
-        let expectedRemaingBalance = (founder.targetTokens / DECMULT) - (expectedWithdrawn / DECMULT)
+        const QrtlyWithdrawable = await tokenLocker.quarterlyWithdrawable()
+        let expectedRemaingBalance = (foundersToken / DECMULT) - (expectedWithdrawn / DECMULT)
         expectedRemaingBalance = expectedRemaingBalance * DECMULT
         assert.equal(remainingBalance.toNumber(), expectedRemaingBalance, 'Remaining fund after withdraw is not correct')
 
         // TODO: check expectedQtrlyWithdrawable math
-        const expectedQtrlyWithdrawable = ((founder.targetTokens * 0.75) / 12)
+        const expectedQtrlyWithdrawable = ((foundersToken * 0.75) / 12)
         assert.equal(QrtlyWithdrawable.toNumber(), expectedQtrlyWithdrawable, 'Quarterly withdrawable is not correct')
       }
 
@@ -332,7 +292,7 @@ contract('TokenLocker', accounts => {
     return new Promise(async (resolve, reject) => {
       // seven days and 12 quarters in the past, plus a few minutes
       const genesisTime = roundToPrevMidnight(currentTime() - 12 * ONE_QUARTER - INITIAL_AUCTION_END_TIME) - 120
-      await initContracts(genesisTime, TIME_SCALE)
+      const {metToken, auctions, founders} = await Metronome.initContracts(accounts, genesisTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
       await metToken.enableMETTransfers()
 
       // Transaction in auction will enable withdraw
@@ -341,30 +301,27 @@ contract('TokenLocker', accounts => {
         value: 1e18
       })
 
-      const founders = [
-        { address: await auctions.founders(0), targetTokens: parseInt(OWNER_TOKENS_HEX, 16) },
-        { address: await auctions.founders(1), targetTokens: parseInt(FOUNDER_TOKENS_HEX, 16) }]
-
       for (let i = 0; i < founders.length; i++) {
-        const founder = founders[i]
-        const tokenLockerAddress = await auctions.tokenLockers(founder.address)
+        const foundersAddress = parseAddress(founders[i])
+        const foundersToken = parseToken(founders[i])
+        const tokenLockerAddress = await auctions.tokenLockers(foundersAddress)
         const tokenLocker = await TokenLocker.at(tokenLockerAddress)
 
-        const balanceBefore = await metToken.balanceOf(founder.address)
-        const tx = await tokenLocker.withdraw({from: founder.address})
+        const balanceBefore = await metToken.balanceOf(foundersAddress)
+        const tx = await tokenLocker.withdraw({from: foundersAddress})
         assert.equal(tx.logs.length, 1, 'Incorrect number of logs emitted for withdraw on founder ' + i)
         const log = tx.logs[0]
         assert.equal(log.event, 'Withdrawn', 'Withdrawn log was not emitted')
-        assert.equal(log.args.who, founder.address, 'Who is wrong')
-        assert.equal(log.args.amount.toNumber(), founder.targetTokens, 'Amount is wrong')
-        const balanceAfter = await metToken.balanceOf(founder.address)
-        assert.equal(balanceAfter.toNumber() - balanceBefore.toNumber(), founder.targetTokens, 'Quarterly withdraw was not correct')
+        assert.equal(log.args.who, foundersAddress, 'Who is wrong')
+        assert.equal(log.args.amount.toNumber(), foundersToken, 'Amount is wrong')
+        const balanceAfter = await metToken.balanceOf(foundersAddress)
+        assert.equal(balanceAfter.toNumber() - balanceBefore.toNumber(), foundersToken, 'Quarterly withdraw was not correct')
 
         const remainingBalance = await tokenLocker.deposited()
-        const QrtlyWithdrawable = await tokenLocker.quarterlyWithdrable()
+        const QrtlyWithdrawable = await tokenLocker.quarterlyWithdrawable()
         assert.equal(remainingBalance.toNumber(), 0, 'Remaining fund after withdraw is not correct')
 
-        const expectedQtrlyWithdrawable = ((founder.targetTokens * 0.75) / 12)
+        const expectedQtrlyWithdrawable = ((foundersToken * 0.75) / 12)
         assert.equal(QrtlyWithdrawable.toNumber(), expectedQtrlyWithdrawable, 'Quarterly withdrawable is not correct')
       }
 
@@ -375,15 +332,11 @@ contract('TokenLocker', accounts => {
   it('Should fail when deposit is called during postLock phase', () => {
     return new Promise(async (resolve, reject) => {
       const reserverFund = 1999999 * DECMULT
-      await initContracts(currentTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
-
-      const founders = [
-        { address: await auctions.founders(0), targetTokens: parseInt(OWNER_TOKENS_HEX, 16) },
-        { address: await auctions.founders(1), targetTokens: parseInt(FOUNDER_TOKENS_HEX, 16) }]
+      const {auctions, founders} = await Metronome.initContracts(accounts, currentTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
       for (let i = 0; i < founders.length; i++) {
-        const founder = founders[i]
-        const tokenLockerAddress = await auctions.tokenLockers(founder.address)
+        const foundersAddress = parseAddress(founders[i])
+        const tokenLockerAddress = await auctions.tokenLockers(foundersAddress)
         const tokenLocker = await TokenLocker.at(tokenLockerAddress)
 
         let thrown = false

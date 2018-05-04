@@ -24,17 +24,12 @@
 */
 
 const assert = require('chai').assert
-const METToken = artifacts.require('METToken')
-const SmartToken = artifacts.require('SmartToken')
-const Proceeds = artifacts.require('Proceeds')
-const AutonomousConverter = artifacts.require('AutonomousConverter')
-const Auctions = artifacts.require('Auctions')
 const TokenLocker = artifacts.require('TokenLocker')
+const Metronome = require('../test/shared/inits')
 
 contract('Auctions', accounts => {
   const BAD_BUYER = accounts[6]
   const MET_INITIAL_SUPPLY = 0
-  const SMART_INITIAL_SUPPLY = 0
   const DECMULT = 10 ** 18
   const MINIMUM_PRICE = 33 * 10 ** 11 // minimum wei per token
   const STARTING_PRICE = 2 // 2 ETH per MET
@@ -43,60 +38,18 @@ contract('Auctions', accounts => {
   const MILLISECS_IN_A_SEC = 1000
   const SECS_IN_A_DAY = 86400
 
-  const OWNER = accounts[0]
-  const OWNER_TOKENS_HEX = '0000D3C214DE7193CD4E0000'
-  const FOUNDER = accounts[1]
-  const FOUNDER_TOKENS_HEX = '0000D3C214DE7193CD4E0000'
-
-  let metToken, smartToken, proceeds, autonomousConverter, auctions
-
   function currentTime () {
     const timeInSeconds = new Date().getTime() / 1000
     return Math.floor(timeInSeconds / 60) * 60 // time in seconds, rounded to a minute
   }
-
-  async function initContracts (startTime, minimumPrice, startingPrice, timeScale) {
-    metToken = await METToken.new(autonomousConverter.address, auctions.address, MET_INITIAL_SUPPLY, DECMULT, {from: OWNER})
-    smartToken = await SmartToken.new(autonomousConverter.address, autonomousConverter.address, SMART_INITIAL_SUPPLY, {from: OWNER})
-
-    const founders = []
-    // Since we are appending it with hexadecimal address so amount should also be
-    // in hexa decimal. Hence 999999e18 = 0000d3c21bcecceda1000000 in 24 character ( 96 bits)
-    // 1000000e18 =  0000d3c20dee1639f99c0000
-    founders.push(OWNER + OWNER_TOKENS_HEX)
-    founders.push(FOUNDER + FOUNDER_TOKENS_HEX)
-    await autonomousConverter.init(metToken.address, smartToken.address, auctions.address,
-      {
-        from: OWNER,
-        value: web3.toWei(1, 'ether')
-      })
-    await proceeds.initProceeds(autonomousConverter.address, auctions.address, {from: OWNER})
-    await auctions.mintInitialSupply(founders, metToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
-    await auctions.initAuctions(startTime, minimumPrice, startingPrice, timeScale, {from: OWNER})
-  }
-
-  before(async () => {
-    await web3.eth.sendTransaction({
-      from: accounts[8],
-      to: OWNER,
-      value: 30e18
-    })
-  })
-
-  // Create contracts and initilize them for each test case
-  beforeEach(async () => {
-    proceeds = await Proceeds.new()
-    autonomousConverter = await AutonomousConverter.new()
-    auctions = await Auctions.new()
-  })
 
   it('Should verify that Auctions contract is initialized correctly ', () => {
     return new Promise(async (resolve, reject) => {
       const reserveAmount = 2000000 // 20% of total supply aka 2 million
       // auction start time will be provided time + 60
       const genesisTime = currentTime() + 60
-
-      await initContracts(currentTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      const {metToken, auctions, proceeds, autonomousConverter, founders} =
+        await Metronome.initContracts(accounts, currentTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
       assert.equal(await auctions.proceeds(), proceeds.address, 'Proceeds address isn`t setup correctly')
       assert.equal(await auctions.token(), metToken.address, 'METToken address isn\'t setup correctly')
@@ -105,14 +58,11 @@ contract('Auctions', accounts => {
       assert.equal(await auctions.lastPurchasePrice(), web3.toWei(STARTING_PRICE), 'startingPrice isn\'t setup correctly')
       assert.equal(await auctions.timeScale(), TIME_SCALE, 'time scale isn\'t setup correctly')
 
-      const founders = [
-        { address: await auctions.founders(0), targetTokens: parseInt(OWNER_TOKENS_HEX, 16) },
-        { address: await auctions.founders(1), targetTokens: parseInt(FOUNDER_TOKENS_HEX, 16) }]
-
       let totalFounderMints = 0
       for (let i = 0; i < founders.length; i++) {
         const founder = founders[i]
-        const tokenLockerAddress = await auctions.tokenLockers(founder.address)
+        const founderAddress = founder.slice(0, 42)
+        const tokenLockerAddress = await auctions.tokenLockers(founderAddress)
         const tokenLocker = await TokenLocker.at(tokenLockerAddress)
         totalFounderMints += (await metToken.balanceOf(tokenLocker.address)).toNumber() / DECMULT
       }
@@ -134,7 +84,7 @@ contract('Auctions', accounts => {
       const defaultStartingPrice = 2 // 2 ETH per MET
       const defaultMinimumPrice = 33 * 10 ** 11
 
-      await initContracts(0, 0, 0, TIME_SCALE)
+      const {auctions} = await Metronome.initContracts(accounts, 0, 0, 0, TIME_SCALE)
 
       assert.equal((await auctions.genesisTime()).toNumber(), defaultAuctionTime, 'default genesisTime isn\'t setup correctly or test took longer in execution')
       assert.equal((await auctions.minimumPrice()).toNumber(), defaultMinimumPrice, 'default minimumPrice isn\'t setup correctly')
@@ -146,7 +96,7 @@ contract('Auctions', accounts => {
 
   it('Should return true indicating auction is running', () => {
     return new Promise(async (resolve, reject) => {
-      await initContracts(1, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      const {auctions} = await Metronome.initContracts(accounts, 1, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
       assert.ok(await auctions.isRunning(), 'Auctions should be running')
       resolve()
     })
@@ -160,7 +110,7 @@ contract('Auctions', accounts => {
       // genesisTime is equal to provided time + 60
       // To set genesisTime one minute in past, we need currentTime -120
       const time = currentTime() - 120
-      await initContracts(time, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      const {auctions} = await Metronome.initContracts(accounts, time, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
       const currentTick = await auctions.currentTick()
       assert.equal(currentTick.valueOf(), 1, 'Current tick should be equal to 1')
@@ -174,8 +124,7 @@ contract('Auctions', accounts => {
       // genesisTime is equal to provided time + 60
       // To set genesisTime one minute in past, we need currentTime -120
       const time = currentTime() - 120
-      await initContracts(time, MINIMUM_PRICE, STARTING_PRICE, 5)
-
+      const {auctions} = await Metronome.initContracts(accounts, time, MINIMUM_PRICE, STARTING_PRICE, 5)
       const whichTick = await auctions.whichTick(currentTime())
       assert.equal(whichTick.valueOf(), 5, 'whichTick should be equal to 5')
 
@@ -185,7 +134,7 @@ contract('Auctions', accounts => {
 
   it('Should verify that auction is equal to 1 for given metronome tick', () => {
     return new Promise(async (resolve, reject) => {
-      await initContracts(0, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      const {auctions} = await Metronome.initContracts(accounts, 0, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
       const dailyAuctionStartTime = await auctions.dailyAuctionStartTime()
       const genesisTime = await auctions.genesisTime()
       const metronomeTick = Math.floor((dailyAuctionStartTime - genesisTime) / 60)
@@ -198,7 +147,8 @@ contract('Auctions', accounts => {
 
   it('Should stop auction and change auction start time to 1000 years from now', () => {
     return new Promise(async (resolve, reject) => {
-      await initContracts(currentTime() + (10 * 60), 0, 0, TIME_SCALE)
+      const time = currentTime() + (10 * 60)
+      const {auctions} = await Metronome.initContracts(accounts, time, 0, 0, TIME_SCALE)
       await auctions.stopEverything()
 
       const updatedDailyAuctionTime = await auctions.dailyAuctionStartTime()
@@ -223,7 +173,7 @@ contract('Auctions', accounts => {
       const expectedSupply = (10000000 + (2880 * 1)) * DECMULT
       // set genesisTime to 7 days and 1 day earlier (auction off period and few hours)
       const startTime = currentTime() - ((INITIAL_AUCTION_DURATION * 60) + SECS_IN_A_DAY)
-      await initContracts(startTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      const {auctions} = await Metronome.initContracts(accounts, startTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
       const globalMETSupply = await auctions.globalMetSupply()
       assert.equal(globalMETSupply.valueOf(), expectedSupply, 'global supply is not correct')
 
@@ -238,8 +188,7 @@ contract('Auctions', accounts => {
       // time of previous day in seconds, 24*60*60 aka a day in seconds
       // set genesisTime to one day and a minute earlier (provided + 60)
       const previousDay = currentTime() - SECS_IN_A_DAY - 120
-      await initContracts(previousDay, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
-
+      const {auctions} = await Metronome.initContracts(accounts, previousDay, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
       const heartbeat = await auctions.heartbeat()
       assert.equal(heartbeat[12].toNumber(), dailySupply, 'auction supply is not correct')
 
@@ -251,8 +200,7 @@ contract('Auctions', accounts => {
     return new Promise(async (resolve, reject) => {
       // at 0th tick
       const expectedWeiPerToken = STARTING_PRICE * DECMULT
-      await initContracts(currentTime() - 60, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
-
+      const {auctions} = await Metronome.initContracts(accounts, currentTime() - 60, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
       const currentAuction = (await auctions.currentAuction()).toNumber()
       assert.equal(currentAuction, 0, 'Not at the 0th auction')
 
@@ -272,8 +220,7 @@ contract('Auctions', accounts => {
       const expectedWeiPerToken = 1998015679432000000
       // 10 tick, 10 * 60
       const startTime = currentTime() - 10 * 60 - 60
-      await initContracts(startTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
-
+      const {auctions} = await Metronome.initContracts(accounts, startTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
       const currentAuction = (await auctions.currentAuction()).toNumber()
       assert.equal(currentAuction, 0, 'Not at the 0th auction')
 
@@ -293,8 +240,7 @@ contract('Auctions', accounts => {
       const expectedToken = 5 * DECMULT
       const amount = web3.toWei(10, 'ether')
       // currentTime()-30 will leads to genesisTime = currentTime
-      await initContracts(currentTime() - 30, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
-
+      const {metToken, auctions, proceeds} = await Metronome.initContracts(accounts, currentTime() - 30, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
       const currentAuction = (await auctions.currentAuction()).toNumber()
       assert.equal(currentAuction, 0, 'Not at the 0th auction')
 
@@ -320,7 +266,7 @@ contract('Auctions', accounts => {
       const balanceBefore = web3.eth.getBalance(fromAccount).valueOf()
       const amountUsedForPurchase = 27e18 // 27 ETH can purchase all met after 7 days
       const totalTokenForPurchase = 8e24 // aka 8 million
-      await initContracts(startTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      const {metToken, auctions} = await Metronome.initContracts(accounts, startTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
       const tx = await auctions.sendTransaction({
         from: fromAccount,
         value: amountUsedForPurchase
@@ -349,8 +295,7 @@ contract('Auctions', accounts => {
     return new Promise(async (resolve, reject) => {
       const startTime = currentTime() - (5 * 24 * 60 * 60)
 
-      await initContracts(startTime, MINIMUM_PRICE, 1, TIME_SCALE)
-
+      const {auctions} = await Metronome.initContracts(accounts, startTime, MINIMUM_PRICE, 1, TIME_SCALE)
       const currentPrice = await auctions.currentPrice()
       assert.equal(currentPrice.valueOf(), MINIMUM_PRICE, 'Current price is not equal to minimum price')
       resolve()
@@ -361,7 +306,7 @@ contract('Auctions', accounts => {
     return new Promise(async (resolve, reject) => {
       // set genesisTime to 7 days and 1 day earlier (auction off period and few hours)
       const startTime = currentTime() - ((INITIAL_AUCTION_DURATION * 60) + SECS_IN_A_DAY)
-      await initContracts(startTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      const {auctions} = await Metronome.initContracts(accounts, startTime, MINIMUM_PRICE, 1, TIME_SCALE)
       let currentAuction = await auctions.currentAuction()
       assert.equal(currentAuction.valueOf(), 1, 'Current auction should be equal to 1')
 
@@ -373,7 +318,7 @@ contract('Auctions', accounts => {
     return new Promise(async (resolve, reject) => {
       // set genesisTime to 8 days and 1 day earlier (auction off period and few hours)
       const eightDaysAgo = currentTime() - (INITIAL_AUCTION_DURATION) * 60 - 2 * SECS_IN_A_DAY
-      await initContracts(eightDaysAgo, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      const {auctions} = await Metronome.initContracts(accounts, eightDaysAgo, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
       const currentAuction = await auctions.currentAuction()
       assert.equal(currentAuction.valueOf(), 2, 'Current auction should be equal to 2')
 
@@ -386,7 +331,7 @@ contract('Auctions', accounts => {
       // 10th tick
       const startTime = ((currentTime() - 11 * 60))
 
-      await initContracts(startTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      const {auctions} = await Metronome.initContracts(accounts, startTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
       const globaldailySupply = await auctions.globalDailySupply()
 
@@ -400,7 +345,9 @@ contract('Auctions', accounts => {
     return new Promise(async (resolve, reject) => {
       const startTime = ((currentTime() - (4 * SECS_IN_A_DAY) - 60))
       const expectedCurrentPrice = 857031352832000000
-      await initContracts(startTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      const {metToken, auctions, autonomousConverter, proceeds} =
+        await Metronome.initContracts(accounts, startTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+
       const heartbeat = await auctions.heartbeat()
       var globalMetSupply = await auctions.globalMetSupply()
       var totalSupplyHere = await metToken.totalSupply()
@@ -424,8 +371,7 @@ contract('Auctions', accounts => {
     return new Promise(async (resolve, reject) => {
       // 1st tick which is between initial auction end and daily auction start
       const startTime = ((currentTime() - (INITIAL_AUCTION_DURATION * 60) - 120))
-      await initContracts(startTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
-
+      const {auctions} = await Metronome.initContracts(accounts, startTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
       // assert that time period is during down time (after initial but before next auction)
       const nowTime = new Date().getTime() / MILLISECS_IN_A_SEC
       const genesisTime = (await auctions.genesisTime()).toNumber()
@@ -456,7 +402,7 @@ contract('Auctions', accounts => {
       const startTime = currentTime() - (INITIAL_AUCTION_DURATION * 60)
       const fromAccount = accounts[5]
       const amountUsedForPurchase = 40e18
-      await initContracts(startTime, 0, STARTING_PRICE, TIME_SCALE)
+      const {metToken, auctions} = await Metronome.initContracts(accounts, startTime, 0, STARTING_PRICE, TIME_SCALE)
       await auctions.sendTransaction({
         from: fromAccount,
         value: amountUsedForPurchase
@@ -493,7 +439,7 @@ contract('Auctions', accounts => {
   //     const startTime = currentTime() - (INITIAL_AUCTION_DURATION * 60) - 3 * 60 * 60
   //     const fromAccount = accounts[3]
   //     const amountUsedForPurchase = 0.4e18 // 27 ETH can purchase all met afer 23 hrs passed
-  //     await initContracts(startTime, 0, STARTING_PRICE, TIME_SCALE)
+  //     const {metToken, auctions} = await Metronome.initContracts(accounts, startTime, 0, STARTING_PRICE, TIME_SCALE)
   //     let ethBalance = await web3.eth.getBalance(fromAccount)
   //     console.log('balance=', ethBalance.valueOf())
   //     await auctions.sendTransaction({

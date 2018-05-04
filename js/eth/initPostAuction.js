@@ -32,7 +32,7 @@ function waitForTx (hash) {
   while (receipt === null) {
     receipt = eth.getTransactionReceipt(hash)
   }
-  console.log('tx', hash)
+  console.log(hash)
   return receipt
 }
 
@@ -56,9 +56,6 @@ var SmartToken = web3.eth.contract(SmartTokenJSON.abi).at(receipt.contractAddres
 console.log('Smart Token published at ' + SmartToken.address)
 
 var founders = []
-// Since we are appending it with hexadecimal address so amount should also be
-// in hexa decimal. Hence 999999e18 = 0000d3c20dee1639f99c0000 in 24 character ( 96 bits)
-// 1000000e18 =  0000d3c20dee1639f99c0000
 founders.push(ETHER_ADDR + '0000D3C214DE7193CD4E0000')
 founders.push('0xf17f52151ebef6c7334fad080c5704d77216b732' + '0000D3C214DE7193CD4E0000')
 var gasForMint = Auctions.mintInitialSupply.estimateGas(founders, METToken.address, Proceeds.address, AutonomousConverter.address)
@@ -108,7 +105,7 @@ personal.unlockAccount(newOwner, 'newOwner')
 
 var gasForAuction = Auctions.initAuctions.estimateGas(START, MINPRICE, PRICE, TIMESCALE, { from: newOwner })
 console.log('gas for init', gasForAuction)
-hash = Auctions.initAuctions(START, MINPRICE, PRICE, TIMESCALE, {from: newOwner, gas: gasForAuction})
+hash = Auctions.initAuctions(START - (10 * 86400), MINPRICE, PRICE, TIMESCALE, {from: newOwner, gas: gasForAuction})
 waitForTx(hash)
 personal.unlockAccount(newOwner, 'newOwner')
 console.log('Initialized', Auctions.initialized())

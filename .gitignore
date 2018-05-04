@@ -17,6 +17,17 @@ test/.placeholder
 # trash files
 .DS_Store
 
-# generated js files
-js/metronome.js
-js/const.js
+
+js/etc/const\.js
+
+js/etc/metronome\.js
+
+js/eth/const\.js
+
+js/eth/metronome\.js
+
+parity/
+
+js/etc/launched
+
+js/eth/launched

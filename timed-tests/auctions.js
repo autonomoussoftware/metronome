@@ -24,8 +24,8 @@
 */
 
 const assert = require('chai').assert
-const METGlobal = require('../test/shared/inits')
-const TestRPCTime = require('../test/shared/time')
+const Metronome = require('../test/shared/inits')
+const BlockTime = require('../test/shared/time')
 const TokenLocker = artifacts.require('TokenLocker')
 
 contract('Auctions', accounts => {
@@ -33,51 +33,33 @@ contract('Auctions', accounts => {
   const BUYER2 = accounts[8]
   const BUYER3 = accounts[7]
 
-  const OWNER = accounts[0]
-  const OWNER_TOKENS_HEX = '0000D3C214DE7193CD4E0000'
-  const FOUNDER_TOKENS_HEX = '0000D3C214DE7193CD4E0000'
-
   const MET_INITIAL_SUPPLY = 0
   const DECMULT = 10 ** 18
   const MINIMUM_PRICE = 33 * 10 ** 11 // minimum wei per token
   const STARTING_PRICE = 2 // 2 ETH per MET
   const TIME_SCALE = 1
-  const MILLISECS_IN_A_SEC = 1000
   const SECS_IN_DAY = 86400
   const SECS_IN_MINUTE = 60
   const SECS_IN_HOUR = 3600
   const MINUTES_IN_DAY = 24 * 60
-  let currentTimeOffset = 0
 
-  function getCurrentTime (offsetDays) {
-    let date = new Date()
-    date.setDate(date.getDate() + offsetDays)
-    const timeInSeconds = (date.getTime() / MILLISECS_IN_A_SEC)
-    return Math.floor(timeInSeconds / 60) * 60 // time in seconds round to nearest minute
-  }
 
-  function roundToNextMidnight (t) {
-    // round to prev midnight, then add a day
-    const nextMidnight = (t - (t % SECS_IN_DAY)) + SECS_IN_DAY
-    assert(new Date(nextMidnight * MILLISECS_IN_A_SEC).toUTCString().indexOf('00:00:00') >= 0, 'timestamp is not midnight')
-    return nextMidnight
-  }
-
-  before(async () => {
-    await web3.eth.sendTransaction({
-      from: accounts[8],
-      to: OWNER,
-      value: 30e18
-    })
-  })
+  // before(async () => {
+  //   await web3.eth.sendTransaction({
+  //     from: accounts[8],
+  //     to: OWNER,
+  //     value: 30e18
+  //   })
+  // })
 
   it('Should verify that Auctions contract is initialized correctly ', () => {
     return new Promise(async (resolve, reject) => {
       const reserveAmount = 2000000 // 20% of total supply aka 2 million
       // auction start time will be provided time + 60
-      const genesisTime = getCurrentTime(currentTimeOffset) + 60
+      const currentTime = BlockTime.getCurrentBlockTime()
+      const genesisTime = (Math.floor(currentTime / 60) * 60) + 60
 
-      const { auctions, proceeds, metToken, autonomousConverter } = await METGlobal.initContracts(accounts, getCurrentTime(currentTimeOffset), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      const { auctions, proceeds, metToken, autonomousConverter, founders } = await Metronome.initContracts(accounts, currentTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
       assert.equal(await auctions.proceeds(), proceeds.address, 'Proceeds address isn`t setup correctly')
       assert.equal(await auctions.token(), metToken.address, 'METToken address isn\'t setup correctly')
@@ -86,14 +68,10 @@ contract('Auctions', accounts => {
       assert.equal(await auctions.lastPurchasePrice(), web3.toWei(STARTING_PRICE), 'startingPrice isn\'t setup correctly')
       assert.equal(await auctions.timeScale(), TIME_SCALE, 'time scale isn\'t setup correctly')
 
-      const founders = [
-        { address: await auctions.founders(0), targetTokens: parseInt(OWNER_TOKENS_HEX, 16) },
-        { address: await auctions.founders(1), targetTokens: parseInt(FOUNDER_TOKENS_HEX, 16) }]
-
       let totalFounderMints = 0
       for (let i = 0; i < founders.length; i++) {
-        const founder = founders[i]
-        const tokenLockerAddress = await auctions.tokenLockers(founder.address)
+        const founderAddress = founders[i].slice(0, 42)
+        const tokenLockerAddress = await auctions.tokenLockers(founderAddress)
         const tokenLocker = await TokenLocker.at(tokenLockerAddress)
         totalFounderMints += (await metToken.balanceOf(tokenLocker.address)).toNumber() / DECMULT
       }
@@ -111,13 +89,14 @@ contract('Auctions', accounts => {
     return new Promise(async (resolve, reject) => {
       // When 0 is provided for auction start time, it will be calculated
       // using block timestamp, block.timestamp + 60
-      const defaultAuctionTime = getCurrentTime(currentTimeOffset) + 60
+      const currentTime = BlockTime.getCurrentBlockTime()
+      const genesisTime = (Math.floor(currentTime / 60) * 60) + 60
       const defaultStartingPrice = 2 // 2 ETH per MET
       const defaultMinimumPrice = 33 * 10 ** 11
 
-      const { auctions } = await METGlobal.initContracts(accounts, 0, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      const { auctions } = await Metronome.initContracts(accounts, 0, 0, 0, TIME_SCALE)
 
-      assert.equal(await auctions.genesisTime(), defaultAuctionTime, 'default genesisTime isn\'t setup correctly or test took longer in execution')
+      assert.equal(await auctions.genesisTime(), genesisTime, 'default genesisTime isn\'t setup correctly or test took longer in execution')
       assert.equal(await auctions.minimumPrice(), defaultMinimumPrice, 'default minimumPrice isn\'t setup correctly')
       assert.equal(await auctions.lastPurchasePrice(), web3.toWei(defaultStartingPrice), 'default startingPrice isn\'t setup correctly')
 
@@ -127,7 +106,7 @@ contract('Auctions', accounts => {
 
   it('Should return true indicating auction is running', () => {
     return new Promise(async (resolve, reject) => {
-      const { auctions } = await METGlobal.initContracts(accounts, 1, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      const { auctions } = await Metronome.initContracts(accounts, 1, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
       assert.ok(await auctions.isRunning(), 'Auctions should be running')
       resolve()
     })
@@ -136,17 +115,17 @@ contract('Auctions', accounts => {
   it('Should buy MET every hour during initial auction until 3 days ', () => {
     return new Promise(async (resolve, reject) => {
       // initialize auction
-      await TestRPCTime.mineBlock()
-      const { auctions, metToken } = await METGlobal.initContracts(accounts, TestRPCTime.getCurrentBlockTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      await BlockTime.mineBlock()
+      const currentTime = await BlockTime.getCurrentBlockTime()
+      const { auctions, metToken } = await Metronome.initContracts(accounts, currentTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
       // advance a minute so action can start
       let advanceSeconds = SECS_IN_MINUTE
-      await TestRPCTime.timeTravel(advanceSeconds)
-      await TestRPCTime.mineBlock()
-      currentTimeOffset += advanceSeconds / SECS_IN_DAY
+      await BlockTime.timeTravel(advanceSeconds)
+      await BlockTime.mineBlock()
 
       // validate we are at the begining of initial auction
-      const nowTime = TestRPCTime.getCurrentBlockTime()
+      const nowTime = BlockTime.getCurrentBlockTime()
       const genesisTime = (await auctions.genesisTime()).toNumber()
       assert(nowTime > genesisTime, 'Current time is not after genesisTime')
       const initialAuctionEndTime = (await auctions.initialAuctionEndTime()).toNumber()
@@ -195,7 +174,6 @@ contract('Auctions', accounts => {
         metBalanceBefore = metBalanceAfter
         metBalanceAfter = await metToken.balanceOf(fromAccount)
         currentAuction = await auctions.currentAuction()
-        // console.log(i, metBalanceAfter.toNumber(), metBalanceBefore.toNumber())
         assert(metBalanceAfter.toNumber() > metBalanceBefore.toNumber(), 'MET not recieved at ' + i + 'th hours after auction started')
 
         // check price
@@ -205,29 +183,27 @@ contract('Auctions', accounts => {
 
         // advance an hour
         advanceSeconds = SECS_IN_HOUR
-        await TestRPCTime.timeTravel(advanceSeconds)
-        await TestRPCTime.mineBlock()
-        currentTimeOffset += advanceSeconds / SECS_IN_DAY
+        await BlockTime.timeTravel(advanceSeconds)
+        await BlockTime.mineBlock()
       }
 
       resolve()
     })
   })
 
-  it('Should buy MET every  day and observe  mintable tokens', () => {
+  it('Should buy MET every day and observe mintable tokens', () => {
     return new Promise(async (resolve, reject) => {
       // initialize auction
-      await TestRPCTime.mineBlock()
-      const { auctions, metToken } = await METGlobal.initContracts(accounts, TestRPCTime.getCurrentBlockTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      await BlockTime.mineBlock()
+      const { auctions, metToken } = await Metronome.initContracts(accounts, BlockTime.getCurrentBlockTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
       // advance a minute so action can start
       let advanceSeconds = SECS_IN_MINUTE
-      await TestRPCTime.timeTravel(advanceSeconds)
-      await TestRPCTime.mineBlock()
-      currentTimeOffset += advanceSeconds / SECS_IN_DAY
+      await BlockTime.timeTravel(advanceSeconds)
+      await BlockTime.mineBlock()
 
       // validate we are at the begining of initial auction
-      const nowTime = TestRPCTime.getCurrentBlockTime()
+      const nowTime = BlockTime.getCurrentBlockTime()
       const genesisTime = (await auctions.genesisTime()).toNumber()
       assert(nowTime > genesisTime, 'Current time is not after genesisTime')
       const initialAuctionEndTime = (await auctions.initialAuctionEndTime()).toNumber()
@@ -279,8 +255,7 @@ contract('Auctions', accounts => {
         metBalanceBefore = metBalanceAfter
         metBalanceAfter = await metToken.balanceOf(fromAccount)
         currentAuction = await auctions.currentAuction()
-        currentAuction = await auctions.currentAuction()
-        let nowTime = TestRPCTime.getCurrentBlockTime()
+
         let errorDetla = 1e7
         assert.closeTo(metBalanceAfter.sub(metBalanceBefore).toNumber(), log.args.tokens.toNumber(), errorDetla, 'MET token issued is wrong at ' + i + 'th day')
         if (currentAuction.toNumber() > 0) {
@@ -288,16 +263,14 @@ contract('Auctions', accounts => {
         }
         // advance a day
         if (i === 6) {
-          let currentBlockTimeRounded = roundToNextMidnight(nowTime)
-          let SECS_TO_NEXT_MIDNIGHT = currentBlockTimeRounded - nowTime
+          let SECS_TO_NEXT_MIDNIGHT = await BlockTime.getSecondsToNextMidnight()
           advanceSeconds = SECS_TO_NEXT_MIDNIGHT + 10
         } else {
           advanceSeconds = SECS_IN_DAY
         }
 
-        await TestRPCTime.timeTravel(advanceSeconds)
-        await TestRPCTime.mineBlock()
-        currentTimeOffset += advanceSeconds / SECS_IN_DAY
+        await BlockTime.timeTravel(advanceSeconds)
+        await BlockTime.mineBlock()
       }
       resolve()
     })
@@ -307,19 +280,16 @@ contract('Auctions', accounts => {
     return new Promise(async (resolve, reject) => {
       const fromAccount = accounts[6]
       const amountUsedForPurchase = 1e18
+      let currentBlockTime = BlockTime.getCurrentBlockTime()
 
-      const { auctions, metToken } = await METGlobal.initContracts(accounts, getCurrentTime(currentTimeOffset), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      const { auctions, metToken } = await Metronome.initContracts(accounts, currentBlockTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
       // const startTime = currentTime() - (9 * 24 * 60 * 60) - 11 * 60
       // offset + 9 days + 10th tick
-      let currentBlockTime = TestRPCTime.getCurrentBlockTime()
-      let currentBlockTimeRounded = roundToNextMidnight(currentBlockTime)
-      let SECS_TO_NEXT_MIDNIGHT = currentBlockTimeRounded - currentBlockTime
-
+      let SECS_TO_NEXT_MIDNIGHT = await BlockTime.getSecondsToNextMidnight()
       let advanceSeconds = SECS_TO_NEXT_MIDNIGHT + (SECS_IN_DAY * 9) + (10 * SECS_IN_MINUTE)
-      await TestRPCTime.timeTravel(advanceSeconds)
-      await TestRPCTime.mineBlock()
-      currentTimeOffset += advanceSeconds / SECS_IN_DAY
+      await BlockTime.timeTravel(advanceSeconds)
+      await BlockTime.mineBlock()
 
       const currentAuction = (await auctions.currentAuction()).toNumber()
       assert.equal(currentAuction, 3, 'Not at the 3rd auction')
@@ -330,7 +300,7 @@ contract('Auctions', accounts => {
       const tokensInNextAuction = 8e24 + 3 * 2880e18
 
       // get estimate from auction
-      const purchaseDetail = await auctions.whatWouldPurchaseDo(amountUsedForPurchase, TestRPCTime.getCurrentBlockTime())
+      const purchaseDetail = await auctions.whatWouldPurchaseDo(amountUsedForPurchase, BlockTime.getCurrentBlockTime())
       assert.equal(purchaseDetail[0].valueOf(), expectedWeiPerToken, ' weiPerToken is not correct')
       assert.equal(purchaseDetail[1].valueOf(), expectedTokenPurchase, 'Total calcualted tokens are not correct')
       assert.equal(purchaseDetail[2].valueOf(), 0, 'refund is not correct')
@@ -343,13 +313,11 @@ contract('Auctions', accounts => {
       const mtTokenBalanceAfter = await metToken.balanceOf(fromAccount)
       assert.equal(mtTokenBalanceAfter.sub(mtTokenBalanceBefore).valueOf(), expectedTokenPurchase, 'Total purchased/minted tokens are not correct')
 
-      currentBlockTime = TestRPCTime.getCurrentBlockTime()
-      currentBlockTimeRounded = roundToNextMidnight(currentBlockTime)
-      SECS_TO_NEXT_MIDNIGHT = currentBlockTimeRounded - currentBlockTime
+      SECS_TO_NEXT_MIDNIGHT = await BlockTime.getSecondsToNextMidnight()
       advanceSeconds = SECS_TO_NEXT_MIDNIGHT + 10
-      await TestRPCTime.timeTravel(advanceSeconds)
-      await TestRPCTime.mineBlock()
-      currentTimeOffset += advanceSeconds / SECS_IN_DAY
+      await BlockTime.timeTravel(advanceSeconds)
+      await BlockTime.mineBlock()
+
       const expectedNextAuctionPrice = 20736727076
 
       await auctions.sendTransaction({
@@ -366,30 +334,22 @@ contract('Auctions', accounts => {
     return new Promise(async (resolve, reject) => {
       // operational auction started and no purchase yet. 10th tick
       const amount = 1e18
-      await TestRPCTime.mineBlock()
-      const currentBlockTime = TestRPCTime.getCurrentBlockTime()
-      const { auctions, metToken, proceeds } = await METGlobal.initContracts(accounts, currentBlockTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      await BlockTime.mineBlock()
+      const currentBlockTime = BlockTime.getCurrentBlockTime()
+      const { auctions, metToken, proceeds } = await Metronome.initContracts(accounts, currentBlockTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
       // fast forward time to opertional auction skipping first day
-      const currentBlockTimeRounded = roundToNextMidnight(currentBlockTime)
-      const SECS_TO_NEXT_MIDNIGHT = currentBlockTimeRounded - currentBlockTime
-      // console.log('before', new Date(currentBlockTime * MILLISECS_IN_A_SEC).toUTCString())
+      const SECS_TO_NEXT_MIDNIGHT = await BlockTime.getSecondsToNextMidnight()
       const advanceSeconds = SECS_TO_NEXT_MIDNIGHT + (SECS_IN_DAY * 8) + (10 * SECS_IN_MINUTE)
-      await TestRPCTime.timeTravel(advanceSeconds)
-      await TestRPCTime.mineBlock()
-      currentTimeOffset += advanceSeconds / SECS_IN_DAY
-      // console.log('after', new Date(getCurrentBlockTime() * MILLISECS_IN_A_SEC).toUTCString())
+      await BlockTime.timeTravel(advanceSeconds)
+      await BlockTime.mineBlock()
 
       // validate ticks and auctions
       const currentAuction = (await auctions.currentAuction()).toNumber()
       assert.equal(currentAuction, 2, 'Not at the 2nd auction')
 
-      // TODO: should we have an assertion here?
-      // const currentTick = (await auctions.currentTick()).toNumber()
-      // assert.equal(currentTick, 10, 'Not at the 10th tick')
-
       // validate we are in the operation auction time period (skip day 1)
-      const nowTime = TestRPCTime.getCurrentBlockTime()
+      const nowTime = BlockTime.getCurrentBlockTime()
       const genesisTime = (await auctions.genesisTime()).toNumber()
       assert(genesisTime < nowTime, 'Current time is not after genesisTime')
       const initialAuctionEndTime = (await auctions.initialAuctionEndTime()).toNumber()
@@ -426,18 +386,17 @@ contract('Auctions', accounts => {
     return new Promise(async (resolve, reject) => {
       // operational auction started and no purchase yet. 10th tick
       const amount = 1e18
-      await TestRPCTime.mineBlock()
-      const currentBlockTime = TestRPCTime.getCurrentBlockTime()
-      const { auctions } = await METGlobal.initContracts(accounts, currentBlockTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      await BlockTime.mineBlock()
+      const currentBlockTime = BlockTime.getCurrentBlockTime()
+      const { auctions } = await Metronome.initContracts(accounts, currentBlockTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
       // fast forward time to opertional auction skipping first day
-      let currentBlockTimeRounded = roundToNextMidnight(currentBlockTime)
-      let SECS_TO_NEXT_MIDNIGHT = currentBlockTimeRounded - currentBlockTime
-      // console.log('before', new Date(currentBlockTime * MILLISECS_IN_A_SEC).toUTCString())
+      let SECS_TO_NEXT_MIDNIGHT = await BlockTime.getSecondsToNextMidnight()
+
       let advanceSeconds = SECS_TO_NEXT_MIDNIGHT + (SECS_IN_DAY * 7) + 10
-      await TestRPCTime.timeTravel(advanceSeconds)
-      await TestRPCTime.mineBlock()
-      currentTimeOffset += advanceSeconds / SECS_IN_DAY
+      await BlockTime.timeTravel(advanceSeconds)
+      await BlockTime.mineBlock()
+
       // execute transaction by the buyer
       await auctions.sendTransaction({
         from: BUYER1,
@@ -454,23 +413,20 @@ contract('Auctions', accounts => {
     return new Promise(async (resolve, reject) => {
       // operational auction started and no purchase yet. 10th tick
       const amount = 1e18
-      const { auctions, metToken, proceeds } = await METGlobal.initContracts(accounts, TestRPCTime.getCurrentBlockTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      const { auctions, metToken, proceeds } = await Metronome.initContracts(accounts, BlockTime.getCurrentBlockTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
       // fast forward time to opertional auction skipping first day
-      const currentBlockTime = TestRPCTime.getCurrentBlockTime()
-      const currentBlockTimeRounded = roundToNextMidnight(currentBlockTime)
-      const SECS_TO_NEXT_MIDNIGHT = currentBlockTimeRounded - currentBlockTime
+      const SECS_TO_NEXT_MIDNIGHT = await BlockTime.getSecondsToNextMidnight()
       const advanceSeconds = SECS_TO_NEXT_MIDNIGHT + (SECS_IN_DAY * 7) + (10 * SECS_IN_MINUTE)
-      await TestRPCTime.timeTravel(advanceSeconds)
-      await TestRPCTime.mineBlock()
-      currentTimeOffset += advanceSeconds / SECS_IN_DAY
+      await BlockTime.timeTravel(advanceSeconds)
+      await BlockTime.mineBlock()
 
       // validate ticks and auctions
       const currentAuction = (await auctions.currentAuction()).toNumber()
       assert.equal(currentAuction, 1, 'Not at the 1st auction')
 
       // validate we are in the operation auction time period (skip day 1)
-      const nowTime = TestRPCTime.getCurrentBlockTime()
+      const nowTime = BlockTime.getCurrentBlockTime()
       const genesisTime = (await auctions.genesisTime()).toNumber()
       assert(genesisTime < nowTime, 'Current time is not after genesisTime')
       const initialAuctionEndTime = (await auctions.initialAuctionEndTime()).toNumber()
@@ -504,22 +460,21 @@ contract('Auctions', accounts => {
 
   it('Should verify annual rate ​equal ​to ​2.0% ​of ​the ​then-outstanding ​supply ​per ​year ', () => {
     return new Promise(async (resolve, reject) => {
-      // await initContracts(getCurrentTime(currentTimeOffset), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
-      await TestRPCTime.mineBlock()
-      const { auctions } = await METGlobal.initContracts(accounts, TestRPCTime.getCurrentBlockTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      await BlockTime.mineBlock()
+      const { auctions } = await Metronome.initContracts(accounts, BlockTime.getCurrentBlockTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
       const amount = 1e17
-      let currentBlockTime = TestRPCTime.getCurrentBlockTime()
-      const currentBlockTimeRounded = roundToNextMidnight(currentBlockTime)
-      const SECS_TO_NEXT_MIDNIGHT = currentBlockTimeRounded - currentBlockTime
+
+      const SECS_TO_NEXT_MIDNIGHT = await BlockTime.getSecondsToNextMidnight()
       let advanceSeconds = SECS_TO_NEXT_MIDNIGHT + (10 * SECS_IN_MINUTE)
 
-      await TestRPCTime.timeTravel(advanceSeconds)
-      await TestRPCTime.mineBlock()
+      await BlockTime.timeTravel(advanceSeconds)
+      await BlockTime.mineBlock()
       let globalDailySupply = await auctions.globalDailySupply()
+
       advanceSeconds = SECS_TO_NEXT_MIDNIGHT + (SECS_IN_DAY * 14798) + (10 * SECS_IN_MINUTE)
-      await TestRPCTime.timeTravel(advanceSeconds)
-      await TestRPCTime.mineBlock()
+      await BlockTime.timeTravel(advanceSeconds)
+      await BlockTime.mineBlock()
 
       await auctions.sendTransaction({
         from: BUYER1,
@@ -531,8 +486,8 @@ contract('Auctions', accounts => {
       globalDailySupply = await auctions.globalDailySupply()
       assert.closeTo(expectedDailySupply, globalDailySupply.toNumber(), 2e8)
 
-      await TestRPCTime.timeTravel(SECS_IN_DAY)
-      await TestRPCTime.mineBlock()
+      await BlockTime.timeTravel(SECS_IN_DAY)
+      await BlockTime.mineBlock()
 
       await auctions.sendTransaction({
         from: BUYER1,
@@ -544,8 +499,8 @@ contract('Auctions', accounts => {
       globalDailySupply = await auctions.globalDailySupply()
       assert.closeTo(expectedDailySupply, globalDailySupply.toNumber(), 2e8)
 
-      await TestRPCTime.timeTravel(SECS_IN_DAY)
-      await TestRPCTime.mineBlock()
+      await BlockTime.timeTravel(SECS_IN_DAY)
+      await BlockTime.mineBlock()
 
       await auctions.sendTransaction({
         from: BUYER1,
@@ -557,8 +512,8 @@ contract('Auctions', accounts => {
 
       assert.closeTo(expectedDailySupply, globalDailySupply.toNumber(), 2e8)
 
-      await TestRPCTime.timeTravel(SECS_IN_DAY)
-      await TestRPCTime.mineBlock()
+      await BlockTime.timeTravel(SECS_IN_DAY)
+      await BlockTime.mineBlock()
 
       await auctions.sendTransaction({
         from: BUYER1,
@@ -570,8 +525,8 @@ contract('Auctions', accounts => {
       globalDailySupply = await auctions.globalDailySupply()
 
       assert.closeTo(expectedDailySupply, globalDailySupply.toNumber(), 2e8)
-      await TestRPCTime.timeTravel(SECS_IN_DAY)
-      await TestRPCTime.mineBlock()
+      await BlockTime.timeTravel(SECS_IN_DAY)
+      await BlockTime.mineBlock()
 
       await auctions.sendTransaction({
         from: BUYER1,
@@ -592,13 +547,13 @@ contract('Auctions', accounts => {
     return new Promise(async (resolve, reject) => {
       const amount = 1e18
       const minimumPrice = 33e11
-      await TestRPCTime.mineBlock()
-      var currentBlockTime = TestRPCTime.getCurrentBlockTime()
-      const { auctions } = await METGlobal.initContracts(accounts, currentBlockTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      await BlockTime.mineBlock()
+      var currentBlockTime = BlockTime.getCurrentBlockTime()
+      const { auctions } = await Metronome.initContracts(accounts, currentBlockTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
       let advanceSeconds = SECS_IN_DAY
-      await TestRPCTime.timeTravel(advanceSeconds)
-      await TestRPCTime.mineBlock()
+      await BlockTime.timeTravel(advanceSeconds)
+      await BlockTime.mineBlock()
       // execute transaction by the buyer
       await auctions.sendTransaction({
         from: BUYER3,
@@ -606,13 +561,12 @@ contract('Auctions', accounts => {
       })
 
       // fast forward to the start of 1st daily auction
-      await TestRPCTime.mineBlock()
-      currentBlockTime = TestRPCTime.getCurrentBlockTime()
-      let currentBlockTimeRounded = roundToNextMidnight(currentBlockTime)
-      let SECS_TO_NEXT_MIDNIGHT = currentBlockTimeRounded - currentBlockTime
+      await BlockTime.mineBlock()
+
+      let SECS_TO_NEXT_MIDNIGHT = await BlockTime.getSecondsToNextMidnight()
       advanceSeconds = SECS_TO_NEXT_MIDNIGHT + (6 * SECS_IN_DAY) + 20
-      await TestRPCTime.timeTravel(advanceSeconds)
-      await TestRPCTime.mineBlock()
+      await BlockTime.timeTravel(advanceSeconds)
+      await BlockTime.mineBlock()
 
       const currentAuction = await auctions.currentAuction()
       assert.equal(currentAuction.valueOf(), 1, 'Current auction is not correct')
@@ -626,17 +580,16 @@ contract('Auctions', accounts => {
   it('Should test current price at the start of 2nd daily auction, when prev auctions sold out', () => {
     return new Promise(async (resolve, reject) => {
       const amount = 1e18
-      await TestRPCTime.mineBlock()
-      var currentBlockTime = TestRPCTime.getCurrentBlockTime()
-      const { auctions } = await METGlobal.initContracts(accounts, currentBlockTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      await BlockTime.mineBlock()
+      var currentBlockTime = BlockTime.getCurrentBlockTime()
+      const { auctions } = await Metronome.initContracts(accounts, currentBlockTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
 
       // fast forward towards the end of 1st daily auction
-      let currentBlockTimeRounded = roundToNextMidnight(currentBlockTime)
-      let SECS_TO_NEXT_MIDNIGHT = currentBlockTimeRounded - currentBlockTime
+      let SECS_TO_NEXT_MIDNIGHT = await BlockTime.getSecondsToNextMidnight()
       let advanceSeconds = SECS_TO_NEXT_MIDNIGHT + (8 * SECS_IN_DAY) - (2 * SECS_IN_HOUR)
 
-      await TestRPCTime.timeTravel(advanceSeconds)
-      await TestRPCTime.mineBlock()
+      await BlockTime.timeTravel(advanceSeconds)
+      await BlockTime.mineBlock()
       // execute transaction by the buyer, auction will be sold out
       await auctions.sendTransaction({
         from: BUYER3,
@@ -646,8 +599,8 @@ contract('Auctions', accounts => {
       const currentPriceAfterPurchase = await auctions.currentPrice()
       // fast forward to the start of 2nd daily auction
       advanceSeconds = (2 * SECS_IN_HOUR) + 20
-      await TestRPCTime.timeTravel(advanceSeconds)
-      await TestRPCTime.mineBlock()
+      await BlockTime.timeTravel(advanceSeconds)
+      await BlockTime.mineBlock()
 
       const currentAuction = await auctions.currentAuction()
       assert.equal(currentAuction.valueOf(), 2, 'Current auction is not correct')

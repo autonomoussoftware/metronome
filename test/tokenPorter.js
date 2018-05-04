@@ -30,6 +30,8 @@ const Proceeds = artifacts.require('Proceeds')
 const AutonomousConverter = artifacts.require('AutonomousConverter')
 const Auctions = artifacts.require('Auctions')
 const TokenPorter = artifacts.require('TokenPorter')
+const Validator = artifacts.require('Validator')
+const ChainLedger = artifacts.require('ChainLedger')
 const ethjsABI = require('ethjs-abi')
 
 contract('TokenPorter', accounts => {
@@ -41,7 +43,7 @@ contract('TokenPorter', accounts => {
   const STARTING_PRICE = 2 // 2ETH per MET
   const TIME_SCALE = 1
 
-  let metToken, smartToken, proceeds, autonomousConverter, auctions, tokenPorter
+  let metToken, smartToken, proceeds, autonomousConverter, auctions, tokenPorter, validator, chainLedger
 
   function getCurrentBlockTime () {
     var defaultBlock = web3.eth.defaultBlock
@@ -49,8 +51,13 @@ contract('TokenPorter', accounts => {
   }
 
   async function initContracts (startTime, minimumPrice, startingPrice, timeScale) {
-    metToken = await METToken.new(autonomousConverter.address, auctions.address, MET_INITIAL_SUPPLY, DECMULT, {from: OWNER})
-    smartToken = await SmartToken.new(autonomousConverter.address, autonomousConverter.address, SMART_INITIAL_SUPPLY, {from: OWNER})
+    metToken = await METToken.new()
+    smartToken = await SmartToken.new()
+    tokenPorter = await TokenPorter.new()
+    validator = await Validator.new({from: OWNER})
+    chainLedger = await ChainLedger.new({from: OWNER})
+    await metToken.initMETToken(autonomousConverter.address, auctions.address, MET_INITIAL_SUPPLY, DECMULT, {from: OWNER})
+    await smartToken.initSmartToken(autonomousConverter.address, autonomousConverter.address, SMART_INITIAL_SUPPLY, {from: OWNER})
     await autonomousConverter.init(metToken.address, smartToken.address, auctions.address,
       {
         from: OWNER,
@@ -65,8 +72,15 @@ contract('TokenPorter', accounts => {
     founders.push(accounts[1] + '0000D3C214DE7193CD4E0000')
     await auctions.mintInitialSupply(founders, metToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
     await auctions.initAuctions(startTime, minimumPrice, startingPrice, timeScale, {from: OWNER})
-    tokenPorter = await TokenPorter.new(metToken.address, auctions.address)
-    await metToken.setTokenPorter(tokenPorter.address)
+    await tokenPorter.initTokenPorter(metToken.address, auctions.address, {from: OWNER})
+    await tokenPorter.setValidator(validator.address, {from: OWNER})
+    await metToken.setTokenPorter(tokenPorter.address, {from: OWNER})
+    await tokenPorter.setChainLedger(chainLedger.address, {from: OWNER})
+    await validator.initValidator(OWNER, accounts[1], accounts[2], {from: OWNER})
+    await validator.setTokenPorter(tokenPorter.address, {from: OWNER})
+    await chainLedger.initChainLedger(tokenPorter.address, auctions.address, {from: OWNER})
+    await chainLedger.registerChain(web3.fromAscii('ETH'), 10e24, {from: OWNER})
+    await chainLedger.registerChain(web3.fromAscii('ETC'), 0, {from: OWNER})
   }
 
   // Create contracts and initilize them for each test case
@@ -98,7 +112,7 @@ contract('TokenPorter', accounts => {
 
     beforeEach(async () => {
       await initContracts(getCurrentBlockTime() - 60, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
-      destAddr = accounts[2]
+      destAddr = accounts[8]
     })
 
     it('cant add zero chain', () => {
@@ -140,21 +154,6 @@ contract('TokenPorter', accounts => {
       })
     })
 
-    it('throw on duplicate adds', () => {
-      return new Promise(async (resolve, reject) => {
-        await tokenPorter.addDestinationChain(destChain, destAddr, { from: OWNER })
-
-        let thrown = false
-        try {
-          await tokenPorter.addDestinationChain(destChain, destAddr, { from: OWNER })
-        } catch (error) {
-          thrown = true
-        }
-        assert.isTrue(thrown, 'addDestinationChain did not throw')
-        resolve()
-      })
-    })
-
     it('add valild chain', () => {
       return new Promise(async (resolve, reject) => {
         const success = await tokenPorter.addDestinationChain.call(destChain, destAddr, { from: OWNER })
@@ -175,7 +174,7 @@ contract('TokenPorter', accounts => {
 
     beforeEach(async () => {
       await initContracts(getCurrentBlockTime() - 60, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
-      destAddr = accounts[2]
+      destAddr = accounts[8]
       await tokenPorter.addDestinationChain(destChain, destAddr, { from: OWNER })
     })
 
@@ -246,9 +245,8 @@ contract('TokenPorter', accounts => {
 
         const mtTokenBalanceBefore = await metToken.balanceOf(buyer)
         assert.isAbove(mtTokenBalanceBefore.toNumber(), 0, 'Buyer has no MET Tokens to export')
-
         let thrown = false
-        const expectedDestChain = 'XVG'
+        const expectedDestChain = 'ETC'
         const expectedExtraData = 'extra data'
         try {
           await metToken.export(
@@ -256,6 +254,7 @@ contract('TokenPorter', accounts => {
             metToken.address,
             buyer,
             mtTokenBalanceBefore,
+            0,
             web3.fromAscii(expectedExtraData),
             { from: buyer })
         } catch (error) {
@@ -269,7 +268,7 @@ contract('TokenPorter', accounts => {
   })
 
   describe('export off chain', () => {
-    const destChain = web3.fromAscii('ETC')
+    const destChain = web3.fromAscii('ETH')
     let destAddr
 
     it('successful export', () => {
@@ -294,6 +293,7 @@ contract('TokenPorter', accounts => {
           destAddr,
           buyer,
           mtTokenBalanceBefore,
+          0,
           web3.fromAscii(expectedExtraData),
           { from: buyer })
 
@@ -367,7 +367,7 @@ contract('TokenPorter', accounts => {
     it('successful export', () => {
       return new Promise(async (resolve, reject) => {
         await initContracts(getCurrentBlockTime() - 60, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
-        destAddr = accounts[6]
+        destAddr = accounts[3]
         await tokenPorter.addDestinationChain(destChain, destAddr, { from: OWNER })
 
         // get some balance for export, half MET
@@ -390,6 +390,7 @@ contract('TokenPorter', accounts => {
             destMET,
             buyer,
             mtTokenBalanceBefore,
+            0,
             web3.fromAscii(expectedExtraData),
             { from: buyer })
 

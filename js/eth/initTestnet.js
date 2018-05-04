@@ -22,19 +22,12 @@
     TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-pragma solidity ^0.4.21;
 
+/* globals eth, Auctions, AutonomousConverter, METToken, Proceeds, SmartToken */
+var auctions = eth.contract(Auctions.abi).at('0xd0aa441ccc3926bcc28d586043bed845d9617ce1')
+var autonomousConverter = eth.contract(AutonomousConverter.abi).at('0xe969a7d8ffdbfe8cfd61886890daa3e45f548e0d')
+var metToken = eth.contract(METToken.abi).at('0x2d9a998fa591ef40563dc56bac835d03680f8d23')
+var proceeds = eth.contract(Proceeds.abi).at('0xb16cbbba56daa191243cd404ffa3adbf1ac0fc5f')
+var smartToken = eth.contract(SmartToken.abi).at('0x10d209fbfd912bb1aaa4e632188c21e3b9601232')
 
-contract MockContractReceiver {
-    event TestLog(uint n);
-
-    function onTokenTransfer(uint n) public returns (bool) {
-        emit TestLog(n);
-        return true;
-    }
-
-    function onTokenApprove(uint n) public returns (bool) {
-        emit TestLog(n);
-        return true;
-    }
-}
+// helper file to connect to testnet, addresses will need to be manually updated to target specific versions

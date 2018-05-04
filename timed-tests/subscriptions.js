@@ -55,12 +55,14 @@ contract('Subscriptions', accounts => {
     autonomousConverter = await AutonomousConverter.new({from: OWNER})
     auctions = await Auctions.new({from: OWNER})
     proceeds = await Proceeds.new({from: OWNER})
+    metToken = await METToken.new({from: OWNER})
+    smartToken = await SmartToken.new({from: OWNER})
 
     const founders = []
     founders.push(OWNER + '0000D3C214DE7193CD4E0000')
     founders.push(FOUNDER + '0000D3C214DE7193CD4E0000')
-    metToken = await METToken.new(autonomousConverter.address, auctions.address, MET_INITIAL_SUPPLY, DECMULT, {from: OWNER})
-    smartToken = await SmartToken.new(autonomousConverter.address, autonomousConverter.address, ST_INITIAL_SUPPLY, {from: OWNER})
+    await metToken.initMETToken(autonomousConverter.address, auctions.address, MET_INITIAL_SUPPLY, DECMULT, {from: OWNER})
+    await smartToken.initSmartToken(autonomousConverter.address, autonomousConverter.address, ST_INITIAL_SUPPLY, {from: OWNER})
     await autonomousConverter.init(metToken.address, smartToken.address, auctions.address, { from: OWNER, value: web3.toWei(1, 'ether') })
     await proceeds.initProceeds(autonomousConverter.address, auctions.address, {from: OWNER})
     await auctions.mintInitialSupply(founders, metToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
