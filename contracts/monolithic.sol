@@ -640,7 +640,8 @@ contract METToken is Token {
 
     /// @notice export MET tokens from this chain to another chain.
     /// @param _destChain destination chain address
-    /// @param _destMetronomeAddr address of Metronome contract on the destination chain where this MET will be imported.
+    /// @param _destMetronomeAddr address of Metronome contract on the destination chain 
+    /// where this MET will be imported.
     /// @param _destRecipAddr address of account on destination chain
     /// @param _amount amount
     /// @param _extraData extra information for future expansion
