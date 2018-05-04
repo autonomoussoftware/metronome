@@ -22,7 +22,7 @@
     TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-pragma solidity ^0.4.20;
+pragma solidity ^0.4.21;
 
 
 /**
@@ -731,7 +731,7 @@ contract METToken is Token {
         return n;
     }
 
-    /// @notice Trigger MET token tranfers for all pairs of subscribers and beneficiaries
+    /// @notice Trigger MET token transfers for all pairs of subscribers and beneficiaries
     /// @dev address at i index in owners and recipients array is subcriber-beneficiary pair.
     /// @param _owners 
     /// @param _recipients 
@@ -795,7 +795,7 @@ contract AutonomousConverter is Formula, Owned {
 
     function handleFund() public payable {
         require(msg.sender == address(auctions.proceeds()));
-        LogFundsIn(msg.sender, msg.value);
+        emit LogFundsIn(msg.sender, msg.value);
     }
 
     function getMetBalance() public view returns (uint) {
@@ -825,7 +825,7 @@ contract AutonomousConverter is Formula, Owned {
     /// @return returnedMet MET retured after conversion
     function convertEthToMet(uint _mintReturn) public payable returns (uint returnedMet) {
         returnedMet = convert(WhichToken.Eth, _mintReturn, msg.value);
-        ConvertEthToMet(msg.sender, msg.value, returnedMet);
+        emit ConvertEthToMet(msg.sender, msg.value, returnedMet);
     }
 
     /// @notice send MET and get ETH
@@ -835,7 +835,7 @@ contract AutonomousConverter is Formula, Owned {
     /// @return returnedEth ETh returned after conversion
     function convertMetToEth(uint _amount, uint _mintReturn) public returns (uint returnedEth) {
         returnedEth = convert(WhichToken.Met, _mintReturn, _amount);
-        ConvertMetToEth(msg.sender, returnedEth, _amount);
+        emit ConvertMetToEth(msg.sender, returnedEth, _amount);
     }
 
     function balanceOf(WhichToken which) internal view returns (uint) {
@@ -940,7 +940,7 @@ contract Proceeds is Owned {
 
     function handleFund() public payable {
         require(msg.sender == address(auctions));
-        LogProceedsIn(msg.sender, msg.value);
+        emit LogProceedsIn(msg.sender, msg.value);
     }
 
     /// @notice Forward 0.25% of total ETH balance of proceeds to AutonomousConverter contract
