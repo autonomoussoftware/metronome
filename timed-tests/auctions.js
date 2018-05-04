@@ -43,7 +43,6 @@ contract('Auctions', accounts => {
   const SECS_IN_HOUR = 3600
   const MINUTES_IN_DAY = 24 * 60
 
-
   // before(async () => {
   //   await web3.eth.sendTransaction({
   //     from: accounts[8],
