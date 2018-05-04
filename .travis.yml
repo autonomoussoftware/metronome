@@ -28,12 +28,7 @@ install:
 script:
   - npm run solhint
   - npm run eslint
-  - npm run testrpc
-  - npm run testrpc:subs
-  - npm run testrpc:ac
-  - npm run testrpc:auctions
-  - npm run testrpc:proceeds
-  - npm run testrpc:tokenLocker
+  - npm run test
 
 notifications:
   slack:
