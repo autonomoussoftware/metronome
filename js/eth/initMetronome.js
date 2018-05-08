@@ -23,8 +23,8 @@
     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-/* globals ETHER_ADDR, NUMTOKENS, ONE */
-/* globals eth, personal */
+/* globals ETHER_ADDR, FOUNDERS, OWNER_ADDRESS */
+/* globals eth */
 /* globals Auctions, AutonomousConverter, METToken, Proceeds, SmartToken, TokenPorter, Validator, Validator, ChainLedger */
 var hash
 function waitForTx (hash) {
@@ -35,8 +35,6 @@ function waitForTx (hash) {
   console.log('tx', hash)
   return receipt
 }
-
-console.log('Initializing with ', ONE, 'and ', NUMTOKENS)
 
 eth.defaultAccount = ETHER_ADDR
 
@@ -77,8 +75,7 @@ if (!Auctions.minted()) {
   throw new Error('Error occured while initial minting in auction')
 }
 
-var newAccount = personal.newAccount('newOwner')
-var newOwner = newAccount // // Todo: for actual production deployment, use actual new owner account address here
+var newOwner = OWNER_ADDRESS
 
 console.log('Configuring Validator')
 // Todo: initValidator will take address of off-chain validators
@@ -88,9 +85,7 @@ hash = Validator.setTokenPorter(TokenPorter.address, {from: ETHER_ADDR})
 waitForTx(hash)
 console.log('Validator published at ' + Validator.address)
 
-console.log('Changing Ownership')
-hash = eth.sendTransaction({to: newOwner, from: ETHER_ADDR, value: web3.toWei(2, 'ether')}) // Todo: new owner in prod should already have eth.
-waitForTx(hash)
+console.log('Changing Ownership to', newOwner)
 hash = METToken.changeOwnership(newOwner, {from: ETHER_ADDR})
 waitForTx(hash)
 hash = AutonomousConverter.changeOwnership(newOwner, {from: ETHER_ADDR})

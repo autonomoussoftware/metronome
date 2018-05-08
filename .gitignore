@@ -31,3 +31,5 @@ parity/
 js/etc/launched
 
 js/eth/launched
+
+js/eth/const_launch\.js

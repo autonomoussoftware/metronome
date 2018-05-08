@@ -24,7 +24,7 @@
 */
 
 /* globals MINPRICE, PRICE, START, TIMESCALE */
-/* globals eth, personal, newAccount */
+/* globals eth, personal, OWNER_ADDRESS, OWNER_PASS */
 /* globals Auctions, AutonomousConverter, METToken, Proceeds, SmartToken, Validator, TokenPorter, ChainLedger */
 
 // For live net , enter new owner address and password
@@ -38,8 +38,8 @@ function waitForTx (hash) {
   return receipt
 }
 
-var newOwner = newAccount
-var newOwnerPassword = 'newOwner'
+var newOwner = OWNER_ADDRESS
+var newOwnerPassword = OWNER_PASS
 var balanceOfNewOwner = eth.getBalance(newOwner)
 
 if (balanceOfNewOwner < 1e18) {
