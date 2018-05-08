@@ -23,8 +23,8 @@
     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-/* globals ETHER_ADDR, NUMTOKENS, ONE */
-/* globals eth, personal */
+/* globals ETHER_ADDR, NUMTOKENS, ONE, OWNER_ADDRESS */
+/* globals eth */
 /* globals Auctions, AutonomousConverter, METToken, Proceeds, SmartToken, TokenPorter, Validator, Validator, ChainLedger */
 var hash
 function waitForTx (hash) {
@@ -65,8 +65,7 @@ hash = ChainLedger.initChainLedger(TokenPorter.address, Auctions.address, {from:
 waitForTx(hash)
 console.log('ChainLedger published at ' + ChainLedger.address)
 
-var newAccount = personal.newAccount('newOwner')
-var newOwner = newAccount // // Todo: for actual production deployment, use actual new owner account address here
+var newOwner = OWNER_ADDRESS
 
 console.log('Configuring Validator')
 // Todo: initValidator will take address of off-chain validators

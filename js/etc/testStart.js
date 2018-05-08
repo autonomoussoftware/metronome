@@ -36,7 +36,7 @@ console.log(
   'Proceeds has:', eth.getBalance(Proceeds.address) / 1e18,
   'Current Tick', Auctions.currentTick(),
   'Current Auction', Auctions.currentAuction(),
-  'Next Auction Starts:', Auctions.nextAuction()[0] - eth.getBlock('latest').timestamp, ' secs')
+  'Next Auction Starts:', Auctions.heartbeat()[9] - eth.getBlock('latest').timestamp, ' secs')
 
 setInterval(function () {
   // Tell user current status of Auctions:
@@ -46,7 +46,7 @@ setInterval(function () {
     'Proceeds:', eth.getBalance(Proceeds.address) / 1e18,
     'Tick', Auctions.currentTick(),
     'Auction', Auctions.currentAuction(),
-    'Next Auction In', Auctions.nextAuction()[0] - eth.getBlock('latest').timestamp,
+    'Next Auction In', Auctions.heartbeat()[9] - eth.getBlock('latest').timestamp,
     'lastPrice', Auctions.lastPurchasePrice(),
     'lastTick', Auctions.lastPurchaseTick())
 }, 30000)
@@ -62,7 +62,7 @@ var pingBuy = function () {
 
 var pingBuy2 = function () {
   pingtx = eth.sendTransaction({to: Auctions.address, from: buyer2Account, value: web3.toWei(1, 'ether')})
-  console.log('pingtx2', pingtx, 'buyer 2 has', METToken.balanceOf(buyer2Account));
+  console.log('pingtx2', pingtx, 'buyer 2 has', METToken.balanceOf(buyer2Account))
 }
 
 var pingBig = function () {

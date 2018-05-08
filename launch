@@ -1,0 +1,266 @@
+#!/bin/bash
+#set -e
+#set -o pipefail
+
+<< LICENSE
+The MIT License (MIT)
+
+Copyright 2017 - 2018, Alchemy Limited, LLC.
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+LICENSE
+
+usage()
+{
+  cat <<- _EOM_
+  Launch metronome to a local parity instance by default,
+  overriding auction launch date, price and supply, if specified.
+
+  By default, launch to a local clean ETH "dev chain" instance of parity.
+
+  If --test is offered, it will connect to the New Alchemy test network and
+  launch. Note you will need NA testnet ETH. Contact your SA for help.
+
+  If --live is offered, it will connect to the default parity instance.
+
+  usage: launch [-O | --owner <owner eth address> ] [-P | --pass <password> ] [--live | --test]
+
+_EOM_
+
+}
+
+check_system()
+{
+  
+  parityString=`parity --version | grep version\ P`
+  parityVersion=${parityString:18:3}  
+  if [[ "$parityString" = *"1.10"* ]]; then
+    echo "You have Parity 1.10"
+  else
+    echo "Need Parity 1.10 - You have $parityString. Punting."
+    exit 1
+  fi
+
+  mkdir -p log
+}
+
+check_system
+
+DEST="Parity DevChain Local ETH"
+LIVE=0
+PASS=""
+TEST=0
+LOCAL=1
+TIMESCALE=1
+CHAIN="eth"
+RPC=8545
+WS=8546
+PORT=33333
+CHAINARG="--chain dev"
+BOOTNODES=""
+DATADIR=/tmp/parity/local/eth
+GASARGS="--reseal-min-period 0 --min-gas-price 0 --gasprice 0" 
+RPCAPI="--rpcapi=web3,eth,personal,rpc,net,parity "
+AUCTION_STARTTIME=0
+ETH_TEST_BOOTNODE="enode://a90b36105811c87207b3a9bef260c2bff02355b0f8c1bfbc1e8341ee332fc803bc0f62cbec61fcc443228580a7f2ec3eeab3b57a649203f6ae6955e54ee9dfac@35.202.109.171:30303"
+ETC_TEST_BOOTNODE="enode://5c604378ba83b38a4d8a47e45305d4c5b3a6841172fe2b55e062bde6fdd8b7a6f44f01ef5cc8e4c3a5d40ce78d2040e33b4f9697d23f9c20a1914e24278477d3@35.184.26.97:30303"
+ETH_TEST_PARITYSPEC="parity-spec.json"
+ETC_TEST_PARITYSPEC="parity-spec-etc.json"
+OWNER_ADDRESS=0x0
+
+while [ "$1" != "" ]; do
+  case $1 in
+    --live )          PARITY="parity --geth $RPCAPI  >log/parity.eth.log 2>log/parity.eth.err.log"
+      DEST="Eth Live Net"
+      LIVE=1
+      LOCAL=0
+      ;;
+    --test )
+      LIVE=0
+      TEST=1
+      LOCAL=0
+      ;;
+    -h | --help )           usage
+      exit
+      ;;
+    -a | --auction ) shift
+      AUCTION_STARTTIME=$1
+      ;;
+    -O | --owner ) shift
+      OWNER_ADDRESS=$1
+      ;;
+    -P | --pass )     shift
+      PASS=$1
+      ;;
+    -c | --chain )    shift
+      CHAIN=$1
+      ;;
+    --seed )
+      SEED=,js/$CHAIN/testStart.js
+      ;;
+    * )                     usage
+      exit 1
+  esac
+  shift
+done
+
+if [[ "$CHAIN" = "eth" ]]
+then
+  SUPPLY=10000000
+  RPC=8545
+  WS=8546
+  PORT=33333
+  if [[ $LIVE = 1 ]]
+  then
+    DEST="Eth Live Net"
+  elif [[ $TEST = 1 ]]
+  then
+     DATADIR=./parity/testnet/eth
+     DEST="New Alchemy ETH Testnet"
+     CHAINARG="--chain $ETH_TEST_PARITYSPEC"
+     BOOTNODES="--bootnodes $ETH_TEST_BOOTNODE"
+  else
+    DATADIR=/tmp/parity/local/eth
+    DEST="Parity DevChain Local ETH"
+  fi
+elif [[ "$CHAIN" = "etc" ]]
+then
+  SUPPLY=0
+  RPC=8555
+  WS=8556
+  PORT=30305
+  if [[ $LIVE = 1 ]]
+  then
+    DEST="Etc Live Net"
+    CHAINARG="--chain classic"
+  elif [[ $TEST = 1 ]]
+  then
+     DATADIR=./parity/testnet/etc
+     DEST="New Alchemy ETC Testnet"
+     CHAINARG="--chain $ETC_TEST_PARITYSPEC"
+     BOOTNODES="--bootnodes $ETC_TEST_BOOTNODE"
+    else
+     DATADIR=/tmp/parity/local/etc
+     DEST="New Alchemy ETC Local"
+  fi
+fi
+
+if [[ $LIVE = 0 ]]; then
+#  PARITY="parity --geth --fat-db on --jsonrpc-port=$RPC --ws-port=$WS --port=$PORT --datadir=$DATADIR --tracing on  --pruning archive $CHAINARG $BOOTNODES $GASARGS > log/parity.$CHAIN.log 2>log/parity.$CHAIN.err.log"
+  PARITY="parity --geth $RPCAPI --jsonrpc-port=$RPC --ws-port=$WS --port=$PORT --datadir=$DATADIR --tracing off  --pruning archive $CHAINARG $BOOTNODES $GASARGS > log/parity.$CHAIN.log 2>log/parity.$CHAIN.err.log"
+fi
+
+PARITY_URL="http://127.0.0.1:$RPC"
+
+if [[ $OWNER_ADDRESS = 0x0 ]]
+  then
+    echo "Requires owner's address. Use -O or --owner."
+    exit 1
+fi
+
+if [[ $PASS = "" ]]
+  then
+    echo "Live and Test net deploy requires password. Use -P or --pass."
+    exit 1
+fi
+
+if [[ $LOCAL = 1 ]]; then
+  if [[ $AUCTION_STARTTIME = 0 ]]; then
+    AUCTION_STARTTIME=$(expr `date +%s` - 60) #For local test purpose, we do want to auction start immediately
+  fi
+
+else
+  if [[ $AUCTION_STARTTIME = 0 ]]
+  then
+    echo "Live and Test net deploy auction start time require. Use -a or --auction."
+    exit 1
+  fi
+fi
+
+echo "About to launch Metronome with Supply $SUPPLY, starting $AUCTION_STARTTIME (`date -r $AUCTION_STARTTIME`) to $DEST.."
+if [[ $LOCAL = 1 ]] && [[ $TIMESCALE = 1 ]]
+then
+  echo "Running on local chain but realtime.. Can I suggest -t 1000?"
+fi
+
+read -p "Press enter to continue"
+
+
+echo "Cleaning up old deploy stuff..."
+rm js/$CHAIN/launched
+
+echo "Turning off Parity..."
+if [[ "$CHAIN" = "etc" ]] 
+then
+    CHAINPID=$(lsof -t -i:8555)
+    if [[ ! -z "$CHAINPID" ]]; then
+      echo "Turning off ETC parity at port 8555"
+      kill -9 $CHAINPID
+    fi
+else
+    CHAINPID=$(lsof -t -i:8545)
+    if [[ ! -z "$CHAINPID" ]]; then
+      echo "Turning off ETH parity at port 8545"
+      kill -9 $CHAINPID
+    fi
+fi
+sleep 5
+
+NODES_CACHE=/tmp/natestnet/chains/GethTranslation/network/nodes.json
+if [ $TEST = 1 ] && [ -f $NODES_CACHE ]
+then
+  rm $NODES_CACHE
+fi
+
+echo "Loading Parity: $PARITY"
+eval $PARITY &
+
+if [ $LIVE = 1 ] || [ $TEST = 1 ]
+then
+  sleep 5
+else
+  sleep 1
+fi
+
+cat <<EOF > js/$CHAIN/const_launch.js
+// File generated by deploy -- edits will get overwritten!
+
+var PRICE = 2;
+var ONE = 1;
+var NUMTOKENS = $SUPPLY;
+var START = $AUCTION_STARTTIME;
+var TIMESCALE = 1
+var MINPRICE = 3300000000000
+var OWNER_ADDRESS = '$OWNER_ADDRESS'
+var OWNER_PASS = '$PASS'
+EOF
+
+currentTime=$(expr `date +%s` + 10)
+
+echo 'Auction start time= $AUCTION_STARTTIME'
+if [$AUCTION_STARTTIME <  $currentTime]
+then
+  echo "Auction start time can not be past time"
+  exit 1
+fi
+geth attach $PARITY_URL --preload js/$CHAIN/metronome.js,js/$CHAIN/const_launch.js,js/common.js,js/$CHAIN/launchMetronome.js$SEED
+
+
+exit 0
