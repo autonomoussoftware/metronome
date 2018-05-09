@@ -1975,7 +1975,12 @@ contract Validator is Owned {
     /// @param _validator2 second validator
     /// @param _validator3 third validator
     function initValidator(address _validator1, address _validator2, address _validator3) public onlyOwner {
-
+        // Clear old validators. Validators can be updated multiple times
+        for (uint8 i = 0; i < validators.length; i++) {
+            delete isValidator[validators[i]];
+            delete validatorNum[validators[i]];
+        }
+        delete validators;
         validators.push(_validator1);
         validators.push(_validator2);
         validators.push(_validator3);

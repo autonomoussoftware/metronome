@@ -172,6 +172,77 @@ contract('TokenPorter', accounts => {
       })
     })
 
+    it('Should be able to update validator and wrong validtor should not be able to do validation', () => {
+      return new Promise(async (resolve, reject) => {
+        const exportFee = 0
+        const amountToExport = 1e17 - exportFee
+
+        // await initContracts(accounts, TestRPCTime.getCurrentBlockTime() - 60, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+        const {auctions, metToken, tokenPorter} = await METGlobal.initContracts(accounts, TestRPCTime.getCurrentBlockTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+
+        let initialAuctionEndTime = await auctions.initialAuctionEndTime()
+        // await initNonOGContracts(accounts, TestRPCTime.getCurrentBlockTime() - 60, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE, initialAuctionEndTime.valueOf())
+        const {etcMetToken, etcTokenPorter, etcValidator} = await METGlobal.initNonOGContracts(accounts, TestRPCTime.getCurrentBlockTime(), MINIMUM_PRICE, (STARTING_PRICE / 2), TIME_SCALE, initialAuctionEndTime.valueOf())
+
+        // Time travel to just a minute before initial auction end
+        await TestRPCTime.timeTravel((7 * SECS_IN_DAY) - SECS_IN_MINUTE)
+        await TestRPCTime.mineBlock()
+
+        // get some balance for export
+        const buyer = accounts[7]
+        const amount = 1e18
+        await auctions.sendTransaction({ from: buyer, value: amount })
+
+        var balanceOfBuyer = await metToken.balanceOf(buyer)
+        assert.isAbove(balanceOfBuyer.toNumber(), amountToExport, 'Balance of buyer after purchase is not correct')
+
+        const SECS_TO_NEXT_MIDNIGHT = await secondsToNextMidnight()
+        await TestRPCTime.timeTravel(SECS_TO_NEXT_MIDNIGHT)
+        await TestRPCTime.mineBlock()
+        await auctions.sendTransaction({ from: buyer, value: amount })
+        // await initETCMockContracts(await auctions.genesisTime())
+        destMetAddr = etcMetToken.address
+        await tokenPorter.addDestinationChain(destChain, destMetAddr, { from: OWNER })
+        await etcTokenPorter.addDestinationChain(destChainETH, metToken.address, { from: OWNER })
+        // export all tokens
+        const expectedExtraData = 'extra data'
+        const tx = await metToken.export(
+          destChain,
+          destMetAddr,
+          buyer,
+          amountToExport,
+          exportFee,
+          web3.fromAscii(expectedExtraData),
+          { from: buyer })
+
+        // retrieve data from export receipt, it will be used for import in mock ETC
+        const decoder = ethjsABI.logDecoder(tokenPorter.abi)
+        const logExportReceipt = decoder(tx.receipt.logs)[0]
+
+        prepareImportData(tokenPorter, tx)
+
+        await TestRPCTime.timeTravel(20 * SECS_IN_DAY)
+        await TestRPCTime.mineBlock()
+
+        await etcValidator.initValidator(accounts[4], accounts[5], accounts[6], {from: OWNER})
+        let thrown = false
+        try {
+          await etcValidator.validateHash(logExportReceipt.currentBurnHash, {from: OWNER})
+        } catch (e) {
+          thrown = true
+        }
+        await etcValidator.initValidator(OWNER, accounts[1], accounts[4], {from: OWNER})
+
+        assert(thrown, 'Wrong validator should not be able to validate hash')
+        await etcValidator.validateHash(logExportReceipt.currentBurnHash, {from: OWNER})
+        await etcValidator.validateHash(logExportReceipt.currentBurnHash, {from: accounts[1]})
+
+        assert.isTrue(await etcValidator.hashClaimable(logExportReceipt.currentBurnHash))
+
+        resolve()
+      })
+    })
+
     it('Export and import test 2 . ETH to ETC', () => {
       return new Promise(async (resolve, reject) => {
         const exportFee = 0
