@@ -62,6 +62,8 @@ const Metronome = {
 
       await autonomousConverter.init(metToken.address, smartToken.address, auctions.address, { from: OWNER, value: web3.toWei(1, 'ether') })
       await proceeds.initProceeds(autonomousConverter.address, auctions.address, {from: OWNER})
+      await auctions.createTokenLocker(OWNER, metToken.address, {from: OWNER})
+      await auctions.createTokenLocker(FOUNDER, metToken.address, {from: OWNER})
       await auctions.mintInitialSupply(founders, metToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
       await auctions.initAuctions(START_TIME, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE, {from: OWNER})
 

@@ -67,6 +67,9 @@ contract('Deploy Contracts', accounts => {
       const founders = []
       founders.push(OWNER + '0000D3C214DE7193CD4E0000')
       founders.push(FOUNDER + '0000D3C214DE7193CD4E0000')
+      await auctions.createTokenLocker(OWNER, metToken.address, {from: OWNER})
+      await auctions.createTokenLocker(FOUNDER, metToken.address, {from: OWNER})
+
       assert.isTrue(await auctions.mintInitialSupply.call(founders, metToken.address, proceeds.address, autonomousConverter.address, {from: OWNER}), 'mintInitialSupply did not return true')
       await auctions.mintInitialSupply(founders, metToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
 

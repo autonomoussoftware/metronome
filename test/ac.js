@@ -88,6 +88,8 @@ contract('AutonomousConverter', accounts => {
 
     await metToken.initMETToken(autonomousConverter.address, auctions.address, MET_INITIAL_SUPPLY, DECMULT, {from: OWNER})
     await autonomousConverter.init(metToken.address, smartToken.address, auctions.address, { from: OWNER, value: web3.toWei(1, 'ether') })
+    await auctions.createTokenLocker(OWNER, metToken.address, {from: OWNER})
+    await auctions.createTokenLocker(FOUNDER, metToken.address, {from: OWNER})
     await auctions.mintInitialSupply(founders, metToken.address, proceedsMock, autonomousConverter.address, {from: OWNER})
   }
 

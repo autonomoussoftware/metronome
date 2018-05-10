@@ -71,6 +71,8 @@ contract('Token', accounts => {
     founders.push(actors.alice + '0000D3C214DE7193CD4E0000')
 
     assert.equal(await contracts.tokenMock.autonomousConverter(), actors.autonomousConverter, 'autonomousConverter was not set')
+    await auctions.createTokenLocker(actors.owner, contracts.tokenMock.address, {from: actors.owner})
+    await auctions.createTokenLocker(actors.alice, contracts.tokenMock.address, {from: actors.owner})
 
     await auctions.mintInitialSupply(founders, contracts.tokenMock.address, actors.proceesds, actors.autonomousConverter, {from: actors.owner})
 
