@@ -38,19 +38,19 @@ function waitForTx (hash) {
 
 eth.defaultAccount = ETHER_ADDR
 
-console.log('Configuring METToken')
+console.log('\nConfiguring METToken')
 hash = METToken.initMETToken(AutonomousConverter.address, Auctions.address, 0, 0, {from: ETHER_ADDR}) // TODO: really? Zero?
 waitForTx(hash)
 hash = METToken.setTokenPorter(TokenPorter.address, {from: ETHER_ADDR})
 waitForTx(hash)
 console.log('METToken published at ' + METToken.address + 'auction address:' + METToken.minter)
 
-console.log('Configuring Smart Token')
+console.log('\nConfiguring Smart Token')
 hash = SmartToken.initSmartToken(AutonomousConverter.address, AutonomousConverter.address, 2, {from: ETHER_ADDR})
 waitForTx(hash)
 console.log('Smart Token published at ' + SmartToken.address + ' Current Smart Tokens: ' + SmartToken.totalSupply())
 
-console.log('Configuring Token Porter')
+console.log('\nConfiguring Token Porter')
 hash = TokenPorter.initTokenPorter(METToken.address, Auctions.address, {from: ETHER_ADDR})
 waitForTx(hash)
 hash = TokenPorter.setValidator(Validator.address, {from: ETHER_ADDR})
@@ -59,15 +59,21 @@ hash = TokenPorter.setChainLedger(ChainLedger.address, {from: ETHER_ADDR})
 waitForTx(hash)
 console.log('TokenPorter published at ' + TokenPorter.address)
 
+console.log('\nConfiguring ChainLedger')
 hash = ChainLedger.initChainLedger(TokenPorter.address, Auctions.address, {from: ETHER_ADDR})
 waitForTx(hash)
 console.log('ChainLedger published at ' + ChainLedger.address)
 
-// Since we are appending it with hexadecimal address so amount should also be
-// in hexa decimal. Hence 999999e18 = 0000d3c20dee1639f99c0000 in 24 character ( 96 bits)
-// 1000000e18 =  0000d3c20dee1639f99c0000
 // Founders array is created from foundersList.csv
-hash = Auctions.mintInitialSupply(FOUNDERS, METToken.address, Proceeds.address, AutonomousConverter.address, {from: ETHER_ADDR, gas: 3000000})
+console.log('\nConfiguring TokenLocker for each founder')
+for (var i = 0; i < FOUNDERS.length; i++) {
+  var founder = FOUNDERS[i].slice(0, 42)
+  console.log('address of founder ' + i + ' is ' + founder)
+  hash = Auctions.createTokenLocker(founder, METToken.address, {from: ETHER_ADDR})
+  waitForTx(hash)
+}
+console.log('\nConfiguring and minting MET in Auctions')
+hash = Auctions.mintInitialSupply(FOUNDERS, METToken.address, Proceeds.address, AutonomousConverter.address, {from: ETHER_ADDR, gas: 5000000})
 waitForTx(hash)
 console.log('owner of auction', Auctions.owner())
 console.log('Minted', Auctions.minted())
@@ -77,7 +83,7 @@ if (!Auctions.minted()) {
 
 var newOwner = OWNER_ADDRESS
 
-console.log('Configuring Validator')
+console.log('\nConfiguring Validator')
 // Todo: initValidator will take address of off-chain validators
 hash = Validator.initValidator(ETHER_ADDR, newOwner, newOwner, {from: ETHER_ADDR})
 waitForTx(hash)
@@ -85,7 +91,7 @@ hash = Validator.setTokenPorter(TokenPorter.address, {from: ETHER_ADDR})
 waitForTx(hash)
 console.log('Validator published at ' + Validator.address)
 
-console.log('Changing Ownership to', newOwner)
+console.log('\nChanging Ownership to', newOwner)
 hash = METToken.changeOwnership(newOwner, {from: ETHER_ADDR})
 waitForTx(hash)
 hash = AutonomousConverter.changeOwnership(newOwner, {from: ETHER_ADDR})
@@ -101,6 +107,6 @@ hash = TokenPorter.changeOwnership(newOwner, {from: ETHER_ADDR})
 waitForTx(hash)
 hash = ChainLedger.changeOwnership(newOwner, {from: ETHER_ADDR})
 waitForTx(hash)
-console.log('Ownership has been transfered to', newOwner)
+console.log('\nOwnership has been transfered to', newOwner)
 
 console.log('Deployment Phase 1 Completed')

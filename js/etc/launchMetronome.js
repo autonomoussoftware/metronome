@@ -46,7 +46,7 @@ if (balanceOfNewOwner < 1e18) {
   console.log('New owner should have sufficient balance to launch the metronome. Should have 1 ether atleast')
 }
 
-console.log('Accepting ownership of contracts')
+console.log('\nAccepting ownership of contracts')
 personal.unlockAccount(newOwner, newOwnerPassword)
 
 // Accept ownership of all contracts before launching
@@ -74,20 +74,22 @@ waitForTx(hash)
 hash = ChainLedger.acceptOwnership({from: newOwner})
 waitForTx(hash)
 
-console.log('Launching AutonomousConverter Contract')
+console.log('\nLaunching AutonomousConverter Contract')
 hash = AutonomousConverter.init(METToken.address, SmartToken.address, Auctions.address, {from: newOwner, value: web3.toWei(0.1, 'ether')})
 waitForTx(hash)
 
-console.log('Launching Proceeds')
+console.log('\nLaunching Proceeds')
 personal.unlockAccount(newOwner, newOwnerPassword)
 hash = Proceeds.initProceeds(AutonomousConverter.address, Auctions.address, {from: newOwner})
 waitForTx(hash)
 
-console.log('Launching Auctions')
+console.log('\nLaunching Auctions')
 personal.unlockAccount(newOwner, newOwnerPassword)
 var initialAuctionEndTime = START + (7 * 24 * 60 * 60)
 hash = Auctions.skipInitBecauseIAmNotOg(METToken.address, Proceeds.address, START, MINPRICE, PRICE, TIMESCALE, web3.fromAscii('ETC'), initialAuctionEndTime, {from: newOwner})
 waitForTx(hash)
-console.log('Minted', Auctions.minted())
 console.log('Initialized auctions', Auctions.initialized())
-console.log('Launch completed')
+if (!Auctions.initialized()) {
+  throw new Error('Error occured while launching auction')
+}
+console.log('Launch completed\n')

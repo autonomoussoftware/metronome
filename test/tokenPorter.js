@@ -70,6 +70,9 @@ contract('TokenPorter', accounts => {
     // 1000000e18 =  0000d3c20dee1639f99c0000
     founders.push(OWNER + '0000D3C214DE7193CD4E0000')
     founders.push(accounts[1] + '0000D3C214DE7193CD4E0000')
+    await auctions.createTokenLocker(OWNER, metToken.address, {from: OWNER})
+    await auctions.createTokenLocker(accounts[1], metToken.address, {from: OWNER})
+
     await auctions.mintInitialSupply(founders, metToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
     await auctions.initAuctions(startTime, minimumPrice, startingPrice, timeScale, {from: OWNER})
     await tokenPorter.initTokenPorter(metToken.address, auctions.address, {from: OWNER})

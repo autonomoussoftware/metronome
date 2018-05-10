@@ -40,10 +40,9 @@ function waitForTx (hash) {
 // For live net , enter new owner address and password
 var newOwner = OWNER_ADDRESS
 var newOwnerPassword = OWNER_PASS
-console.log('OWNER_ADDRESS=', OWNER_ADDRESS)
-console.log('OWNER_PASS=', OWNER_PASS)
+console.log('\nOwner address=', OWNER_ADDRESS)
 var balanceOfNewOwner = eth.getBalance(newOwner)
-console.log('balanceOfNewOwner', balanceOfNewOwner)
+console.log('Balance of Owner', balanceOfNewOwner)
 if (balanceOfNewOwner < 1e18) {
   console.log('New owner should have sufficient balance to launch the metronome. Should have 1 ether atleast')
   throw new Error('Insufficient balance in owner`s account')
@@ -52,7 +51,7 @@ if (balanceOfNewOwner < 1e18) {
 console.log('unlocking owner`s account')
 personal.unlockAccount(newOwner, newOwnerPassword)
 
-console.log('Accepting ownership of contracts')
+console.log('\nAccepting ownership of contracts')
 
 // Accept ownership of all contracts before launching
 hash = METToken.acceptOwnership({from: newOwner})
@@ -82,25 +81,25 @@ waitForTx(hash)
 hash = ChainLedger.acceptOwnership({from: newOwner})
 waitForTx(hash)
 
-console.log('Launching AutonomousConverter Contract')
+console.log('\nLaunching AutonomousConverter Contract')
 personal.unlockAccount(newOwner, newOwnerPassword)
 hash = AutonomousConverter.init(METToken.address, SmartToken.address, Auctions.address, {from: newOwner, value: web3.toWei(0.1, 'ether')})
 waitForTx(hash)
 
-console.log('Launching Proceeds')
+console.log('\nLaunching Proceeds')
 personal.unlockAccount(newOwner, newOwnerPassword)
 hash = Proceeds.initProceeds(AutonomousConverter.address, Auctions.address, {from: newOwner})
 waitForTx(hash)
 
-console.log('Launching Auctions')
+console.log('\nLaunching Auctions')
 personal.unlockAccount(newOwner, newOwnerPassword)
 console.log('Auction start time=', START)
-console.log('Initialized auctions', Auctions.initialized())
-hash = Auctions.initAuctions(START, MINPRICE, PRICE, TIMESCALE, {from: newOwner})
+console.log('Is auctions initialized already? ', Auctions.initialized())
+hash = Auctions.initAuctions(START, MINPRICE, PRICE, TIMESCALE, {from: newOwner, gas: 2000000})
 waitForTx(hash)
 console.log('Initialized auctions', Auctions.initialized())
-console.log(eth.getBlock('latest'))
-hash = eth.sendTransaction({to: newOwner, from: newOwner, value: 10})
-waitForTx(hash)
-console.log(eth.getBlock('latest'))
-console.log('Launch completed')
+if (!Auctions.initialized()) {
+  throw new Error('Error occured while launching auction')
+}
+
+console.log('Launch completed\n')

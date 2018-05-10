@@ -1231,12 +1231,21 @@ contract Auctions is Pricer, Owned {
         }
 
         for (uint i = 0; i < founders.length; i++) {
-            TokenLocker tokenLocker = TokenLocker(tokenLockers[founders[i]]);
+            TokenLocker tokenLocker = tokenLockers[founders[i]];
             tokenLocker.lockTokenLocker();
         }
         
         initialized = true;
         return true;
+    }
+
+    function createTokenLocker(address _founder, address _token) public onlyOwner {
+        require(_token != 0x0);
+        require(_founder != 0x0);
+        founders.push(_founder);
+        TokenLocker tokenLocker = new TokenLocker(address(this), _token);
+        tokenLockers[_founder] = tokenLocker;
+        tokenLocker.changeOwnership(_founder);
     }
 
     /// @notice Mint initial supply for founder and move to token locker
@@ -1247,7 +1256,7 @@ contract Auctions is Pricer, Owned {
         address _proceeds, address _autonomousConverter) public onlyOwner returns (bool) 
     {
         require(!minted);
-        require(founders.length == 0 && _founders.length != 0);
+        require(_founders.length != 0);
         require(address(token) == 0x0 && _token != 0x0);
         require(address(proceeds) == 0x0 && _proceeds != 0x0);
         require(_autonomousConverter != 0x0);
@@ -1262,13 +1271,7 @@ contract Auctions is Pricer, Owned {
             require(addr != 0x0);
             uint amount = _founders[i] & ((1 << 96) - 1);
             require(amount > 0);
-
-            founders.push(addr);
-            TokenLocker tokenLocker = new TokenLocker(address(this), address(token));
-            tokenLockers[addr] = tokenLocker;
-
-            tokenLocker.changeOwnership(addr);
-
+            TokenLocker tokenLocker = tokenLockers[addr];
             require(token.mint(address(tokenLocker), amount));
             tokenLocker.deposit(addr, amount);
             foundersTotal = foundersTotal.add(amount);

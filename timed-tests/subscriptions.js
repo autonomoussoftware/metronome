@@ -65,6 +65,9 @@ contract('Subscriptions', accounts => {
     await smartToken.initSmartToken(autonomousConverter.address, autonomousConverter.address, ST_INITIAL_SUPPLY, {from: OWNER})
     await autonomousConverter.init(metToken.address, smartToken.address, auctions.address, { from: OWNER, value: web3.toWei(1, 'ether') })
     await proceeds.initProceeds(autonomousConverter.address, auctions.address, {from: OWNER})
+    await auctions.createTokenLocker(OWNER, metToken.address, {from: OWNER})
+    await auctions.createTokenLocker(FOUNDER, metToken.address, {from: OWNER})
+
     await auctions.mintInitialSupply(founders, metToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
     await auctions.initAuctions(startTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE, {from: OWNER})
   }
