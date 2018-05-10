@@ -1967,7 +1967,7 @@ contract Validator is Owned {
 
     mapping (bytes32 => bool) public hashClaimed;
 
-    uint8 public threshold = 1;
+    uint8 public threshold = 2;
 
     event LogAttestation(bytes32 indexed hash, address indexed who, bool isValid);
 

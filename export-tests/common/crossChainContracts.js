@@ -81,14 +81,14 @@ const chain = {
     validator: etcContracts.validator,
     web3: etcContracts.web3
   },
-  validateHash: (exportReceipt, web3, validator) => {
+  validateHash: (exportReceipt, web3, validator, caller) => {
     console.log('Start validating hash for import')
 
     try {
-      let isValidator = validator.isValidator(web3.eth.accounts[0], {from: web3.eth.accounts[0]})
+      let isValidator = validator.isValidator(caller, {from: web3.eth.accounts[0]})
       assert.isTrue(isValidator, 'Provided address is not validator')
 
-      validator.validateHash(exportReceipt.currentBurnHash, {from: web3.eth.accounts[0]})
+      validator.validateHash(exportReceipt.currentBurnHash, {from: caller})
       // let reciept = waitForTx(tx, web3.eth)
       // const decoder = ethjsABI.logDecoder(validator.abi)
       // const logAttestation = decoder(reciept.logs)[0]

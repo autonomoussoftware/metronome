@@ -108,8 +108,11 @@ describe('cross chain testing', () => {
       // console.log('logs=', receipt.logs)
       const exportReceipt = decoder(receipt.logs)[0]
       assert(totalSupplybefore.sub(totalSupplyAfter), amount, 'Export from ETH failed')
-
-      chain.validateHash(exportReceipt, ETCChain.web3, ETCChain.validator)
+      let validatorAddress = ETCChain.web3.eth.accounts[0]
+      chain.validateHash(exportReceipt, ETCChain.web3, ETCChain.validator, validatorAddress)
+      validatorAddress = await ETCChain.metToken.owner()
+      await ETCChain.web3.personal.unlockAccount(validatorAddress, 'newOwner')
+      chain.validateHash(exportReceipt, ETCChain.web3, ETCChain.validator, validatorAddress)
       totalSupplybefore = ETCChain.metToken.totalSupply()
       let metBalanceBefore = ETCChain.metToken.balanceOf(etcBuyer1)
 
@@ -152,8 +155,11 @@ describe('cross chain testing', () => {
       const exportReceipt = decoder(receipt.logs)[0]
       console.log('totalSupplybefore', totalSupplybefore)
       assert(totalSupplybefore.sub(totalSupplyAfter), amount, 'Export from ETH failed')
-
-      chain.validateHash(exportReceipt, ETHChain.web3, ETHChain.validator)
+      let validatorAddress = ETHChain.web3.eth.accounts[0]
+      chain.validateHash(exportReceipt, ETHChain.web3, ETHChain.validator, validatorAddress)
+      validatorAddress = await ETHChain.metToken.owner()
+      await ETHChain.web3.personal.unlockAccount(validatorAddress, 'newOwner')
+      chain.validateHash(exportReceipt, ETHChain.web3, ETHChain.validator, validatorAddress)
 
       totalSupplybefore = await ETHChain.metToken.totalSupply()
       console.log('totalSupply in eth before  import=', totalSupplybefore.valueOf())
@@ -193,8 +199,11 @@ describe('cross chain testing', () => {
       const decoder = ethjsABI.logDecoder(ETHChain.tokenPorter.abi)
 
       const exportReceipt = decoder(receipt.logs)[0]
-
-      chain.validateHash(exportReceipt, ETCChain.web3, ETCChain.validator)
+      let validatorAddress = ETCChain.web3.eth.accounts[0]
+      chain.validateHash(exportReceipt, ETCChain.web3, ETCChain.validator, validatorAddress)
+      validatorAddress = await ETCChain.metToken.owner()
+      await ETCChain.web3.personal.unlockAccount(validatorAddress, 'newOwner')
+      chain.validateHash(exportReceipt, ETCChain.web3, ETCChain.validator, validatorAddress)
 
       totalSupplybefore = await ETCChain.metToken.totalSupply()
       let metBalanceBefore = ETCChain.metToken.balanceOf(etcBuyer1)
