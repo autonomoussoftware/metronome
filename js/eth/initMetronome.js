@@ -84,8 +84,8 @@ if (!Auctions.minted()) {
 var newOwner = OWNER_ADDRESS
 
 console.log('\nConfiguring Validator')
-// Todo: initValidator will take address of off-chain validators
-hash = Validator.initValidator(ETHER_ADDR, newOwner, newOwner, {from: ETHER_ADDR})
+// initValidator will take address of off-chain validators. Strictly passing three validators from deploy script
+hash = Validator.initValidator(VALIDATORS[0], VALIDATORS[1], VALIDATORS[2], {from: ETHER_ADDR})
 waitForTx(hash)
 hash = Validator.setTokenPorter(TokenPorter.address, {from: ETHER_ADDR})
 waitForTx(hash)
