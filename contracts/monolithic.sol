@@ -1175,7 +1175,13 @@ contract Auctions is Pricer, Owned {
         genesisTime = _genesisTime;
         initialAuctionEndTime = _initialAuctionEndTime;
 
-        dailyAuctionStartTime = ((initialAuctionEndTime / 1 days) + 1) * 1 days;
+        // if initialAuctionEndTime is midnight, then daily auction will start immediately
+        // after initial auction.
+        if (initialAuctionEndTime == (initialAuctionEndTime / 1 days) * 1 days) {
+            dailyAuctionStartTime = initialAuctionEndTime;
+        } else {
+            dailyAuctionStartTime = ((initialAuctionEndTime / 1 days) + 1) * 1 days;
+        }
 
         lastPurchaseTick = 0;
 
@@ -1215,7 +1221,15 @@ contract Auctions is Pricer, Owned {
         }
 
         initialAuctionEndTime = genesisTime + initialAuctionDuration;
-        dailyAuctionStartTime = ((initialAuctionEndTime / 1 days) + 1) * 1 days;
+
+        // if initialAuctionEndTime is midnight, then daily auction will start immediately
+        // after initial auction.
+        if (initialAuctionEndTime == (initialAuctionEndTime / 1 days) * 1 days) {
+            dailyAuctionStartTime = initialAuctionEndTime;
+        } else {
+            dailyAuctionStartTime = ((initialAuctionEndTime / 1 days) + 1) * 1 days;
+        }
+
         lastPurchaseTick = 0;
 
         if (_minimumPrice > 0) {
