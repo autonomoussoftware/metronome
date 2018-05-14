@@ -66,6 +66,7 @@ contract('Auctions', accounts => {
       assert.equal(await auctions.minimumPrice(), MINIMUM_PRICE, 'minimumPrice isn\'t setup correctly')
       assert.equal(await auctions.lastPurchasePrice(), web3.toWei(STARTING_PRICE), 'startingPrice isn\'t setup correctly')
       assert.equal(await auctions.timeScale(), TIME_SCALE, 'time scale isn\'t setup correctly')
+      assert.notEqual((await auctions.dailyAuctionStartTime()).valueOf(), (await auctions.initialAuctionEndTime()).valueOf(), 'Daily auction start time should be different than inital auction end time')
 
       let totalFounderMints = 0
       for (let i = 0; i < founders.length; i++) {
@@ -77,6 +78,32 @@ contract('Auctions', accounts => {
       totalFounderMints *= DECMULT
       assert.equal(totalFounderMints, (reserveAmount - 1) * DECMULT, 'Reserve for founders isn\'t setup correctly')
 
+      // Auctions will mint 1 token for autonomous converter
+      assert.equal(await metToken.balanceOf(autonomousConverter.address), (MET_INITIAL_SUPPLY + 1) * DECMULT, 'Reserve for founders isn\'t setup correctly')
+
+      resolve()
+    })
+  })
+
+  it('Should verify that Auctions contract is initialized correctly with midnight genesisTime', () => {
+    return new Promise(async (resolve, reject) => {
+      const SECS_TO_NEXT_MIDNIGHT = await BlockTime.getSecondsToNextMidnight()
+      const advanceSeconds = SECS_TO_NEXT_MIDNIGHT - 30 // midnight - 30 seconds
+      await BlockTime.timeTravel(advanceSeconds)
+      await BlockTime.mineBlock()
+      const currentTime = BlockTime.getCurrentBlockTime()
+      // auction will start at midnight
+      const genesisTime = (Math.floor(currentTime / 60) * 60) + 60
+
+      const { auctions, proceeds, metToken, autonomousConverter } = await Metronome.initContracts(accounts, currentTime, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+
+      assert.equal(await auctions.proceeds(), proceeds.address, 'Proceeds address isn`t setup correctly')
+      assert.equal(await auctions.token(), metToken.address, 'METToken address isn\'t setup correctly')
+      assert.equal(await auctions.genesisTime(), genesisTime, 'genesisTime isn\'t setup correctly')
+      assert.equal(await auctions.minimumPrice(), MINIMUM_PRICE, 'minimumPrice isn\'t setup correctly')
+      assert.equal(await auctions.lastPurchasePrice(), web3.toWei(STARTING_PRICE), 'startingPrice isn\'t setup correctly')
+      assert.equal(await auctions.timeScale(), TIME_SCALE, 'time scale isn\'t setup correctly')
+      assert.equal((await auctions.dailyAuctionStartTime()).valueOf(), (await auctions.initialAuctionEndTime()).valueOf(), 'Daily auction start time should be equal to initial auction end time.')
       // Auctions will mint 1 token for autonomous converter
       assert.equal(await metToken.balanceOf(autonomousConverter.address), (MET_INITIAL_SUPPLY + 1) * DECMULT, 'Reserve for founders isn\'t setup correctly')
 
