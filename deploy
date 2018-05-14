@@ -314,14 +314,15 @@ echo "Deploying on $DEST.."
 
 echo "" > js/$CHAIN/metronome.js
 
-echo -e "contracts/monolithic.sol:Proceeds\njs/$CHAIN/metronome.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
-echo -e "contracts/monolithic.sol:Auctions\njs/$CHAIN/metronome.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
-echo -e "contracts/monolithic.sol:AutonomousConverter\njs/$CHAIN/metronome.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
-echo -e "contracts/monolithic.sol:SmartToken\njs/$CHAIN/metronome.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
-echo -e "contracts/monolithic.sol:METToken\njs/$CHAIN/metronome.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
-echo -e "contracts/monolithic.sol:TokenPorter\njs/$CHAIN/metronome.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
-echo -e "contracts/monolithic.sol:Validator\njs/$CHAIN/metronome.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
-echo -e "contracts/monolithic.sol:ChainLedger\njs/$CHAIN/metronome.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
+echo -e "contracts/monolithic.sol:Proceeds\njs/$CHAIN/Proceeds.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
+echo -e "contracts/monolithic.sol:Auctions\njs/$CHAIN/Auctions.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
+echo -e "contracts/monolithic.sol:AutonomousConverter\njs/$CHAIN/AutonomousConverter.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
+echo -e "contracts/monolithic.sol:SmartToken\njs/$CHAIN/SmartToken.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
+echo -e "contracts/monolithic.sol:METToken\njs/$CHAIN/METToken.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
+echo -e "contracts/monolithic.sol:TokenPorter\njs/$CHAIN/TokenPorter.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
+echo -e "contracts/monolithic.sol:Validator\njs/$CHAIN/Valiator.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
+echo -e "contracts/monolithic.sol:ChainLedger\njs/$CHAIN/ChainLedger.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
+cat js/$CHAIN/Proceeds.js js/$CHAIN/Auctions.js js/$CHAIN/AutonomousConverter.js js/$CHAIN/SmartToken.js js/$CHAIN/METToken.js js/$CHAIN/TokenPorter.js js/$CHAIN/Valiator.js js/$CHAIN/ChainLedger.js > js/$CHAIN/metronome.js
 
 echo "ABIs and Contract info written to $CHAIN/metronome.js"
 echo "Supply: $SUPPLY"
