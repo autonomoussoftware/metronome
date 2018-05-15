@@ -33,3 +33,19 @@ js/etc/launched
 js/eth/launched
 
 js/eth/const_launch\.js
+
+js/eth/Auctions\.js
+
+js/eth/AutonomousConverter\.js
+
+js/eth/ChainLedger\.js
+
+js/eth/METToken\.js
+
+js/eth/Proceeds\.js
+
+js/eth/SmartToken\.js
+
+js/eth/TokenPorter\.js
+
+js/eth/Valiator\.js

@@ -31,6 +31,7 @@ contract('Pricer', accounts => {
 
   beforeEach(async () => {
     pricer = await Pricer.new()
+    await pricer.initPricer()
   })
 
   it('Should verify that pricer calculated 10x, 100x and 1000x of 0.99 correctly', () => {
