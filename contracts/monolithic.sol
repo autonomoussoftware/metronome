@@ -187,7 +187,7 @@ contract Pricer {
     uint constant public MULTIPLIER = 1984320568*10**5;
 
     /// @notice Pricer constructor, calculate 10, 100 and 1000 times of 0.99.
-    function Pricer() public {
+    function initPricer() public {
         uint x = METDECMULT;
         uint i;
         
@@ -368,7 +368,6 @@ contract Mintable is Owned {
     event Mint(address indexed _to, uint _value);
     event Destroy(address indexed _from, uint _value);
     event Transfer(address indexed _from, address indexed _to, uint256 _value);
-    event Transfer(address indexed _from, address indexed _to, uint256 _value, bytes _data);
 
     uint256 internal _totalSupply;
     mapping(address => uint256) internal _balanceOf;
@@ -1161,7 +1160,7 @@ contract Auctions is Pricer, Owned {
         require(_timeScale != 0);
         require(address(token) == 0x0 && _token != 0x0);
         require(address(proceeds) == 0x0 && _proceeds != 0x0);
-
+        initPricer();
 
         // minting substitute section
         token = METToken(_token);
@@ -1213,7 +1212,7 @@ contract Auctions is Pricer, Owned {
         require(minted);
         require(!initialized);
         require(_timeScale != 0);
-        
+        initPricer();
         if (_startTime > 0) { 
             genesisTime = (_startTime / (1 minutes)) * (1 minutes) + 60;
         } else {
