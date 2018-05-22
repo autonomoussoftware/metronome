@@ -293,7 +293,7 @@ else
 fi
 
 echo "Authorizing.."
-curl -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"personal_unlockAccount","params":["'$LOCAL_ETH'", "'$PASS'","0x1000"],"id":1}' $PARITY_URL
+curl -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"personal_unlockAccount","params":["'$LOCAL_ETH'", "'$PASS'","0x3000"],"id":1}' $PARITY_URL
 
 OWNER_PASS='newOwner'
 if [[ $LOCAL = 1 ]] && [[ $OWNER_ADDRESS = 0x0 ]]
