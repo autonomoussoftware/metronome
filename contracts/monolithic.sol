@@ -440,7 +440,7 @@ contract Token is ERC20, Mintable {
     mapping(address => mapping(address => uint256)) internal _allowance;
 
     function initToken(address _autonomousConverter, address _minter,
-     uint _initialSupply, uint _decmult) public onlyOwner {
+    uint _initialSupply, uint _decmult) public onlyOwner {
         initMintable(_autonomousConverter, _minter, _initialSupply, _decmult);
     }
 
