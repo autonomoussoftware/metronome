@@ -32,11 +32,11 @@ Local development is worked against TestRPC (which will be installed via `npm`).
 
 **Version**: autonomoussoftware/metronome#35a6cd3
 
-Contract | Address
---- | ---
-Auctions | 0x9d9BcDd249E439AAaB545F59a33812E39A8e3072
-AutonomousConverter | 0x686e5ac50D9236A9b7406791256e47feDDB26AbA
-METToken | 0xa3d58c4E56fedCae3a7c43A725aeE9A71F0ece4e
+Contract | Address | Description
+--- | --- | ---
+Auctions | 0x9d9BcDd249E439AAaB545F59a33812E39A8e3072 | Use for purchasing newly minted MET
+AutonomousConverter | 0x686e5ac50D9236A9b7406791256e47feDDB26AbA | Use for exchanging MET/ETH after initial auction is over
+METToken | 0xa3d58c4E56fedCae3a7c43A725aeE9A71F0ece4e | Use this address for MET ERC20 functions and third-party wallets
 
 ### Developement environment
 
