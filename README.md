@@ -8,7 +8,7 @@
 1. [Requirements](#requirements)
 1. [Getting Started](#getting-started)
 1. [Installation](#installation)
-1. [Test Suit](#test-suit)
+1. [Test Suite](#test-suite)
 1. [License](#license)
 
 ## Requirements
@@ -23,12 +23,29 @@ Local development is worked against TestRPC (which will be installed via `npm`).
 
 ## Getting Started
 
-### Installation
+### Production Environment
+
+* **Explorer URL**: https://explorer.metronome.io
+* **Auction Board URL**: https://metronome.io
+
+### Production Contracts
+
+**Version**: autonomoussoftware/metronome#35a6cd3
+
+Contract | Address | Description
+--- | --- | ---
+Auctions | 0x9d9BcDd249E439AAaB545F59a33812E39A8e3072 | Use for purchasing newly minted MET
+AutonomousConverter | 0x686e5ac50D9236A9b7406791256e47feDDB26AbA | Use for exchanging MET/ETH after initial auction is over
+METToken | 0xa3d58c4E56fedCae3a7c43A725aeE9A71F0ece4e | Use this address for MET ERC20 functions and third-party wallets
+
+### Developement environment
+
+#### Installation
 - `npm install` to install all module dependencies
 - `npm test` to compile all the contracts and run the entire test suite agains TestRPC
 - `TESTFILE=test/<testfile>.js npm run testrpc:single` to compile and run a single test file
 
-### Parity Local Dev Chain Testing
+#### Parity Local Dev Chain Testing
 - `./deploy` to compile all the contracts and deploy them to a local parity dev-chain (this script will automatically start Parity)
 - `geth attach --preload js/metronome.js,js/const.js,js/initMetronome.js` to open a geth console and start metronome
 - `geth attach --preload js/metronome.js,js/const.js,js/initPostAuction.js` to open a geth console and start metronme (bypassing the initial auction)
