@@ -1987,6 +1987,37 @@ contract Validator is Owned {
 
     event LogAttestation(bytes32 indexed hash, address indexed who, bool isValid);
 
+    /// @param _validator validator address
+    function addValidator(address _validator) public onlyOwner {
+        validators.push(_validator);
+        isValidator[_validator] = true;
+    }
+
+    /// @param _validator validator address
+    function disableValidator(address _validator) public onlyOwner {
+        delete isValidator[_validator];
+    }
+
+    /// @param _validator validator address
+    function removeValidator(address _validator) public onlyOwner {
+        delete isValidator[_validator];
+        bool validatorFound;
+        for(uint i = 0; i < (validators.length - 1); i++) {
+            if(validators[i] == _validator) {
+                validatorFound = true;
+            }
+            if(validatorFound) {
+                validators[i] = validators[i + 1];
+            }
+        }
+        if(!validatorFound && validators[validators.length - 1] ==  _validator) {
+          validatorFound = true;   
+        }
+        if(validatorFound) {
+           validators.length--; 
+        }
+    }
+
     /// @param _validator1 first validator  
     /// @param _validator2 second validator
     /// @param _validator3 third validator

@@ -49,3 +49,19 @@ js/eth/SmartToken\.js
 js/eth/TokenPorter\.js
 
 js/eth/Valiator\.js
+
+js/etc/Auctions\.js
+
+js/etc/AutonomousConverter\.js
+
+js/etc/ChainLedger\.js
+
+js/etc/METToken\.js
+
+js/etc/Proceeds\.js
+
+js/etc/SmartToken\.js
+
+js/etc/TokenPorter\.js
+
+js/etc/Valiator\.js
