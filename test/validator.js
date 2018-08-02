@@ -89,8 +89,8 @@ contract('Validator', accounts => {
       }
       assert.isTrue(thrown, 'Validator not removed correctly. Array lenght not decreased')
       assert.equal(await validator.validators(0), accounts[1], 'Validator is not correct at index 0')
-      assert.equal(await validator.validators(1), accounts[3], 'Validator is not correct at index 1')
-      assert.equal(await validator.validators(2), accounts[4], 'Validator is not correct at index 2')
+      assert.equal(await validator.validators(1), accounts[4], 'Validator is not correct at index 1')
+      assert.equal(await validator.validators(2), accounts[3], 'Validator is not correct at index 2')
       resolve()
     })
   })

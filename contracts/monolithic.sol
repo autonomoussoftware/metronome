@@ -2001,21 +2001,15 @@ contract Validator is Owned {
     /// @param _validator validator address
     function removeValidator(address _validator) public onlyOwner {
         delete isValidator[_validator];
-        bool validatorFound;
-        for (uint i = 0; i < (validators.length - 1); i++) {
+        for (uint i = 0; i < (validators.length); i++) {
             if (validators[i] == _validator) {
-                validatorFound = true;
+                if (i != (validators.length - 1)) {
+                    validators[i] = validators[validators.length - 1];
+                }
+                validators.length--; 
+                break;
             }
-            if (validatorFound) {
-                validators[i] = validators[i + 1];
-            }
-        }
-        if (!validatorFound && validators[validators.length - 1] == _validator) {
-            validatorFound = true;   
-        }
-        if (validatorFound) {
-            validators.length--; 
-        }
+        }  
     }
 
     /// @param _validator1 first validator  
