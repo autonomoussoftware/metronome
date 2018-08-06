@@ -25,15 +25,29 @@
 
 const assert = require('chai').assert
 const PatriciaTree = artifacts.require('PatriciaTree')
+const MerkleTree = artifacts.require('MerkleTree')
 
 contract('PatriciaTree', accounts => {
   const OWNER = accounts[0]
-  let patriciaTree
+  var patriciaTree
+  var merkleTree
   beforeEach(async () => {
     patriciaTree = await PatriciaTree.new({from: OWNER})
+    merkleTree = await MerkleTree.new({from: OWNER})
   })
 
-  it('Check gas, path and verify path', () => {
+  it('Check gas need in MerkleTree', () => {
+    return new Promise(async (resolve, reject) => {
+      // let hashes = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'nine', 'ten']
+      let leaves = ['one', 'two', 'three', 'four', 'five', 'six', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16']
+      let tx = await merkleTree.getMerkelRoot(leaves, {gas: 600000})
+      console.log(await merkleTree.root())
+      console.log('Gas used to create merkle tree', tx.receipt.gasUsed)
+      resolve()
+    })
+  })
+
+  it('Check gas, path and verify path in PatriciaTree', () => {
     return new Promise(async (resolve, reject) => {
       let tx = await patriciaTree.insert('one', 'one')
       console.log('Gas used to insert a new leaf')
