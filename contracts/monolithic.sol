@@ -1710,7 +1710,7 @@ interface ITokenPorter {
         uint indexed burnSequence, bytes32 indexed currentBurnHash, bytes32 prevBurnHash, uint dailyMintable,
         uint[] supplyOnAllChains, uint genesisTime, uint blockTimestamp, uint dailyAuctionStartTime);
     
-    event ImportRequest(address indexed destinationRecipientAddr, uint amountImported, 
+    event ImportRequestLog(address indexed destinationRecipientAddr, uint amountImported, 
         uint fee, bytes extraData, uint currentTick, uint indexed importSequence, 
         bytes32 indexed currentHash, bytes32 prevHash, uint dailyMintable, uint blockTimestamp, address caller);
 
@@ -1844,7 +1844,7 @@ contract TokenPorter is ITokenPorter, Owned {
             return false;
         }
         importRequested[_burnHashes[1]] = true;
-        emit ImportRequest(_addresses[1], _importData[1], _importData[2], _extraData,
+        emit ImportRequestLog(_addresses[1], _importData[1], _importData[2], _extraData,
         auctions.currentTick(), importSequence, _burnHashes[1],
         _burnHashes[0], auctions.dailyMintable(), now, msg.sender);
         return true;

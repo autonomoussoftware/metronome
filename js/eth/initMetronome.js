@@ -85,9 +85,13 @@ var newOwner = OWNER_ADDRESS
 
 console.log('\nConfiguring Validator')
 // initValidator will take address of off-chain validators. Strictly passing three validators from deploy script
-hash = Validator.initValidator(VALIDATORS[0], VALIDATORS[1], VALIDATORS[2], {from: ETHER_ADDR})
+hash = Validator.initValidator(METToken.address, Auctions.address, TokenPorter.address, {from: ETHER_ADDR})
 waitForTx(hash)
-hash = Validator.setTokenPorter(TokenPorter.address, {from: ETHER_ADDR})
+hash = Validator.addValidator(VALIDATORS[0], {from: ETHER_ADDR})
+waitForTx(hash)
+hash = Validator.addValidator(VALIDATORS[1], {from: ETHER_ADDR})
+waitForTx(hash)
+hash = Validator.addValidator(VALIDATORS[2], {from: ETHER_ADDR})
 waitForTx(hash)
 console.log('Validator published at ' + Validator.address)
 
