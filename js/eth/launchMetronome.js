@@ -25,7 +25,7 @@
 
 /* globals MINPRICE, PRICE, START, TIMESCALE */
 /* globals eth, personal, OWNER_ADDRESS, OWNER_PASS */
-/* globals Auctions, AutonomousConverter, METToken, Proceeds, SmartToken, Validator, TokenPorter, ChainLedger */
+/* globals Auctions, AutonomousConverter, METToken, Proceeds, SmartToken, Validator, TokenPorter */
 
 var hash
 function waitForTx (hash) {
@@ -76,9 +76,6 @@ waitForTx(hash)
 
 personal.unlockAccount(newOwner, newOwnerPassword)
 hash = TokenPorter.acceptOwnership({from: newOwner})
-waitForTx(hash)
-
-hash = ChainLedger.acceptOwnership({from: newOwner})
 waitForTx(hash)
 
 console.log('\nLaunching AutonomousConverter Contract')

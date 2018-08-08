@@ -25,7 +25,7 @@
 
 /* globals MINPRICE, PRICE, START, TIMESCALE */
 /* globals eth, personal, OWNER_ADDRESS, OWNER_PASS */
-/* globals Auctions, AutonomousConverter, METToken, Proceeds, SmartToken, Validator, TokenPorter, ChainLedger */
+/* globals Auctions, AutonomousConverter, METToken, Proceeds, SmartToken, Validator, TokenPorter */
 
 // For live net , enter new owner address and password
 var hash
@@ -69,9 +69,6 @@ hash = Validator.acceptOwnership({from: newOwner})
 waitForTx(hash)
 
 hash = TokenPorter.acceptOwnership({from: newOwner})
-waitForTx(hash)
-
-hash = ChainLedger.acceptOwnership({from: newOwner})
 waitForTx(hash)
 
 console.log('\nLaunching AutonomousConverter Contract')

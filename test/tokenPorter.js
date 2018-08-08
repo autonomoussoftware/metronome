@@ -31,7 +31,6 @@ const AutonomousConverter = artifacts.require('AutonomousConverter')
 const Auctions = artifacts.require('Auctions')
 const TokenPorter = artifacts.require('TokenPorter')
 const Validator = artifacts.require('Validator')
-const ChainLedger = artifacts.require('ChainLedger')
 const ethjsABI = require('ethjs-abi')
 
 contract('TokenPorter', accounts => {
@@ -43,7 +42,7 @@ contract('TokenPorter', accounts => {
   const STARTING_PRICE = 2 // 2ETH per MET
   const TIME_SCALE = 1
 
-  let metToken, smartToken, proceeds, autonomousConverter, auctions, tokenPorter, validator, chainLedger
+  let metToken, smartToken, proceeds, autonomousConverter, auctions, tokenPorter, validator
 
   function getCurrentBlockTime () {
     var defaultBlock = web3.eth.defaultBlock
@@ -55,7 +54,6 @@ contract('TokenPorter', accounts => {
     smartToken = await SmartToken.new()
     tokenPorter = await TokenPorter.new()
     validator = await Validator.new({from: OWNER})
-    chainLedger = await ChainLedger.new({from: OWNER})
     await metToken.initMETToken(autonomousConverter.address, auctions.address, MET_INITIAL_SUPPLY, DECMULT, {from: OWNER})
     await smartToken.initSmartToken(autonomousConverter.address, autonomousConverter.address, SMART_INITIAL_SUPPLY, {from: OWNER})
     await autonomousConverter.init(metToken.address, smartToken.address, auctions.address,
@@ -78,12 +76,8 @@ contract('TokenPorter', accounts => {
     await tokenPorter.initTokenPorter(metToken.address, auctions.address, {from: OWNER})
     await tokenPorter.setValidator(validator.address, {from: OWNER})
     await metToken.setTokenPorter(tokenPorter.address, {from: OWNER})
-    await tokenPorter.setChainLedger(chainLedger.address, {from: OWNER})
     await validator.initValidator(OWNER, accounts[1], accounts[2], {from: OWNER})
     await validator.setTokenPorter(tokenPorter.address, {from: OWNER})
-    await chainLedger.initChainLedger(tokenPorter.address, auctions.address, {from: OWNER})
-    await chainLedger.registerChain(web3.fromAscii('ETH'), 10e24, {from: OWNER})
-    await chainLedger.registerChain(web3.fromAscii('ETC'), 0, {from: OWNER})
   }
 
   // Create contracts and initilize them for each test case

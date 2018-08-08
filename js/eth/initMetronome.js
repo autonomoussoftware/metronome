@@ -25,7 +25,7 @@
 
 /* globals ETHER_ADDR, FOUNDERS, OWNER_ADDRESS */
 /* globals eth */
-/* globals Auctions, AutonomousConverter, METToken, Proceeds, SmartToken, TokenPorter, Validator, Validator, ChainLedger */
+/* globals Auctions, AutonomousConverter, METToken, Proceeds, SmartToken, TokenPorter, Validator, Validator */
 var hash
 function waitForTx (hash) {
   var receipt = eth.getTransactionReceipt(hash)
@@ -55,14 +55,8 @@ hash = TokenPorter.initTokenPorter(METToken.address, Auctions.address, {from: ET
 waitForTx(hash)
 hash = TokenPorter.setValidator(Validator.address, {from: ETHER_ADDR})
 waitForTx(hash)
-hash = TokenPorter.setChainLedger(ChainLedger.address, {from: ETHER_ADDR})
-waitForTx(hash)
-console.log('TokenPorter published at ' + TokenPorter.address)
 
-console.log('\nConfiguring ChainLedger')
-hash = ChainLedger.initChainLedger(TokenPorter.address, Auctions.address, {from: ETHER_ADDR})
-waitForTx(hash)
-console.log('ChainLedger published at ' + ChainLedger.address)
+console.log('TokenPorter published at ' + TokenPorter.address)
 
 // Founders array is created from foundersList.csv
 console.log('\nConfiguring TokenLocker for each founder')
@@ -108,8 +102,6 @@ hash = SmartToken.changeOwnership(newOwner, {from: ETHER_ADDR})
 waitForTx(hash)
 hash = Validator.changeOwnership(newOwner, {from: ETHER_ADDR})
 hash = TokenPorter.changeOwnership(newOwner, {from: ETHER_ADDR})
-waitForTx(hash)
-hash = ChainLedger.changeOwnership(newOwner, {from: ETHER_ADDR})
 waitForTx(hash)
 console.log('\nOwnership has been transfered to', newOwner)
 

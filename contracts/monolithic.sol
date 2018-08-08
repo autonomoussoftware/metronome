@@ -1729,7 +1729,6 @@ contract TokenPorter is ITokenPorter, Owned {
     Auctions public auctions;
     METToken public token;
     Validator public validator;
-    ChainLedger public chainLedger;
 
     uint public burnSequence = 1;
     uint public importSequence = 1;
@@ -1762,13 +1761,6 @@ contract TokenPorter is ITokenPorter, Owned {
         return true;
     }
 
-    /// @notice set address of chainLedger contract
-    /// @param _chainLedger address of chainLedger contract
-    function setChainLedger(address _chainLedger) public onlyOwner returns (bool) {
-        require(_chainLedger != 0x0);
-        chainLedger = ChainLedger(_chainLedger);
-        return true;
-    }
 
     /// @notice only owner can add destination chains
     /// @param _chainName string of destination blockchain name
@@ -1880,7 +1872,6 @@ contract TokenPorter is ITokenPorter, Owned {
     //     auctions.currentTick(), importSequence, _burnHashes[1],
     //     _burnHashes[0], auctions.dailyMintable(), now, msg.sender);
     //     importSequence++;
-    //     chainLedger.registerImport(_originChain, _destinationChain, _importData[1]);
     //     return true;
     // }
 
@@ -1940,64 +1931,9 @@ contract TokenPorter is ITokenPorter, Owned {
             supplyOnAllChains, auctions.genesisTime(), blockTime, auctions.dailyAuctionStartTime());
 
         burnSequence = burnSequence + 1;
-        chainLedger.registerExport(auctions.chain(), _destChain, _amount);
         return true;
     }
 }    
-
-
-contract ChainLedger is Owned {
-
-    using SafeMath for uint;
-    mapping (bytes8 => uint) public balance;
-    mapping (bytes8 => bool) public validChain;
-    bytes8[] public chains;
-
-    address public tokenPorter;
-    Auctions public auctions;
-
-    event LogRegisterChain(address indexed caller, bytes8 indexed chain, uint supply, bool outcome);
-    event LogRegisterExport(address indexed caller, bytes8 indexed originChain, bytes8 indexed destChain, uint amount);
-    event LogRegisterImport(address indexed caller, bytes8 indexed originChain, bytes8 indexed destChain, uint amount);
-
-    function initChainLedger(address _tokenPorter, address _auctionsAddr) public onlyOwner returns (bool) {
-        require(_tokenPorter != 0x0);
-        require(_auctionsAddr != 0x0);
-        
-        tokenPorter = _tokenPorter;
-        auctions = Auctions(_auctionsAddr);
-        
-        return true;
-    }
-
-    function registerChain(bytes8 chain, uint supply) public onlyOwner returns (bool) {
-        require(!validChain[chain]); 
-        validChain[chain] = true;
-        chains.push(chain);
-        balance[chain] = supply;
-        emit LogRegisterChain(msg.sender, chain, supply, true);
-    }
-
-    function registerExport(bytes8 originChain, bytes8 destChain, uint amount) public {
-        require(msg.sender == tokenPorter || msg.sender == owner);
-        require(validChain[originChain] && validChain[destChain]);
-        require(balance[originChain] >= amount);
-
-        balance[originChain] = balance[originChain].sub(amount);
-        balance[destChain] = balance[destChain].add(amount);
-        emit LogRegisterExport(msg.sender, originChain, destChain, amount);
-    }
-
-    function registerImport(bytes8 originChain, bytes8 destChain, uint amount) public {
-        require(msg.sender == tokenPorter || msg.sender == owner);
-        require(validChain[originChain] && validChain[destChain]);
-
-        balance[originChain] = balance[originChain].sub(amount);
-        balance[destChain] = balance[destChain].add(amount);
-        emit LogRegisterImport(msg.sender, originChain, destChain, amount);
-    }  
-}
-
 
 contract Validator is Owned {
 
@@ -2059,7 +1995,7 @@ contract Validator is Owned {
     }
 
     function validateHash(bytes8 _originChain, bytes8 _destinationChain, address[] _addresses, bytes _extraData, 
-        bytes32[] _burnHashes, uint[] _importData, bytes _proof) public {
+        bytes32[] _burnHashes, uint[] _supplyOnAllChains, uint[] _importData, bytes _proof) public {
         require(isValidator[msg.sender]);
         require(_importData.length == 7);
         require(_addresses.length == 2);

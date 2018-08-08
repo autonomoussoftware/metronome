@@ -35,15 +35,6 @@ const ETC = ETCChain.web3.fromAscii('ETC')
 var ethBuyer1
 
 var etcBuyer1
-async function printChainLedgerInfo () {
-  console.log('ETH ChainLedger.....')
-  console.log('Supply on ETH chain', (await ETHChain.chainLedger.balance(ETH)).valueOf())
-  console.log('Supply on ETC chain', (await ETHChain.chainLedger.balance(ETC)).valueOf())
-  console.log('ETC ChainLedger.....')
-  console.log('Supply on ETH chain', (await ETCChain.chainLedger.balance(ETH)).valueOf())
-  console.log('Supply on ETC chain', (await ETCChain.chainLedger.balance(ETC)).valueOf())
-  console.log('\n')
-}
 
 const prepareForExport = function () {
   return new Promise(async (resolve, reject) => {
@@ -62,16 +53,14 @@ const prepareForExport = function () {
     assert(metTokenBalance.toNumber() > 0, 'Exporter has no MET token balance')
     let owner = await ETHChain.tokenPorter.owner()
     await ETHChain.web3.personal.unlockAccount(owner, 'newOwner')
+
     var tokenAddress = ETCChain.tokenPorter.token()
     await ETHChain.tokenPorter.addDestinationChain(ETC, tokenAddress, {from: owner})
-    await ETHChain.chainLedger.registerChain(ETH, 10e24, {from: owner})
-    await ETHChain.chainLedger.registerChain(ETC, 0, {from: owner})
-    owner = ETCChain.tokenPorter.owner()
+    owner = await ETCChain.tokenPorter.owner()
     await ETCChain.web3.personal.unlockAccount(owner, 'newOwner')
     tokenAddress = await ETHChain.tokenPorter.token()
     await ETCChain.tokenPorter.addDestinationChain(ETH, tokenAddress, {from: owner})
-    await ETCChain.chainLedger.registerChain(ETH, 10e24, {from: owner})
-    await ETCChain.chainLedger.registerChain(ETC, 0, {from: owner})
+    console.log('timeout??')
 
     resolve()
   })
@@ -91,8 +80,6 @@ describe('cross chain testing', () => {
       var extraData = 'extra data'
       destChain = await ETHChain.tokenPorter.destinationChains(ETHChain.web3.fromAscii('ETC'))
       var totalSupplybefore = await ETHChain.metToken.totalSupply()
-      console.log('\nChainLedger status before export,')
-      await printChainLedgerInfo()
       var tx = ETHChain.metToken.export(
         ETHChain.web3.fromAscii('ETC'),
         ETCChain.metToken.address,
@@ -124,8 +111,6 @@ describe('cross chain testing', () => {
       // let metBalanceAfter = ETCChain.metToken.balanceOf(etcBuyer1)
       // diff = metBalanceAfter.sub(metBalanceBefore)
       // assert.equal(diff.valueOf(), amount.valueOf(), 'Balance of importer is wrong after import')
-      // console.log('\nChainLedger status after import,')
-      await printChainLedgerInfo()
       resolve()
     })
   })

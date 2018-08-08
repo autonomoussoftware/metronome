@@ -23,7 +23,7 @@
     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-/* globals eval, Proceeds, Auctions, AutonomousConverter, METToken, TokenPorter, ChainLedger, Validator  */
+/* globals eval, Proceeds, Auctions, AutonomousConverter, METToken, TokenPorter, Validator  */
 var fs = require('fs')
 const assert = require('chai').assert
 // const ethjsABI = require('ethjs-abi')
@@ -39,7 +39,6 @@ const ethContracts = {
   autonomousConverter: AutonomousConverter,
   metToken: METToken,
   tokenPorter: TokenPorter,
-  chainLedger: ChainLedger,
   validator: Validator
 
 }
@@ -52,7 +51,6 @@ const etcContracts = {
   autonomousConverter: AutonomousConverter,
   metToken: METToken,
   tokenPorter: TokenPorter,
-  chainLedger: ChainLedger,
   validator: Validator
 }
 
@@ -69,7 +67,6 @@ const chain = {
     metToken: ethContracts.metToken,
     auctions: ethContracts.auctions,
     tokenPorter: ethContracts.tokenPorter,
-    chainLedger: ethContracts.chainLedger,
     validator: ethContracts.validator,
     web3: ethContracts.web3
   },
@@ -77,7 +74,6 @@ const chain = {
     metToken: etcContracts.metToken,
     auctions: etcContracts.auctions,
     tokenPorter: etcContracts.tokenPorter,
-    chainLedger: etcContracts.chainLedger,
     validator: etcContracts.validator,
     web3: etcContracts.web3
   },
