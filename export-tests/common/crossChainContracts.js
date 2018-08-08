@@ -81,19 +81,28 @@ const chain = {
     validator: etcContracts.validator,
     web3: etcContracts.web3
   },
-  validateHash: (exportReceipt, web3, validator, caller) => {
+  validateHash: (destinationMetronomeAddr, exportReceipt, web3, validator, caller) => {
     console.log('Start validating hash for import')
 
     try {
-      let isValidator = validator.isValidator(caller, {from: web3.eth.accounts[0]})
+      console.log('is validator?', caller)
+      let isValidator = validator.isValidator(caller)
+      console.log('is validator?', isValidator)
       assert.isTrue(isValidator, 'Provided address is not validator')
-
-      validator.validateHash(exportReceipt.currentBurnHash, {from: caller})
-      // let reciept = waitForTx(tx, web3.eth)
+      let _originChain = exportReceipt.originChain
+      let _destinationChain = exportReceipt.destinationRecipientAddr
+      let _addresses = [destinationMetronomeAddr, exportReceipt.destinationRecipientAddr]
+      let _extraData = exportReceipt.extraData
+      let _burnHashes = [exportReceipt.prevBurnHash, exportReceipt.currentBurnHash]
+      // let _supplyOnAllChains = exportReceipt.supplyOnAllChains
+      let _importData = [exportReceipt.blockTimestamp, exportReceipt.amountToImport, exportReceipt.fee, exportReceipt.burntAtTick, exportReceipt.genesisTime, exportReceipt.dailyMintable, exportReceipt.burnSequence]
+      let _proof = ''
+      validator.validateHash(chain.eth.web3.fromAscii(_originChain), _destinationChain, _addresses, _extraData, _burnHashes, _importData, _proof, {from: caller})
+      let hashClaimable = validator.hashClaimable(_burnHashes[1])
+      console.log('hashClaimable', hashClaimable)
       // const decoder = ethjsABI.logDecoder(validator.abi)
       // const logAttestation = decoder(reciept.logs)[0]
       // assert(logAttestation._eventName, 'LogAttestation', 'Wrong event emitted for attestation')
-
       console.log('hash validation done successfully')
     } catch (e) {
       console.log('error thrown------')
@@ -103,32 +112,27 @@ const chain = {
   importHash: (exportReceipt, web3, validator, tokenPorter, metToken, _originChain) => {
     let claimable = validator.hashClaimable(exportReceipt.currentBurnHash, {from: web3.eth.accounts[0]})
     console.log('claimable', claimable)
-    if (claimable) {
-      console.log('hash is claimable. processing import receipt')
-      try {
-        let _destinationChain = exportReceipt.destinationChain
-        let _addresses = [exportReceipt.destinationMetronomeAddr, exportReceipt.destinationRecipientAddr]
-        let _extraData = exportReceipt.extraData
-        let _burnHashes = [exportReceipt.prevBurnHash, exportReceipt.currentBurnHash]
-        let _supplyOnAllChains = exportReceipt.supplyOnAllChains
-        let _importData = [exportReceipt.blockTimestamp, exportReceipt.amountToBurn, exportReceipt.fee, exportReceipt.currentTick, exportReceipt.genesisTime, exportReceipt.dailyMintable, exportReceipt.burnSequence, exportReceipt.dailyAuctionStartTime]
-        let _proof = ''
+    try {
+      let _destinationChain = exportReceipt.destinationChain
+      let _addresses = [exportReceipt.destinationMetronomeAddr, exportReceipt.destinationRecipientAddr]
+      let _extraData = exportReceipt.extraData
+      let _burnHashes = [exportReceipt.prevBurnHash, exportReceipt.currentBurnHash]
+      let _supplyOnAllChains = exportReceipt.supplyOnAllChains
+      let _importData = [exportReceipt.blockTimestamp, exportReceipt.amountToBurn, exportReceipt.fee, exportReceipt.currentTick, exportReceipt.genesisTime, exportReceipt.dailyMintable, exportReceipt.burnSequence, exportReceipt.dailyAuctionStartTime]
+      let _proof = ''
 
-        // let valid = validator.isReceiptClaimable(_originChain, _destinationChain, _addresses, _extraData, _burnHashes, _supplyOnAllChains, _importData, _proof)
-        // assert.isTrue(valid, 'Import receipt is not valid')
-        metToken.importMET(_originChain, _destinationChain, _addresses, _extraData, _burnHashes, _supplyOnAllChains, _importData, _proof, {from: web3.eth.accounts[0]})
+      // let valid = validator.isReceiptClaimable(_originChain, _destinationChain, _addresses, _extraData, _burnHashes, _supplyOnAllChains, _importData, _proof)
+      // assert.isTrue(valid, 'Import receipt is not valid')
+      metToken.importMET(_originChain, _destinationChain, _addresses, _extraData, _burnHashes, _supplyOnAllChains, _importData, _proof, {from: web3.eth.accounts[0]})
 
-        // let receipt = waitForTx(tx, web3.eth)
-        // const decoder = ethjsABI.logDecoder(tokenPorter.abi)
-        // const logImportReceipt = decoder(receipt.logs)[0]
-        // assert(logImportReceipt._eventName, 'ImportReceiptLog', 'Wrong event emitted for import')
-        console.log('Import is complete')
-      } catch (e) {
-        console.log('error thrown------')
-        console.log(e)
-      }
-    } else {
-      console.log('hash is not claimable. You can not import as of now. Try later until another validator validate it')
+      // let receipt = waitForTx(tx, web3.eth)
+      // const decoder = ethjsABI.logDecoder(tokenPorter.abi)
+      // const logImportReceipt = decoder(receipt.logs)[0]
+      // assert(logImportReceipt._eventName, 'ImportReceiptLog', 'Wrong event emitted for import')
+      console.log('Import request sent')
+    } catch (e) {
+      console.log('error thrown------')
+      console.log(e)
     }
   }
 

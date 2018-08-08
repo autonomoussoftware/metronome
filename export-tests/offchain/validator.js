@@ -25,34 +25,35 @@
 
 const chain = require('../common/crossChainContracts')
 
+// TODO: These should happen only once.
 // ETH Setup
 let owner = chain.eth.tokenPorter.owner()
 chain.eth.web3.personal.unlockAccount(owner, 'newOwner')
 chain.eth.tokenPorter.addDestinationChain(chain.eth.web3.fromAscii('ETC'), chain.etc.tokenPorter.token(), {from: owner})
 
-// ETC Setup TODO: These should happen only once.
+// ETC Setup 
 owner = chain.etc.tokenPorter.owner()
 chain.etc.web3.personal.unlockAccount(owner, 'newOwner')
 chain.etc.tokenPorter.addDestinationChain(chain.etc.web3.fromAscii('ETH'), chain.eth.tokenPorter.token(), {from: owner})
 
-console.log('Listening for ExportReceiptLog for eth...')
-chain.eth.tokenPorter.ExportReceiptLog().watch(function (err, response) {
+console.log('Listening for ImportRequestLog for eth...')
+chain.eth.tokenPorter.ImportRequestLog().watch(function (err, response) {
   if (err) {
     console.log('export error', err)
   } else {
     console.log('export receipt found in ETH', JSON.stringify(response))
     console.log('current burn hash=', response.args.currentBurnHash)
-    chain.validateHash(response.args, chain.etc.web3, chain.etc.validator)
+    chain.validateHash(response.address, response.args, chain.etc.web3, chain.etc.validator, chain.etc.tokenPorter.owner())
   }
 })
 
-console.log('Listening for ExportReceiptLog for etc...')
-chain.etc.tokenPorter.ExportReceiptLog().watch(function (err, response) {
+console.log('Listening for ImportRequestLog for etc...')
+chain.etc.tokenPorter.ImportRequestLog().watch(function (err, response) {
   if (err) {
     console.log('export error', err)
   } else {
-    console.log('export receipt found in ETC', JSON.stringify(response))
-    console.log('current burn hash=', response.args.currentBurnHash)
-    chain.validateHash(response.args, chain.eth.web3, chain.eth.validator)
+    console.log('import receipt found in ETC', JSON.stringify(response))
+    console.log('current burn hash=', response.args.currentHash)
+    chain.validateHash((chain.eth.tokenPorter.token()), response.args, chain.eth.web3, chain.eth.validator, chain.eth.tokenPorter.owner())
   }
 })
