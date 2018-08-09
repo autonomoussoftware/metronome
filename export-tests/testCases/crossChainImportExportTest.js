@@ -95,22 +95,9 @@ describe('cross chain testing', () => {
       // console.log('logs=', receipt.logs)
       const exportReceipt = decoder(receipt.logs)[0]
       assert(totalSupplybefore.sub(totalSupplyAfter), amount, 'Export from ETH failed')
-      // let validatorAddress = ETCChain.web3.eth.accounts[0]
-      // chain.validateHash(exportReceipt, ETCChain.web3, ETCChain.validator, validatorAddress)
-      // validatorAddress = await ETCChain.metToken.owner()
-      // await ETCChain.web3.personal.unlockAccount(validatorAddress, 'newOwner')
-      // chain.validateHash(exportReceipt, ETCChain.web3, ETCChain.validator, validatorAddress)
-      // totalSupplybefore = ETCChain.metToken.totalSupply()
-      // let metBalanceBefore = ETCChain.metToken.balanceOf(etcBuyer1)
-
       chain.importHash(exportReceipt, ETCChain.web3, ETCChain.validator, ETCChain.tokenPorter, ETCChain.metToken, ETH)
       totalSupplyAfter = ETCChain.metToken.totalSupply()
       console.log('totalSupplyAfter', totalSupplyAfter)
-      // let diff = totalSupplyAfter.sub(totalSupplybefore)
-      // assert.equal(diff.valueOf(), amount.valueOf(), 'Total supply in ETC after import is wrong')
-      // let metBalanceAfter = ETCChain.metToken.balanceOf(etcBuyer1)
-      // diff = metBalanceAfter.sub(metBalanceBefore)
-      // assert.equal(diff.valueOf(), amount.valueOf(), 'Balance of importer is wrong after import')
       resolve()
     })
   })

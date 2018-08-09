@@ -36,24 +36,46 @@ owner = chain.etc.tokenPorter.owner()
 chain.etc.web3.personal.unlockAccount(owner, 'newOwner')
 chain.etc.tokenPorter.addDestinationChain(chain.etc.web3.fromAscii('ETH'), chain.eth.tokenPorter.token(), {from: owner})
 
-console.log('Listening for ImportRequestLog for eth...')
-chain.eth.tokenPorter.ImportRequestLog().watch(function (err, response) {
-  if (err) {
-    console.log('export error', err)
-  } else {
-    console.log('export receipt found in ETH', JSON.stringify(response))
-    console.log('current burn hash=', response.args.currentBurnHash)
-    chain.validateHash(response.address, response.args, chain.etc.web3, chain.etc.validator, chain.etc.tokenPorter.owner())
-  }
-})
-
-console.log('Listening for ImportRequestLog for etc...')
-chain.etc.tokenPorter.ImportRequestLog().watch(function (err, response) {
+console.log('Listening for LogImportRequest for eth...')
+chain.eth.tokenPorter.LogImportRequest().watch(function (err, response) {
   if (err) {
     console.log('export error', err)
   } else {
     console.log('import receipt found in ETC', JSON.stringify(response))
     console.log('current burn hash=', response.args.currentHash)
-    chain.validateHash((chain.eth.tokenPorter.token()), response.args, chain.eth.web3, chain.eth.validator, chain.eth.tokenPorter.owner())
+    console.log(response)
+    var exportLogEvent = chain.eth.tokenPorter.ExportReceiptLog({currentBurnHash: response.args.currentBurnHash}, {fromBlock: 0, toBlock: 'latest'})
+    console.log('exportLogEvent=', exportLogEvent)
+    exportLogEvent.get(function (err, res) {
+      if (err) {
+        console.log('Error in reading the export log at source chain', err)
+      } else {
+        console.log('exportLogEvent found in ETH', res)
+        console.log('exportLogEvent found in ETH. Array length', res.length)
+        chain.validateHash(chain.eth.web3.fromAscii('ETC'), res[0].args, chain.eth.web3, chain.eth.validator, chain.eth.tokenPorter.owner())
+      }
+    })
+  }
+})
+
+console.log('Listening for LogImportRequest for etc...')
+chain.etc.tokenPorter.LogImportRequest().watch(function (err, response) {
+  if (err) {
+    console.log('export error', err)
+  } else {
+    console.log('import receipt found in ETC', JSON.stringify(response))
+    console.log('current burn hash=', response.args.currentHash)
+    console.log(response)
+    var exportLogEvent = chain.eth.tokenPorter.ExportReceiptLog({currentBurnHash: response.args.currentBurnHash}, {fromBlock: 0, toBlock: 'latest'})
+    console.log('exportLogEvent=', exportLogEvent)
+    exportLogEvent.get(function (err, res) {
+      if (err) {
+        console.log('Error in reading the export log at source chain', err)
+      } else {
+        console.log('exportLogEvent found in ETH', res)
+        console.log('exportLogEvent found in ETH. Array length', res.length)
+        chain.validateHash(chain.eth.web3.fromAscii('ETH'), res[0].args, chain.eth.web3, chain.eth.validator, chain.eth.tokenPorter.owner())
+      }
+    })
   }
 })

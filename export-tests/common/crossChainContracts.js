@@ -77,7 +77,7 @@ const chain = {
     validator: etcContracts.validator,
     web3: etcContracts.web3
   },
-  validateHash: (destinationMetronomeAddr, exportReceipt, web3, validator, caller) => {
+  validateHash: (originChain, exportReceipt, web3, validator, caller) => {
     console.log('Start validating hash for import')
 
     try {
@@ -85,21 +85,17 @@ const chain = {
       let isValidator = validator.isValidator(caller)
       console.log('is validator?', isValidator)
       assert.isTrue(isValidator, 'Provided address is not validator')
-      let _originChain = exportReceipt.originChain
-      let _destinationChain = exportReceipt.destinationRecipientAddr
-      let _addresses = [destinationMetronomeAddr, exportReceipt.destinationRecipientAddr]
+      let _destinationChain = exportReceipt.destinationChain
+      let _addresses = [exportReceipt.destinationMetronomeAddr, exportReceipt.destinationRecipientAddr]
       let _extraData = exportReceipt.extraData
       let _burnHashes = [exportReceipt.prevBurnHash, exportReceipt.currentBurnHash]
-      // let _supplyOnAllChains = exportReceipt.supplyOnAllChains
-      let _importData = [exportReceipt.blockTimestamp, exportReceipt.amountToImport, exportReceipt.fee, exportReceipt.burntAtTick, exportReceipt.genesisTime, exportReceipt.dailyMintable, exportReceipt.burnSequence]
+      let _supplyOnAllChains = exportReceipt.supplyOnAllChains
+      let _importData = [exportReceipt.blockTimestamp, exportReceipt.amountToBurn, exportReceipt.fee, exportReceipt.currentTick, exportReceipt.genesisTime, exportReceipt.dailyMintable, exportReceipt.burnSequence, exportReceipt.dailyAuctionStartTime]
       let _proof = ''
-      validator.validateHash(chain.eth.web3.fromAscii(_originChain), _destinationChain, _addresses, _extraData, _burnHashes, _importData, _proof, {from: caller})
+      // Todo:  Send merkle path  and proof also for validation
+      validator.validateHash(originChain, _destinationChain, _addresses, _extraData, _burnHashes, _supplyOnAllChains, _importData, _proof, {from: caller})
       let hashClaimable = validator.hashClaimable(_burnHashes[1])
-      console.log('hashClaimable', hashClaimable)
-      // const decoder = ethjsABI.logDecoder(validator.abi)
-      // const logAttestation = decoder(reciept.logs)[0]
-      // assert(logAttestation._eventName, 'LogAttestation', 'Wrong event emitted for attestation')
-      console.log('hash validation done successfully')
+      console.log('hashClaimable=', hashClaimable)
     } catch (e) {
       console.log('error thrown------')
       console.log(e)

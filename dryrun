@@ -50,9 +50,9 @@ tmux new-window
 tmux send-keys 'node export-tests/offchain/validator.js' 'C-m'
 tmux rename-window 'Validation'
 
-tmux new-window 
-tmux send-keys 'node export-tests/offchain/claimer.js' 'C-m'
-tmux rename-window 'Claiming'
+# tmux new-window 
+# tmux send-keys 'node export-tests/offchain/claimer.js' 'C-m'
+# tmux rename-window 'Claiming'
 
 tmux new-window
 tmux send-keys 'cat welcome.msg' 'C-m'

@@ -1739,9 +1739,7 @@ contract TokenPorter is ITokenPorter, Owned {
     /// @notice mapping that tracks valid destination chains for export
     mapping(bytes8 => address) public destinationChains;
 
-    event ImportRequestLog(bytes8 originChain,
-        address indexed destinationRecipientAddr, uint amountToImport, uint fee, bytes extraData, uint burntAtTick,
-        uint indexed burnSequence, bytes32 indexed currentBurnHash, bytes32 prevBurnHash, uint dailyMintable, uint genesisTime, uint blockTimestamp);
+    event LogImportRequest(bytes8 originChain, uint indexed burnSequence, bytes32 indexed currentBurnHash, bytes32 prevBurnHash);
 
     /// @notice Initialize TokenPorter contract.
     /// @param _tokenAddr Address of metToken contract
@@ -1836,8 +1834,7 @@ contract TokenPorter is ITokenPorter, Owned {
             return false;
         }
         importRequested[_burnHashes[1]] = true;
-        emit ImportRequestLog(_originChain, _addresses[1], _importData[1], _importData[2], _extraData, _importData[3], 
-        _importData[6], _burnHashes[1], _burnHashes[0], _importData[5], _importData[4], _importData[0]);
+        emit LogImportRequest(_originChain, _importData[6], _burnHashes[1], _burnHashes[0]);
         return true;
     }
     // function importMET(bytes8 _originChain, bytes8 _destinationChain, address[] _addresses, bytes _extraData, 
@@ -1997,7 +1994,7 @@ contract Validator is Owned {
     function validateHash(bytes8 _originChain, bytes8 _destinationChain, address[] _addresses, bytes _extraData, 
         bytes32[] _burnHashes, uint[] _supplyOnAllChains, uint[] _importData, bytes _proof) public {
         require(isValidator[msg.sender]);
-        require(_importData.length == 7);
+        require(_importData.length == 8);
         require(_addresses.length == 2);
         require(_burnHashes.length == 2);
         require(isReceiptValid(_originChain, _destinationChain, _addresses, _extraData, _burnHashes, 
