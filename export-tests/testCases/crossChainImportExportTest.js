@@ -60,7 +60,6 @@ const prepareForExport = function () {
     await ETCChain.web3.personal.unlockAccount(owner, 'newOwner')
     tokenAddress = await ETHChain.tokenPorter.token()
     await ETCChain.tokenPorter.addDestinationChain(ETH, tokenAddress, {from: owner})
-    console.log('timeout??')
 
     resolve()
   })

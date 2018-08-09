@@ -78,12 +78,9 @@ const chain = {
     web3: etcContracts.web3
   },
   validateHash: (originChain, exportReceipt, web3, validator, caller) => {
-    console.log('Start validating hash for import')
-
-    try {
-      console.log('is validator?', caller)
+    return new Promise((resolve, reject) => {
+      console.log('Start validating hash for import')
       let isValidator = validator.isValidator(caller)
-      console.log('is validator?', isValidator)
       assert.isTrue(isValidator, 'Provided address is not validator')
       let _destinationChain = exportReceipt.destinationChain
       let _addresses = [exportReceipt.destinationMetronomeAddr, exportReceipt.destinationRecipientAddr]
@@ -93,15 +90,19 @@ const chain = {
       let _importData = [exportReceipt.blockTimestamp, exportReceipt.amountToBurn, exportReceipt.fee, exportReceipt.currentTick, exportReceipt.genesisTime, exportReceipt.dailyMintable, exportReceipt.burnSequence, exportReceipt.dailyAuctionStartTime]
       let _proof = ''
       // Todo:  Send merkle path  and proof also for validation
-      validator.validateHash(originChain, _destinationChain, _addresses, _extraData, _burnHashes, _supplyOnAllChains, _importData, _proof, {from: caller})
-      let hashClaimable = validator.hashClaimable(_burnHashes[1])
-      console.log('hashClaimable=', hashClaimable)
-    } catch (e) {
-      console.log('error thrown------')
-      console.log(e)
-    }
+      console.log('_destinationChain', _destinationChain)
+      let tx = validator.validateHash(originChain, _destinationChain, _addresses, _extraData, _burnHashes, _supplyOnAllChains, _importData, _proof, {from: caller})
+      let transactionReciept = web3.eth.getTransactionReceipt(tx)
+      console.log('transactionReciept.status=', transactionReciept.status)
+      if (transactionReciept.status === '0x1') {
+        resolve(transactionReciept)
+      } else {
+        reject(new Error('Transaction reverted'))
+      }
+    })
   },
   importHash: (exportReceipt, web3, validator, tokenPorter, metToken, _originChain) => {
+    // Todo: return promise
     let claimable = validator.hashClaimable(exportReceipt.currentBurnHash, {from: web3.eth.accounts[0]})
     console.log('claimable', claimable)
     try {

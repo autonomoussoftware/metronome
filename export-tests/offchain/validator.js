@@ -31,7 +31,7 @@ let owner = chain.eth.tokenPorter.owner()
 chain.eth.web3.personal.unlockAccount(owner, 'newOwner')
 chain.eth.tokenPorter.addDestinationChain(chain.eth.web3.fromAscii('ETC'), chain.etc.tokenPorter.token(), {from: owner})
 
-// ETC Setup 
+// ETC Setup
 owner = chain.etc.tokenPorter.owner()
 chain.etc.web3.personal.unlockAccount(owner, 'newOwner')
 chain.etc.tokenPorter.addDestinationChain(chain.etc.web3.fromAscii('ETH'), chain.eth.tokenPorter.token(), {from: owner})
@@ -46,13 +46,14 @@ chain.eth.tokenPorter.LogImportRequest().watch(function (err, response) {
     console.log(response)
     var exportLogEvent = chain.eth.tokenPorter.ExportReceiptLog({currentBurnHash: response.args.currentBurnHash}, {fromBlock: 0, toBlock: 'latest'})
     console.log('exportLogEvent=', exportLogEvent)
-    exportLogEvent.get(function (err, res) {
+    exportLogEvent.get(async function (err, res) {
       if (err) {
         console.log('Error in reading the export log at source chain', err)
       } else {
         console.log('exportLogEvent found in ETH', res)
         console.log('exportLogEvent found in ETH. Array length', res.length)
-        chain.validateHash(chain.eth.web3.fromAscii('ETC'), res[0].args, chain.eth.web3, chain.eth.validator, chain.eth.tokenPorter.owner())
+        let response = await chain.validateHash(chain.eth.web3.fromAscii('ETC'), res[0].args, chain.eth.web3, chain.eth.validator, chain.eth.tokenPorter.owner())
+        console.log('response=', response)
       }
     })
   }
@@ -68,13 +69,13 @@ chain.etc.tokenPorter.LogImportRequest().watch(function (err, response) {
     console.log(response)
     var exportLogEvent = chain.eth.tokenPorter.ExportReceiptLog({currentBurnHash: response.args.currentBurnHash}, {fromBlock: 0, toBlock: 'latest'})
     console.log('exportLogEvent=', exportLogEvent)
-    exportLogEvent.get(function (err, res) {
+    exportLogEvent.get(async function (err, res) {
       if (err) {
         console.log('Error in reading the export log at source chain', err)
       } else {
         console.log('exportLogEvent found in ETH', res)
         console.log('exportLogEvent found in ETH. Array length', res.length)
-        chain.validateHash(chain.eth.web3.fromAscii('ETH'), res[0].args, chain.eth.web3, chain.eth.validator, chain.eth.tokenPorter.owner())
+        await chain.validateHash(chain.eth.web3.fromAscii('ETC'), res[0].args, chain.etc.web3, chain.etc.validator, chain.etc.tokenPorter.owner())
       }
     })
   }
