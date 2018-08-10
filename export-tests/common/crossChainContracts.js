@@ -95,6 +95,7 @@ const chain = {
       let transactionReciept = web3.eth.getTransactionReceipt(tx)
       console.log('transactionReciept.status=', transactionReciept.status)
       if (transactionReciept.status === '0x1') {
+        console.log('hash claimable=', validator.hashClaimable(_burnHashes[1]))
         resolve(transactionReciept)
       } else {
         reject(new Error('Transaction reverted'))

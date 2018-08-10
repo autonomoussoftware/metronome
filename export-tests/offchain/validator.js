@@ -73,9 +73,7 @@ chain.etc.tokenPorter.LogImportRequest().watch(function (err, response) {
       if (err) {
         console.log('Error in reading the export log at source chain', err)
       } else {
-        console.log('exportLogEvent found in ETH', res)
-        console.log('exportLogEvent found in ETH. Array length', res.length)
-        await chain.validateHash(chain.eth.web3.fromAscii('ETC'), res[0].args, chain.etc.web3, chain.etc.validator, chain.etc.tokenPorter.owner())
+        await chain.validateHash(chain.eth.web3.fromAscii('ETH'), res[0].args, chain.etc.web3, chain.etc.validator, chain.etc.tokenPorter.owner())
       }
     })
   }
