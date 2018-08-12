@@ -1734,13 +1734,16 @@ contract TokenPorter is ITokenPorter, Owned {
     uint public importSequence = 1;
     bytes32[] public exportedBurns;
     uint[] public supplyOnAllChains = new uint[](6);
-    mapping (bytes32 => bool) public importRequested;
 
     /// @notice mapping that tracks valid destination chains for export
     mapping(bytes8 => address) public destinationChains;
-
-    event LogImportRequest(bytes8 originChain, uint indexed burnSequence, bytes32 indexed currentBurnHash, bytes32 prevBurnHash);
-
+    
+    event LogImportRequest(bytes8 originChain, uint indexed burnSequence, bytes32 indexed currentBurnHash,
+    bytes32 prevBurnHash);
+    
+    event LogImport(bytes8 originChain, address indexed destinationRecipientAddr, uint amountImported, uint fee,
+    bytes extraData, uint indexed importSequence, bytes32 indexed currentHash, bytes32 prevHash);
+    
     /// @notice Initialize TokenPorter contract.
     /// @param _tokenAddr Address of metToken contract
     /// @param _auctionsAddr Address of auctions contract
@@ -1759,13 +1762,10 @@ contract TokenPorter is ITokenPorter, Owned {
         return true;
     }
 
-
     /// @notice only owner can add destination chains
     /// @param _chainName string of destination blockchain name
     /// @param _contractAddress address of destination MET token to import to
-    function addDestinationChain(bytes8 _chainName, address _contractAddress) 
-        public onlyOwner returns (bool) 
-    {
+    function addDestinationChain(bytes8 _chainName, address _contractAddress) public onlyOwner returns (bool) {
         require(_chainName != 0 && _contractAddress != address(0));
         destinationChains[_chainName] = _contractAddress;
         return true;
@@ -1805,7 +1805,8 @@ contract TokenPorter is ITokenPorter, Owned {
         return total;
     }
 
-    /// @notice Request for import MET tokens from another chain to this chain. Minting will be done after off chain validators validate
+    /// @notice Request for import MET tokens from another chain to this chain. 
+    /// Minting will be done after off chain validators validate
     /// @param _destinationChain destination chain name
     /// @param _addresses _addresses[0] is destMetronomeAddr and _addresses[1] is recipientAddr
     /// @param _extraData extra information for import
@@ -1833,44 +1834,22 @@ contract TokenPorter is ITokenPorter, Owned {
         if (_importData[1] == 0) {
             return false;
         }
-        importRequested[_burnHashes[1]] = true;
         emit LogImportRequest(_originChain, _importData[6], _burnHashes[1], _burnHashes[0]);
         return true;
     }
-    // function importMET(bytes8 _originChain, bytes8 _destinationChain, address[] _addresses, bytes _extraData, 
-    //     bytes32[] _burnHashes, uint[] _supplyOnAllChains, uint[] _importData, bytes _proof) public returns (bool)
-    // {
-        
-    //     require(msg.sender == address(token));
-    //     require(_importData.length == 8);
-    //     require(_addresses.length == 2);
-    //     require(_burnHashes.length == 2);
-    //     require(validator.isReceiptClaimable(_originChain, _destinationChain, _addresses, _extraData, _burnHashes, 
-    //     _supplyOnAllChains, _importData, _proof));
 
-    //     validator.claimHash(_burnHashes[1]);
-
-    //     require(_destinationChain == auctions.chain());
-    //     uint amountToImport = _importData[1].add(_importData[2]);
-    //     require(amountToImport.add(token.totalSupply()) <= auctions.globalMetSupply());
-
-    //     require(_addresses[0] == address(token));
-
-    //     if (_importData[1] == 0) {
-    //         return false;
-    //     }
-
-    //     if (importSequence == 1 && token.totalSupply() == 0) {
-    //         auctions.prepareAuctionForNonOGChain();
-    //     }
-        
-    //     token.mint(_addresses[1], _importData[1]);
-    //     emit ImportReceiptLog(_addresses[1], _importData[1], _importData[2], _extraData,
-    //     auctions.currentTick(), importSequence, _burnHashes[1],
-    //     _burnHashes[0], auctions.dailyMintable(), now, msg.sender);
-    //     importSequence++;
-    //     return true;
-    // }
+    function mintToken(bytes8 originChain, address destinationRecipientAddr, uint amountImported, 
+        uint fee, bytes extraData, bytes32 currentHash, bytes32 prevHash) public {
+        require(msg.sender == address(validator));
+        require(amountImported > 0);
+        if (importSequence == 1 && token.totalSupply() == 0) {
+            auctions.prepareAuctionForNonOGChain();
+        }
+        token.mint(destinationRecipientAddr, amountImported);
+        LogImport(originChain, destinationRecipientAddr, amountImported, fee, extraData, 
+        importSequence, currentHash, prevHash);
+        importSequence++;
+    }
 
     /// @notice Export MET tokens from this chain to another chain.
     /// @param tokenOwner Owner of the token, whose tokens are being exported.
@@ -1881,10 +1860,8 @@ contract TokenPorter is ITokenPorter, Owned {
     /// @param _extraData Extra data for this export
     /// @return boolean true/false based on the outcome of export
     function export(address tokenOwner, bytes8 _destChain, address _destMetronomeAddr,
-        address _destRecipAddr, uint _amount, uint _fee, bytes _extraData) public returns (bool) 
-    {
+        address _destRecipAddr, uint _amount, uint _fee, bytes _extraData) public returns (bool) {
         require(msg.sender == address(token));
-
         require(_destChain != 0x0 && _destMetronomeAddr != 0x0 && _destRecipAddr != 0x0 && _amount != 0);
         require(destinationChains[_destChain] == _destMetronomeAddr);
         
@@ -1932,15 +1909,19 @@ contract TokenPorter is ITokenPorter, Owned {
     }
 }    
 
+
+/// @title Validator contract for off chain validators to validate hash
 contract Validator is Owned {
 
     using SafeMath for uint;
+
+    /// @notice Mapping to store the attestation done by each offchain validator for a hash
     mapping (bytes32 => mapping (address => bool)) public hashAttestations;
     mapping (address => bool) public isValidator;
     mapping (address => uint8) public validatorNum;
     address[] public validators;
     METToken public token;
-    address public tokenPorter;
+    TokenPorter public tokenPorter;
     Auctions public auctions;
 
     mapping (bytes32 => bool) public hashClaimed;
@@ -1976,21 +1957,37 @@ contract Validator is Owned {
 
     /// @notice set address of token porter
     /// @param _tokenPorter address of token porter
+    /// @return true/false
     function setTokenPorter(address _tokenPorter) public onlyOwner returns (bool) {
         require(_tokenPorter != 0x0);
-        tokenPorter = _tokenPorter;
+        tokenPorter = TokenPorter(_tokenPorter);
         return true;
     }
 
+    /// @notice set contract addresses in validator contract.
+    /// @param _tokenAddr address of MetToken contract
+    /// @param _auctionsAddr address of Auction contract
+    /// @param _tokenPorterAddr address of TokenPorter contract
     function initValidator(address _tokenAddr, address _auctionsAddr, address _tokenPorterAddr) public onlyOwner {
         require(_tokenAddr != 0x0);
         require(_auctionsAddr != 0x0);
         require(_tokenPorterAddr != 0x0);
-        tokenPorter = _tokenPorterAddr;
+        tokenPorter = TokenPorter(_tokenPorterAddr);
         auctions = Auctions(_auctionsAddr);
         token = METToken(_tokenAddr);
     }
 
+    /// @notice Off chain validator call validate hash function to validate and attest the hash. 
+    /// @param _originChain source chain
+    /// @param _destinationChain destination chain name
+    /// @param _addresses _addresses[0] is destMetronomeAddr and _addresses[1] is recipientAddr
+    /// @param _extraData extra information for import
+    /// @param _burnHashes _burnHashes[0] is previous burnHash, _burnHashes[1] is current burnHash
+    /// @param _supplyOnAllChains MET supply on all supported chains
+    /// @param _importData _importData[0] is _blockTimestamp, _importData[1] is _amount, _importData[2] is _fee
+    /// _importData[3] is _burnedAtTick, _importData[4] is _genesisTime, _importData[5] is _dailyMintable
+    /// _importData[6] is _burnSequence, _importData[7] is _dailyAuctionStartTime
+    /// @param _proof proof
     function validateHash(bytes8 _originChain, bytes8 _destinationChain, address[] _addresses, bytes _extraData, 
         bytes32[] _burnHashes, uint[] _supplyOnAllChains, uint[] _importData, bytes _proof) public {
         require(isValidator[msg.sender]);
@@ -2004,12 +2001,16 @@ contract Validator is Owned {
         require(amountToImport.add(token.totalSupply()) <= auctions.globalMetSupply());
         require(_addresses[0] == address(token));
         hashAttestations[_burnHashes[1]][msg.sender] = true;
-        if(hashClaimable(_burnHashes[1])) {
-            // Minting and event log
+        if (hashClaimable(_burnHashes[1])) {
+            claimHash(_burnHashes[1]);
+            tokenPorter.mintToken(_originChain, _addresses[1], _importData[1], _importData[2], 
+            _extraData, _burnHashes[1], _burnHashes[0]);
         }
         emit LogAttestation(_burnHashes[1], msg.sender, true);
     }
 
+    /// @notice off chain validator can invalidate hash
+    /// @param hash Burn hash
     function invalidateHash(bytes32 hash) public {
         require(isValidator[msg.sender]);
         require(!hashClaimed[hash]);
@@ -2017,6 +2018,9 @@ contract Validator is Owned {
         emit LogAttestation(hash, msg.sender, false);
     }
 
+    /// @notice Check whether given hash has been validated and claimable for import
+    /// @param hash burn hash
+    /// @return true/false to check whether given hash can be claimed for import
     function hashClaimable(bytes32 hash) public view returns(bool) {
         if (hashClaimed[hash]) { return false; }
 
@@ -2030,12 +2034,7 @@ contract Validator is Owned {
         return false;
     }
 
-    function claimHash(bytes32 hash) public {
-        require(msg.sender == tokenPorter);
-        require(hashClaimable(hash));
-        hashClaimed[hash] = true;
-    }
-
+    /// @notice validate export receipt is validat
     function isReceiptValid(bytes8 _originChain, bytes8 _destinationChain, address[] _addresses, bytes _extraData, 
         bytes32[] _burnHashes, uint[] _supplyOnAllChain, uint[] _importData, bytes _proof) public view returns(bool) {
         // We want to validate that these hash to the provided hash as a safety check, 
@@ -2048,7 +2047,7 @@ contract Validator is Owned {
         // _importData[5] is _dailyMintable, _importData[6] is _burnSequence,
         // _addresses[0] is _destMetronomeAddr and _addresses[1] is _recipAddr
 
-        if(_burnHashes[1] == keccak256(_importData[0], _originChain, _destinationChain, _addresses[0], 
+        if (_burnHashes[1] == keccak256(_importData[0], _originChain, _destinationChain, _addresses[0], 
             _addresses[1], _importData[1], _importData[3], _importData[4], _importData[5], _supplyOnAllChain[0], 
             _extraData, _burnHashes[0])) {
             return true;
@@ -2057,6 +2056,7 @@ contract Validator is Owned {
         return false;
     }
 
+    /// @notice Check export receipt is valid and claimable
     function isReceiptClaimable(bytes8 _originChain, bytes8 _destinationChain, address[] _addresses, bytes _extraData, 
         bytes32[] _burnHashes, uint[] _supplyOnAllChains, uint[] _importData, bytes _proof) public view returns(bool) {
         // We want to validate that these hash to the provided hash as a safety check, 
@@ -2079,9 +2079,15 @@ contract Validator is Owned {
         return false;
     }
 
+    function claimHash(bytes32 hash) internal {
+        require(hashClaimable(hash));
+        hashClaimed[hash] = true;
+    }
+
 }
 
-// Todo: Merkle tree relate code to analyse gas and performance
+
+/// @title Data structure for Patricia tree
 library D {
 
     struct Label {
@@ -2100,6 +2106,7 @@ library D {
 }
 
 
+/// @title util library for patricia tree contract
 library Utils {
 
     /// Returns a label containing the longest common prefix of `check` and `label`
@@ -2181,6 +2188,7 @@ library Utils {
 }
 
 
+/// @title Patricia tree contract.
 contract PatriciaTree {
     // Mapping of hash of key to value
     mapping (bytes32 => bytes) values;
@@ -2324,12 +2332,14 @@ contract PatriciaTree {
     }
 }
 
+
+/// @title simple Merkle tree contract to analyse gas usage and performance
 contract MerkleTree {
     bytes32 public root;
+
     function getMerkelRoot(bytes32[] hashes) public {
-        
         bytes32[] memory newHashes = prepareTree(hashes);
-        while(newHashes.length > 1){
+        while (newHashes.length > 1) {
             newHashes = prepareTree(newHashes);
         }
         root = newHashes[0];
@@ -2339,12 +2349,12 @@ contract MerkleTree {
         bytes32[] newHashes;
         uint index = 0;
         newHashes.length = 0;
-        while(index < hashes.length) {
+        while (index < hashes.length) {
             bytes32 left = hashes[index];
             index++;
 
             bytes32 right;
-            if(index != hashes.length) {
+            if (index != hashes.length) {
                 right = hashes[index];
             }
 

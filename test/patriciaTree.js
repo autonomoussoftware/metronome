@@ -23,7 +23,6 @@
     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-const assert = require('chai').assert
 const PatriciaTree = artifacts.require('PatriciaTree')
 const MerkleTree = artifacts.require('MerkleTree')
 

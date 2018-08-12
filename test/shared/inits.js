@@ -44,7 +44,6 @@ const Metronome = {
       const smartToken = await SmartToken.new({from: OWNER})
       const tokenPorter = await TokenPorter.new({from: OWNER})
       const validator = await Validator.new({from: OWNER})
-
       const founders = []
       founders.push(OWNER + '0000D3C21BCECCEDA1000000') // 1000000e18
       founders.push(FOUNDER + '0000D3C20DEE1639F99C0000') // 999999e18
@@ -67,8 +66,10 @@ const Metronome = {
 
       await tokenPorter.initTokenPorter(metToken.address, auctions.address, {from: OWNER})
       await tokenPorter.setValidator(validator.address, {from: OWNER})
-      await validator.initValidator(OWNER, accounts[1], accounts[2], {from: OWNER})
-      await validator.setTokenPorter(tokenPorter.address, {from: OWNER})
+      await validator.initValidator(metToken.address, auctions.address, tokenPorter.address, {from: OWNER})
+      await validator.addValidator(OWNER, {from: OWNER})
+      await validator.addValidator(accounts[1], {from: OWNER})
+      await validator.addValidator(accounts[2], {from: OWNER})
       resolve({
         metToken: metToken,
         autonomousConverter: autonomousConverter,
@@ -107,8 +108,10 @@ const Metronome = {
 
       await tokenPorter.initTokenPorter(metToken.address, auctions.address, {from: OWNER})
       await tokenPorter.setValidator(validator.address, {from: OWNER})
-      await validator.initValidator(OWNER, accounts[1], accounts[2], {from: OWNER})
-      await validator.setTokenPorter(tokenPorter.address, {from: OWNER})
+      await validator.initValidator(metToken.address, auctions.address, tokenPorter.address, {from: OWNER})
+      await validator.addValidator(OWNER, {from: OWNER})
+      await validator.addValidator(accounts[1], {from: OWNER})
+      await validator.addValidator(accounts[2], {from: OWNER})
       resolve({
         etcMetToken: metToken,
         etcAutonomousConverter: autonomousConverter,
