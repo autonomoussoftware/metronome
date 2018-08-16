@@ -38,10 +38,11 @@ contract('PatriciaTree', accounts => {
   it('Check gas need in MerkleTree', () => {
     return new Promise(async (resolve, reject) => {
       // let hashes = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'nine', 'ten']
-      let leaves = ['one', 'two', 'three', 'four', 'five', 'six', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16']
-      let tx = await merkleTree.getMerkelRoot(leaves, {gas: 600000})
-      console.log(await merkleTree.root())
+      let leaves = ['0xadcf1483127b6cd10404322c2c013a613891ab6de91e126cdf25a4e0f232d224', '0xadcf1483127b6cd10404322c2c013a613891ab6de91e126cdf25a4e0f232d225']
+      await merkleTree.setExportedBurnHashes(leaves)
+      let tx = await merkleTree.getMerkelRootMethod1()
       console.log('Gas used to create merkle tree', tx.receipt.gasUsed)
+      console.log('root=', await merkleTree.root())
       resolve()
     })
   })

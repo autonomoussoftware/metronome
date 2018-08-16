@@ -2336,31 +2336,51 @@ contract PatriciaTree {
 /// @title simple Merkle tree contract to analyse gas usage and performance
 contract MerkleTree {
     bytes32 public root;
+    bytes32[] exportedBurns;
 
-    function getMerkelRoot(bytes32[] hashes) public {
-        bytes32[] memory newHashes = prepareTree(hashes);
-        while (newHashes.length > 1) {
-            newHashes = prepareTree(newHashes);
-        }
-        root = newHashes[0];
+    function compareTwoHashes(bytes32 a, bytes32 b) view returns (bool) {
+        return (a < b);
     }
 
-    function prepareTree(bytes32[] hashes) internal returns (bytes32[]) {
-        bytes32[] newHashes;
+    function setExportedBurnHashes(bytes32[] hashes) public {
+        exportedBurns = hashes;
+    }
+
+    function getExportedBurnHashes() public view returns (bytes32[]){
+        return exportedBurns;
+    }
+
+    function getMerkelRootMethod1() public {
         uint index = 0;
-        newHashes.length = 0;
-        while (index < hashes.length) {
-            bytes32 left = hashes[index];
+        bytes32[] memory newHashes;
+        bytes32[] memory tempHashes;
+        
+        uint i = 0;
+        bytes32 left;
+        bytes32 right;
+
+        tempHashes = exportedBurns;
+        newHashes = new bytes32[]((tempHashes.length + 1) / 2);
+        while (tempHashes.length > 1) {
+            while (index < tempHashes.length) {
+            left = tempHashes[index];
             index++;
 
-            bytes32 right;
-            if (index != hashes.length) {
-                right = hashes[index];
+            right;
+            if (index != tempHashes.length) {
+                right = tempHashes[index];
             }
 
-            newHashes.push(keccak256(left, right));
+            newHashes[i] = keccak256(left, right);
+            i++;
             index++;
+            }
+            tempHashes = newHashes;
+            newHashes = new bytes32[](tempHashes.length / 2);
+            i =  0;
+            index = 0;
         }
-        return newHashes;
+
+        root = tempHashes[0];
     }
 }
