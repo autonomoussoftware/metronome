@@ -25,6 +25,15 @@
 
 const PatriciaTree = artifacts.require('PatriciaTree')
 const MerkleTree = artifacts.require('MerkleTree')
+const MerkleTreeJs = require('merkletreejs')
+const MerkleLib = require('merkle-lib')
+const merkleProof = require('merkle-lib/proof')
+const crypto = require('crypto')
+
+function sha256 (data) {
+  // returns Buffer
+  return crypto.createHash('sha256').update(data).digest()
+}
 
 contract('PatriciaTree', accounts => {
   const OWNER = accounts[0]
@@ -35,14 +44,67 @@ contract('PatriciaTree', accounts => {
     merkleTree = await MerkleTree.new({from: OWNER})
   })
 
-  it('Check gas need in MerkleTree', () => {
+  it('Test case 1: Test merklejs library', () => {
+    return new Promise(async (resolve, reject) => {
+      const leaves = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map(x => sha256(x))
+      // console.log('Buffer.from=', Buffer.from('ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb', 'hex'))
+      console.log('leaves=', leaves)
+      const tree = new MerkleTreeJs(leaves, sha256)
+      console.log('tree=', tree)
+      var proof = tree.getProof(leaves[5])
+      if (proof === null) {
+        console.error('No proof exists!')
+      }
+      console.log('proof=', proof)
+      console.log('proof in string=', proof.map(x => x && x.toString('hex')))
+      const root = tree.getRoot()
+      console.log('root = ', root)
+      resolve()
+    })
+  })
+
+  it('Test case 2: Test merkle-lib library', () => {
+    return new Promise(async (resolve, reject) => {
+      const leaves = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map(x => sha256(x))
+      // console.log('Buffer.from=', Buffer.from('ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb', 'hex'))
+      console.log('leaves=', leaves)
+      const tree = new MerkleLib(leaves, sha256)
+      console.log('tree=', tree)
+      var proof = merkleProof(tree, leaves[5])
+      if (proof === null) {
+        console.error('No proof exists!')
+      }
+      console.log('proof=', proof)
+      console.log('proof in string=', proof.map(x => x && x.toString('hex')))
+      resolve()
+    })
+  })
+
+  it('Check gas and root in MerkleTree in method 1', () => {
     return new Promise(async (resolve, reject) => {
       // let hashes = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'nine', 'ten']
-      let leaves = ['0xadcf1483127b6cd10404322c2c013a613891ab6de91e126cdf25a4e0f232d224', '0xadcf1483127b6cd10404322c2c013a613891ab6de91e126cdf25a4e0f232d225']
+      var leaves = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map(x => sha256(x))
       await merkleTree.setExportedBurnHashes(leaves)
-      let tx = await merkleTree.getMerkelRootMethod1()
+      let tx = await merkleTree.createMerkleTreeMethod1()
       console.log('Gas used to create merkle tree', tx.receipt.gasUsed)
       console.log('root=', await merkleTree.root())
+      resolve()
+    })
+  })
+
+  it('Check gas and root in MerkleTree in method 2', () => {
+    return new Promise(async (resolve, reject) => {
+      // let hashes = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'nine', 'ten']
+      // var leaves = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map(x => sha256(x))
+      var leaves = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map(x => sha256(x).toString('hex'))
+      leaves = leaves.map(x => '0x' + x)
+      console.log('temp=', leaves)
+      await merkleTree.setExportedBurnHashes(leaves)
+      let tx = await merkleTree.createMerkleTreeMethod2()
+      console.log('Gas used to create merkle tree', tx.receipt.gasUsed)
+      console.log('root=', await merkleTree.root())
+      console.log('buffer to string of a', sha256('a').toString('hex'))
+      console.log('buffer to string of a', sha256('b').toString('hex'))
       resolve()
     })
   })
