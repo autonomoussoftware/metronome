@@ -2346,11 +2346,12 @@ contract MerkleTree {
         exportedBurns = hashes;
     }
 
-    function getExportedBurnHashes() public view returns (bytes32[]){
+    function getExportedBurnHashes() public view returns (bytes32[]) {
         return exportedBurns;
     }
 
-    function getMerkelRootMethod1() public {
+    //@notice WIP. create merkle tree and set root 
+    function createMerkleTreeMethod1() public {
         uint index = 0;
         bytes32[] memory newHashes;
         bytes32[] memory tempHashes;
@@ -2363,24 +2364,63 @@ contract MerkleTree {
         newHashes = new bytes32[]((tempHashes.length + 1) / 2);
         while (tempHashes.length > 1) {
             while (index < tempHashes.length) {
-            left = tempHashes[index];
-            index++;
+                left = tempHashes[index];
+                index++;
 
-            right;
-            if (index != tempHashes.length) {
-                right = tempHashes[index];
-            }
-
-            newHashes[i] = keccak256(left, right);
-            i++;
-            index++;
+                right;
+                if (index != tempHashes.length) {
+                    right = tempHashes[index];
+                }
+                if (left < right) {
+                    newHashes[i] = sha256(left, right);
+                } else {
+                    newHashes[i] = sha256(right, left);
+                }
+                i++;
+                index++;
             }
             tempHashes = newHashes;
             newHashes = new bytes32[](tempHashes.length / 2);
-            i =  0;
+            i = 0;
             index = 0;
         }
+        root = tempHashes[0];
+    }
 
+    //@notice WIP. create merkle tree and set root
+    function createMerkleTreeMethod2() public {
+        uint index = 0;
+        bytes32[] memory newHashes;
+        bytes32[] memory tempHashes;
+        
+        uint i = 0;
+        bytes32 left;
+        bytes32 right;
+
+        tempHashes = exportedBurns;
+        newHashes = new bytes32[]((tempHashes.length + 1) / 2);
+        bool isLeaf = true;
+        while (tempHashes.length > 1) {
+            while (index < tempHashes.length) {
+                left = tempHashes[index];
+                index++;
+
+                right;
+                if (index != tempHashes.length) {
+                    right = tempHashes[index];
+                }
+                newHashes[i] = sha256(left, right);
+                
+                i++;
+                index++;
+            }
+            isLeaf = false;
+            tempHashes = newHashes;
+            newHashes = new bytes32[](tempHashes.length / 2);
+            i = 0;
+            index = 0;
+        }
+        
         root = tempHashes[0];
     }
 }
