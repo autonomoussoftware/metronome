@@ -1,26 +1,26 @@
 /*
-    The MIT License (MIT)
+ The MIT License (MIT)
 
-    Copyright 2017 - 2018, Alchemy Limited, LLC.
+ Copyright 2017 - 2018, Alchemy Limited, LLC.
 
-    Permission is hereby granted, free of charge, to any person obtaining
-    a copy of this software and associated documentation files (the
-    "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish,
-    distribute, sublicense, and/or sell copies of the Software, and to
-    permit persons to whom the Software is furnished to do so, subject to
-    the following conditions:
+ Permission is hereby granted, free of charge, to any person obtaining
+ a copy of this software and associated documentation files (the
+ "Software"), to deal in the Software without restriction, including
+ without limitation the rights to use, copy, modify, merge, publish,
+ distribute, sublicense, and/or sell copies of the Software, and to
+ permit persons to whom the Software is furnished to do so, subject to
+ the following conditions:
 
-    The above copyright notice and this permission notice shall be included
-    in all copies or substantial portions of the Software.
+ The above copyright notice and this permission notice shall be included
+ in all copies or substantial portions of the Software.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-    OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+ CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 const assert = require('chai').assert
@@ -65,7 +65,7 @@ contract('TokenPorter', accounts => {
     const founders = []
     // Since we are appending it with hexadecimal address so amount should also be
     // in hexa decimal. Hence 999999e18 = 0000d3c20dee1639f99c0000 in 24 character ( 96 bits)
-    // 1000000e18 =  0000d3c20dee1639f99c0000
+    // 1000000e18 = 0000d3c20dee1639f99c0000
     founders.push(OWNER + '0000D3C214DE7193CD4E0000')
     founders.push(accounts[1] + '0000D3C214DE7193CD4E0000')
     await auctions.createTokenLocker(OWNER, metToken.address, {from: OWNER})
@@ -159,6 +159,70 @@ contract('TokenPorter', accounts => {
         await tokenPorter.addDestinationChain(destChain, destAddr, { from: OWNER })
         const addr = await tokenPorter.destinationChains(destChain)
         assert.equal(addr, destAddr, 'chain was not added to destinationChains')
+
+        resolve()
+      })
+    })
+  })
+
+  describe('Update threshold', () => {
+    beforeEach(async () => {
+      await initContracts(getCurrentBlockTime() - 60, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+      validator.addValidator(accounts[1])
+      validator.addValidator(accounts[2])
+      validator.addValidator(accounts[3])
+    })
+
+    it('cant add zero value in threshold', () => {
+      return new Promise(async (resolve, reject) => {
+        let thrown = false
+        try {
+          await validator.updateThreshold(0, { from: OWNER })
+        } catch (error) {
+          thrown = true
+        }
+        assert.isTrue(thrown, 'updateThreshold did not throw when trying to set 0 value')
+        resolve()
+      })
+    })
+
+    it('Non owner cant add value in threshold', () => {
+      return new Promise(async (resolve, reject) => {
+        let thrown = false
+        try {
+          await validator.updateThreshold(1, { from: accounts[4] })
+        } catch (error) {
+          thrown = true
+        }
+        assert.isTrue(thrown, 'updateThreshold did not throw when non-owner user trying to update threeshold')
+        resolve()
+      })
+    })
+
+    it('Owner should be able to update threshold value', () => {
+      return new Promise(async (resolve, reject) => {
+        let newThreshold = 2
+        await validator.updateThreshold(newThreshold, { from: OWNER })
+        let threshold = await validator.threshold()
+        assert.equal(threshold.valueOf(), newThreshold, 'Threshold value is not updated correctly')
+        resolve()
+      })
+    })
+
+    it('Owner should not be able to set threshold value greater than total validator count', () => {
+      return new Promise(async (resolve, reject) => {
+        let newThreshold = 4
+        let thrown = false
+        try {
+          await validator.updateThreshold(newThreshold, { from: OWNER })
+        } catch (error) {
+          thrown = true
+        }
+        assert.isTrue(thrown, 'Owner should not be able to set threshold value greater than total validator count')
+        newThreshold = 3
+        await validator.updateThreshold(newThreshold, { from: OWNER })
+        let threshold = await validator.threshold()
+        assert.equal(threshold.valueOf(), newThreshold, 'Threshold value is not updated correctly')
 
         resolve()
       })
