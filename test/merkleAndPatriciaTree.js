@@ -23,7 +23,6 @@
     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-const PatriciaTree = artifacts.require('PatriciaTree')
 const MerkleTree = artifacts.require('MerkleTree')
 const MerkleTreeJs = require('merkletreejs')
 const MerkleLib = require('merkle-lib')
@@ -37,10 +36,8 @@ function sha256 (data) {
 
 contract('PatriciaTree', accounts => {
   const OWNER = accounts[0]
-  var patriciaTree
   var merkleTree
   beforeEach(async () => {
-    patriciaTree = await PatriciaTree.new({from: OWNER})
     merkleTree = await MerkleTree.new({from: OWNER})
   })
 
@@ -105,52 +102,6 @@ contract('PatriciaTree', accounts => {
       console.log('root=', await merkleTree.root())
       console.log('buffer to string of a', sha256('a').toString('hex'))
       console.log('buffer to string of a', sha256('b').toString('hex'))
-      resolve()
-    })
-  })
-
-  it('Check gas, path and verify path in PatriciaTree', () => {
-    return new Promise(async (resolve, reject) => {
-      let tx = await patriciaTree.insert('one', 'one')
-      console.log('Gas used to insert a new leaf')
-      console.log(tx.receipt.gasUsed)
-      console.log(await web3.eth.getTransactionReceipt(tx))
-      tx = await patriciaTree.insert('two', 'two')
-      console.log('Gas used to insert a new leaf')
-      console.log(tx.receipt.gasUsed)
-      console.log(await web3.eth.getTransactionReceipt(tx))
-      tx = await patriciaTree.insert('three', 'three')
-      console.log('Gas used to insert a new leaf')
-      console.log(tx.receipt.gasUsed)
-      console.log(await web3.eth.getTransactionReceipt(tx))
-      tx = await patriciaTree.insert('four', 'four')
-      console.log('Gas used to insert a new leaf')
-      console.log(tx.receipt.gasUsed)
-      console.log(await web3.eth.getTransactionReceipt(tx))
-
-      // Get proof
-      var proof = await patriciaTree.getProof('one')
-      console.log('siblings', proof[1])
-      tx = await patriciaTree.insert('one', 'two')
-      console.log('Gas used to update a leaf')
-      console.log(tx.receipt.gasUsed)
-      proof = await patriciaTree.getProof('two')
-      console.log('siblings', proof[1])
-      let root = await patriciaTree.root()
-      try {
-        await patriciaTree.verifyProof(root, 'two', 'two', proof[0], proof[1])
-        console.log('verify done successfully')
-      } catch (error) {
-        console.log('verify failed')
-      }
-
-      try {
-        await patriciaTree.verifyProof(root, 'two', 'sdf', proof[0], proof[1])
-        console.log('verify done successfully')
-      } catch (error) {
-        console.log('verify failed')
-      }
-
       resolve()
     })
   })
