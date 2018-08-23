@@ -1734,11 +1734,10 @@ contract TokenPorter is ITokenPorter, Owned {
     uint public importSequence = 1;
     bytes32[] public exportedBurns;
     uint[] public supplyOnAllChains = new uint[](6);
+    mapping (bytes32 => bytes32) public merkleRoots;
 
     /// @notice mapping that tracks valid destination chains for export
     mapping(bytes8 => address) public destinationChains;
-    
-    mapping(bytes32 => uint) public merkleRoots;
 
     event LogImportRequest(bytes8 originChain, uint indexed burnSequence, bytes32 indexed currentBurnHash,
     bytes32 prevBurnHash);
@@ -1828,7 +1827,7 @@ contract TokenPorter is ITokenPorter, Owned {
         require(_addresses.length == 2);
         require(_burnHashes.length == 2);
         require(validator.isReceiptValid(_originChain, _destinationChain, _addresses, _extraData, _burnHashes, 
-        _supplyOnAllChains, _importData, _proof));
+        _supplyOnAllChains, _importData));
         require(_destinationChain == auctions.chain());
         uint amountToImport = _importData[1].add(_importData[2]);
         require(amountToImport.add(token.totalSupply()) <= auctions.globalMetSupply());
@@ -1836,7 +1835,7 @@ contract TokenPorter is ITokenPorter, Owned {
         if (_importData[1] == 0) {
             return false;
         }
-        merkleRoots[_burnHashes[1]] = 1111;
+        merkleRoots[_burnHashes[1]] = bytesToBytes32(_proof);
         emit LogImportRequest(_originChain, _importData[6], _burnHashes[1], _burnHashes[0]);
         return true;
     }
@@ -1909,6 +1908,15 @@ contract TokenPorter is ITokenPorter, Owned {
 
         burnSequence = burnSequence + 1;
         return true;
+    }
+
+    function bytesToBytes32(bytes b) private pure returns (bytes32) {
+        bytes32 out;
+
+        for (uint i = 0; i < 32; i++) {
+            out |= bytes32(b[i] & 0xFF) >> (i * 8);
+        }
+        return out;
     }
 }    
 
@@ -2002,13 +2010,13 @@ contract Validator is Owned {
     /// _importData[6] is _burnSequence, _importData[7] is _dailyAuctionStartTime
     /// @param _proof proof
     function validateHash(bytes8 _originChain, bytes8 _destinationChain, address[] _addresses, bytes _extraData, 
-        bytes32[] _burnHashes, uint[] _supplyOnAllChains, uint[] _importData, bytes _proof) public {
+        bytes32[] _burnHashes, uint[] _supplyOnAllChains, uint[] _importData, bytes32[] _proof) public {
         require(isValidator[msg.sender]);
         require(_importData.length == 8);
         require(_addresses.length == 2);
         require(_burnHashes.length == 2);
         require(isReceiptValid(_originChain, _destinationChain, _addresses, _extraData, _burnHashes, 
-        _supplyOnAllChains, _importData, _proof));
+        _supplyOnAllChains, _importData));
         require(_destinationChain == auctions.chain());
         uint amountToImport = _importData[1].add(_importData[2]);
         require(amountToImport.add(token.totalSupply()) <= auctions.globalMetSupply());
@@ -2049,7 +2057,7 @@ contract Validator is Owned {
 
     /// @notice validate export receipt is validat
     function isReceiptValid(bytes8 _originChain, bytes8 _destinationChain, address[] _addresses, bytes _extraData, 
-        bytes32[] _burnHashes, uint[] _supplyOnAllChain, uint[] _importData, bytes _proof) public view returns(bool) {
+        bytes32[] _burnHashes, uint[] _supplyOnAllChain, uint[] _importData) public view returns(bool) {
         // We want to validate that these hash to the provided hash as a safety check, 
         // then we want to know if the hash is Claimable. 
 
@@ -2083,7 +2091,7 @@ contract Validator is Owned {
         // _addresses[0] is _destMetronomeAddr and _addresses[1] is _recipAddr
 
         require(isReceiptValid(_originChain, _destinationChain, _addresses, _extraData, _burnHashes, 
-        _supplyOnAllChains, _importData, _proof));
+        _supplyOnAllChains, _importData));
 
         if (hashClaimable(_burnHashes[1])) {
             return true;
@@ -2095,6 +2103,14 @@ contract Validator is Owned {
     function claimHash(bytes32 hash) internal {
         require(hashClaimable(hash));
         hashClaimed[hash] = true;
+    }
+
+    function verifyProof(bytes32 _root, bytes32 _leaf, bytes32[] _proof) public view returns (bool) {
+        bytes32 _hash = _leaf;
+        for (uint i = 0; i < _proof.length; i++) {
+            _hash = sha256(_proof[i], _hash);
+        } 
+        return (_hash == _root);
     }
 
 }
