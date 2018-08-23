@@ -88,6 +88,7 @@ TEST=0
 LOCAL=1
 TIMESCALE=1
 CHAIN="eth"
+CHAIN_DIR=js/$CHAIN
 RPC=8545
 WS=8546
 PORT=33333
@@ -108,10 +109,10 @@ PRICE=2
 
 while [ "$1" != "" ]; do
   case $1 in
-    --live )          PARITY="parity --geth $RPCAPI  >log/parity.eth.log 2>log/parity.eth.err.log"
-      DEST="Eth Live Net"
+    --live )
       LIVE=1
       LOCAL=0
+      TEST=0
       ;;
     --test )
       LIVE=0
@@ -149,6 +150,7 @@ while [ "$1" != "" ]; do
       ;;  
     -c | --chain )    shift
       CHAIN=$1
+      CHAIN_DIR=js/$CHAIN
       ;;
     -t | --timescale )  shift
       TIMESCALE=$1
@@ -157,7 +159,7 @@ while [ "$1" != "" ]; do
       INTERACTIVE=1
       ;;
     --seed )
-      SEED=,js/$CHAIN/testStart.js
+      SEED=,$CHAIN_DIR/testStart.js
       ;;
     * )                     usage
       exit 1
@@ -173,7 +175,8 @@ then
   PORT=33333
   if [[ $LIVE = 1 ]]
   then
-    DEST="Eth Live Net"
+    echo "ETH live net deploy is not allowed."
+    exit 1
   elif [[ $TEST = 1 ]]
   then
      DATADIR=./parity/testnet/eth
@@ -209,6 +212,8 @@ fi
 if [[ $LIVE = 0 ]]; then
 #  PARITY="parity --geth --fat-db on --jsonrpc-port=$RPC --ws-port=$WS --port=$PORT --datadir=$DATADIR --tracing on  --pruning archive $CHAINARG $BOOTNODES $GASARGS > log/parity.$CHAIN.log 2>log/parity.$CHAIN.err.log"
   PARITY="parity --geth $RPCAPI --jsonrpc-port=$RPC --ws-port=$WS --port=$PORT --datadir=$DATADIR --tracing off  --pruning archive $CHAINARG $BOOTNODES $GASARGS > log/parity.$CHAIN.log 2>log/parity.$CHAIN.err.log"
+else
+  PARITY="parity --geth $RPCAPI $CHAINARG > log/parity.$CHAIN.log 2>log/parity.$CHAIN.err.log"
 fi
 
 PARITY_URL="http://127.0.0.1:$RPC"
@@ -248,8 +253,7 @@ fi
 read -p "Press enter to continue"
 
 echo "Cleaning up old deploy stuff..."
-rm js/$CHAIN/launched
-rm js/$CHAIN/metronome.js
+rm $CHAIN_DIR/metronome.js  2>/dev/null
 
 echo "Turning off Parity..."
 if [[ "$CHAIN" = "etc" ]] 
@@ -295,12 +299,12 @@ fi
 echo "Authorizing.."
 curl -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"personal_unlockAccount","params":["'$LOCAL_ETH'", "'$PASS'","0x3000"],"id":1}' $PARITY_URL
 
-OWNER_PASS='newOwner'
 if [[ $LOCAL = 1 ]] && [[ $OWNER_ADDRESS = 0x0 ]]
 then 
     sleep 5
     echo "creating new account for the owner"
-    response=$(curl -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"personal_newAccount","params":["'$OWNER_PASS'"],"id":1}' $PARITY_URL)
+    PASS='newOwner'
+    response=$(curl -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"personal_newAccount","params":["'$PASS'"],"id":1}' $PARITY_URL)
     echo "$response"
     OWNER_ADDRESS=`echo "$response" | jq .result`
     OWNER_ADDRESS=${OWNER_ADDRESS//\"/}
@@ -312,19 +316,20 @@ sleep 5
 
 echo "Deploying on $DEST.."
 
-echo "" > js/$CHAIN/metronome.js
+TMP_DIR=$CHAIN_DIR/tmp
+mkdir $TMP_DIR
 
-echo -e "contracts/monolithic.sol:Proceeds\njs/$CHAIN/Proceeds.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
-echo -e "contracts/monolithic.sol:Auctions\njs/$CHAIN/Auctions.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
-echo -e "contracts/monolithic.sol:AutonomousConverter\njs/$CHAIN/AutonomousConverter.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
-echo -e "contracts/monolithic.sol:SmartToken\njs/$CHAIN/SmartToken.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
-echo -e "contracts/monolithic.sol:METToken\njs/$CHAIN/METToken.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
-echo -e "contracts/monolithic.sol:TokenPorter\njs/$CHAIN/TokenPorter.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
-echo -e "contracts/monolithic.sol:Validator\njs/$CHAIN/Valiator.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
-cat js/$CHAIN/Proceeds.js js/$CHAIN/Auctions.js js/$CHAIN/AutonomousConverter.js js/$CHAIN/SmartToken.js js/$CHAIN/METToken.js js/$CHAIN/TokenPorter.js js/$CHAIN/Valiator.js > js/$CHAIN/metronome.js
+echo "" > $CHAIN_DIR/metronome.js
 
-echo "ABIs and Contract info written to $CHAIN/metronome.js"
-echo "Supply: $SUPPLY"
+echo -e "contracts/monolithic.sol:Proceeds\n$TMP_DIR/Proceeds.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
+echo -e "contracts/monolithic.sol:Auctions\n$TMP_DIR/Auctions.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
+echo -e "contracts/monolithic.sol:AutonomousConverter\n$TMP_DIR/AutonomousConverter.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
+echo -e "contracts/monolithic.sol:SmartToken\n$TMP_DIR/SmartToken.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
+echo -e "contracts/monolithic.sol:METToken\n$TMP_DIR/METToken.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
+echo -e "contracts/monolithic.sol:TokenPorter\n$TMP_DIR/TokenPorter.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
+echo -e "contracts/monolithic.sol:Validator\n$TMP_DIR/Valiator.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
+cat $TMP_DIR/Proceeds.js $TMP_DIR/Auctions.js $TMP_DIR/AutonomousConverter.js $TMP_DIR/SmartToken.js $TMP_DIR/METToken.js $TMP_DIR/TokenPorter.js $TMP_DIR/Valiator.js > $CHAIN_DIR/metronome.js
+rm -r $TMP_DIR
 
 #Reading founder list
 foundersArray="[]"
@@ -349,7 +354,8 @@ if [[ $LOCAL = 1 ]]  && [[ $VALIDATORS = "[]" ]]; then
   VALIDATORS="['$OWNER_ADDRESS', '$LOCAL_ETH', '$OWNER_ADDRESS']"
   echo "VALIDATORS $VALIDATORS"
 fi  
-cat <<EOF > js/$CHAIN/const.js
+
+cat <<EOF > $CHAIN_DIR/const.js
 // File generated by deploy -- edits will get overwritten!
 
 var PRICE = $PRICE
@@ -360,16 +366,17 @@ var TIMESCALE = $TIMESCALE
 var MINPRICE = 3300000000000
 var ETHER_ADDR = '$LOCAL_ETH'
 var OWNER_ADDRESS = '$OWNER_ADDRESS'
-var OWNER_PASS = '$OWNER_PASS'
+var OWNER_PASS = '$PASS'
 var VALIDATORS = $VALIDATORS
 $foundersArray
 EOF
-PRELOAD="--preload js/$CHAIN/metronome.js,js/$CHAIN/const.js,js/common.js,js/$CHAIN/initMetronome.js"
+
+PRELOAD="--preload $CHAIN_DIR/metronome.js,$CHAIN_DIR/const.js,js/common.js,$CHAIN_DIR/initMetronome.js"
 
 # Local with interactive will deploy, init and launch Metronome.
 if [[ $LOCAL = 1 ]] && [[ $INTERACTIVE = 1 ]]
 then
-  geth attach $PARITY_URL $PRELOAD,js/$CHAIN/launchMetronome.js$SEED
+  geth attach $PARITY_URL $PRELOAD,$CHAIN_DIR/launchMetronome.js$SEED
   exit 0
 fi
 
