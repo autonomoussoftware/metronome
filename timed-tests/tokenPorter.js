@@ -56,13 +56,15 @@ contract('TokenPorter', accounts => {
       burnHashes.push(await tokenPorter.exportedBurns(i))
       i++
     }
-    const leaves = burnHashes.map(x => sha256(x))
+    const leaves = burnHashes.map(x => Buffer.from(x.slice(2), 'hex'))
+
     const tree = new MerkleTreeJs(leaves, sha256)
     var buffer = tree.getProof(leaves[leaves.length - 1])
     let merkleProof = []
     for (let i = 0; i < buffer.length; i++) {
       merkleProof.push('0x' + ((buffer[i].data).toString('hex')))
     }
+
     return {
       addresses: [logExportReceipt.destinationMetronomeAddr, logExportReceipt.destinationRecipientAddr],
       burnHashes: [logExportReceipt.prevBurnHash, logExportReceipt.currentBurnHash],
@@ -719,10 +721,15 @@ contract('TokenPorter', accounts => {
         let logExportReceipt = decoder(tx.receipt.logs)[0]
 
         let importDataObj = await prepareImportData(tokenPorter, tx)
+
+        // let verified = await etcValidator.verifyProof(importDataObj.root, importDataObj.burnHashes[1], importDataObj.merkelProof)
+        // console.log('verified = ', verified)
+
         await TestRPCTime.timeTravel(20 * SECS_IN_DAY)
         await TestRPCTime.mineBlock()
         tx = await etcMetToken.importMET(web3.fromAscii('ETH'), logExportReceipt.destinationChain, importDataObj.addresses, logExportReceipt.extraData,
           importDataObj.burnHashes, logExportReceipt.supplyOnAllChains, importDataObj.importData, importDataObj.root)
+
         await TestRPCTime.timeTravel(10)
         await TestRPCTime.mineBlock()
         // Before Minting

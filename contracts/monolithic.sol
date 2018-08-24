@@ -2027,6 +2027,7 @@ contract Validator is Owned {
             tokenPorter.mintToken(_originChain, _addresses[1], _importData[1], _importData[2], 
             _extraData, _burnHashes[1], _burnHashes[0]);
         }
+        require(verifyProof(tokenPorter.merkleRoots(_burnHashes[1]), _burnHashes[1], _proof));
         emit LogAttestation(_burnHashes[1], msg.sender, true);
     }
 
