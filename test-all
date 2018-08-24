@@ -32,5 +32,6 @@ npm run ganache && \
 npm run ganache:subs && \
 npm run ganache:ac &&  \
 npm run ganache:proceeds && \
-npm run ganache:tokenLocker
+npm run ganache:tokenLocker && \
+npm run ganache:tokenPorter
 exit 0
