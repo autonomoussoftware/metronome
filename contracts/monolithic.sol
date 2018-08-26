@@ -1735,7 +1735,7 @@ contract TokenPorter is ITokenPorter, Owned {
     bytes32[] public exportedBurns;
     uint[] public supplyOnAllChains = new uint[](6);
     mapping (bytes32 => bytes32) public merkleRoots;
-
+    mapping (bytes32 => bytes32) public mintHashes;
     /// @notice mapping that tracks valid destination chains for export
     mapping(bytes8 => address) public destinationChains;
 
@@ -1826,31 +1826,34 @@ contract TokenPorter is ITokenPorter, Owned {
         require(_importData.length == 8);
         require(_addresses.length == 2);
         require(_burnHashes.length == 2);
-        require(validator.isReceiptValid(_originChain, _destinationChain, _addresses, _extraData, _burnHashes, 
+        require(isReceiptValid(_originChain, _destinationChain, _addresses, _extraData, _burnHashes, 
         _supplyOnAllChains, _importData));
         require(_destinationChain == auctions.chain());
-        uint amountToImport = _importData[1].add(_importData[2]);
-        require(amountToImport.add(token.totalSupply()) <= auctions.globalMetSupply());
         require(_addresses[0] == address(token));
+        require(isGlobalSupplyValid(_importData[1], _importData[2]));
+        
         if (_importData[1] == 0) {
             return false;
         }
         merkleRoots[_burnHashes[1]] = bytesToBytes32(_proof);
+        mintHashes[_burnHashes[1]] = keccak256(_originChain, _addresses[1], _importData[1], _importData[2]);
         emit LogImportRequest(_originChain, _importData[6], _burnHashes[1], _burnHashes[0]);
         return true;
     }
 
     function mintToken(bytes8 originChain, address destinationRecipientAddr, uint amountImported, 
-        uint fee, bytes extraData, bytes32 currentHash, bytes32 prevHash) public {
+        uint fee, bytes extraData, bytes32 currentHash, bytes32 prevHash) public returns (bool) {
         require(msg.sender == address(validator));
         require(amountImported > 0);
+        require(isGlobalSupplyValid(amountImported, fee));
         if (importSequence == 1 && token.totalSupply() == 0) {
             auctions.prepareAuctionForNonOGChain();
         }
-        token.mint(destinationRecipientAddr, amountImported);
+        require(token.mint(destinationRecipientAddr, amountImported));
         LogImport(originChain, destinationRecipientAddr, amountImported, fee, extraData, 
         importSequence, currentHash, prevHash);
         importSequence++;
+        return true;
     }
 
     /// @notice Export MET tokens from this chain to another chain.
@@ -1918,6 +1921,34 @@ contract TokenPorter is ITokenPorter, Owned {
         }
         return out;
     }
+
+    //TODO: what to do with fee? should it be part of global supply check?
+    /// @notice Check global supply is still valid with current import amount and fee
+    function isGlobalSupplyValid(uint amount, uint fee) private view returns (bool) {
+        uint amountToImport = amount.add(fee);
+        return (amountToImport.add(token.totalSupply()) <= auctions.globalMetSupply());
+    }
+
+    /// @notice validate the export receipt
+    function isReceiptValid(bytes8 _originChain, bytes8 _destinationChain, address[] _addresses, bytes _extraData, 
+        bytes32[] _burnHashes, uint[] _supplyOnAllChain, uint[] _importData) private view returns(bool) {
+
+        // Due to stack too deep error and limitation in using number of local 
+        // variables we had to use array here.
+        // _importData[0] is _blockTimestamp, _importData[1] is _amount, _importData[2] is _fee,
+        // _importData[3] is _burnedAtTick, _importData[4] is _genesisTime,
+        // _importData[5] is _dailyMintable, _importData[6] is _burnSequence,
+        // _addresses[0] is _destMetronomeAddr and _addresses[1] is _recipAddr
+        // _burnHashes[0] is previous burnHash, _burnHashes[1] is current burnHash
+
+        if (_burnHashes[1] == keccak256(_importData[0], _originChain, _destinationChain, _addresses[0], 
+            _addresses[1], _importData[1], _importData[3], _importData[4], _importData[5], _supplyOnAllChain[0], 
+            _extraData, _burnHashes[0])) {
+            return true;
+        }
+        
+        return false;
+    }
 }    
 
 
@@ -1936,6 +1967,7 @@ contract Validator is Owned {
     Auctions public auctions;
 
     mapping (bytes32 => bool) public hashClaimed;
+    mapping (bytes32 => uint) public voteCount;
 
     uint public threshold = 1;
 
@@ -1999,43 +2031,41 @@ contract Validator is Owned {
     }
 
     /// @notice Off chain validator call validate hash function to validate and attest the hash. 
+    /// @param _burnHash current burnHash
+    /// @param _preBurnHash previous burnHash
     /// @param _originChain source chain
-    /// @param _destinationChain destination chain name
-    /// @param _addresses _addresses[0] is destMetronomeAddr and _addresses[1] is recipientAddr
-    /// @param _extraData extra information for import
-    /// @param _burnHashes _burnHashes[0] is previous burnHash, _burnHashes[1] is current burnHash
-    /// @param _supplyOnAllChains MET supply on all supported chains
-    /// @param _importData _importData[0] is _blockTimestamp, _importData[1] is _amount, _importData[2] is _fee
-    /// _importData[3] is _burnedAtTick, _importData[4] is _genesisTime, _importData[5] is _dailyMintable
-    /// _importData[6] is _burnSequence, _importData[7] is _dailyAuctionStartTime
+    /// @param _recipientAddr recipientAddr
+    /// @param _amount amount to import
+    /// @param _fee fee for import-export
     /// @param _proof proof
-    function validateHash(bytes8 _originChain, bytes8 _destinationChain, address[] _addresses, bytes _extraData, 
-        bytes32[] _burnHashes, uint[] _supplyOnAllChains, uint[] _importData, bytes32[] _proof) public {
+    /// @param _extraData extra information for import
+    function attestHash(bytes32 _burnHash, bytes32 _preBurnHash, bytes8 _originChain, address _recipientAddr, uint _amount, uint _fee, bytes32[] _proof, bytes _extraData) public {
         require(isValidator[msg.sender]);
-        require(_importData.length == 8);
-        require(_addresses.length == 2);
-        require(_burnHashes.length == 2);
-        require(isReceiptValid(_originChain, _destinationChain, _addresses, _extraData, _burnHashes, 
-        _supplyOnAllChains, _importData));
-        require(_destinationChain == auctions.chain());
-        uint amountToImport = _importData[1].add(_importData[2]);
-        require(amountToImport.add(token.totalSupply()) <= auctions.globalMetSupply());
-        require(_addresses[0] == address(token));
-        hashAttestations[_burnHashes[1]][msg.sender] = true;
-        if (hashClaimable(_burnHashes[1])) {
-            claimHash(_burnHashes[1]);
-            tokenPorter.mintToken(_originChain, _addresses[1], _importData[1], _importData[2], 
-            _extraData, _burnHashes[1], _burnHashes[0]);
+        require(_recipientAddr != 0x0);
+        require(_amount != 0);
+        require(_proof.length != 0);
+        require(_burnHash != 0x0);
+        require(_originChain != 0x0);
+        require(_amount.add(_fee).add(token.totalSupply()) <= auctions.globalMetSupply()); //TODO: should we check this on mint only?
+        bytes32 mintHash = keccak256(_originChain, _recipientAddr, _amount, _fee); //TODO: I think we can move this check before mint
+        require(mintHash == tokenPorter.mintHashes(_burnHash));
+        require(verifyProof(tokenPorter.merkleRoots(_burnHash), _burnHash, _proof));
+        hashAttestations[_burnHash][msg.sender] = true;
+        voteCount[_burnHash]++;
+        emit LogAttestation(_burnHash, msg.sender, true);
+        if (hashClaimable(_burnHash)) { //TODO: hashClaimable has loop inside, should we find alternate?
+            require(tokenPorter.mintToken(_originChain, _recipientAddr, _amount, _fee, 
+                _extraData, _burnHash, _preBurnHash));
+            //claimHash(_burnHash);
+            hashClaimed[_burnHash] = true; // we should claim after minting
         }
-        require(verifyProof(tokenPorter.merkleRoots(_burnHashes[1]), _burnHashes[1], _proof));
-        emit LogAttestation(_burnHashes[1], msg.sender, true);
     }
 
     /// @notice off chain validator can invalidate hash
     /// @param hash Burn hash
-    function invalidateHash(bytes32 hash) public {
+    function refuteHash(bytes32 hash) public {
         require(isValidator[msg.sender]);
-        require(!hashClaimed[hash]);
+        require(!hashClaimed[hash]); //TODO: why this check, shouldn't we accept refute after claim too?
         hashAttestations[hash][msg.sender] = false;
         emit LogAttestation(hash, msg.sender, false);
     }
@@ -2044,69 +2074,48 @@ contract Validator is Owned {
     /// @param hash burn hash
     /// @return true/false to check whether given hash can be claimed for import
     function hashClaimable(bytes32 hash) public view returns(bool) {
-        if (hashClaimed[hash]) { return false; }
+        if (hashClaimed[hash] || voteCount[hash] < threshold) { return false; }
 
-        uint8 count = 0;
+        // uint8 count = 0;
 
-        for (uint8 i = 0; i < validators.length; i++) {
-            if (hashAttestations[hash][validators[i]]) { count++;} 
-        }
+        // for (uint8 i = 0; i < validators.length; i++) {
+        //     if (hashAttestations[hash][validators[i]]) { count++;} 
+        // }
 
-        if (count >= threshold) { return true; }
-        return false;
+        // if (count >= threshold) { return true; }
+        return true;
     }
 
-    /// @notice validate export receipt is validat
-    function isReceiptValid(bytes8 _originChain, bytes8 _destinationChain, address[] _addresses, bytes _extraData, 
-        bytes32[] _burnHashes, uint[] _supplyOnAllChain, uint[] _importData) public view returns(bool) {
-        // We want to validate that these hash to the provided hash as a safety check, 
-        // then we want to know if the hash is Claimable. 
+    // /// @notice Check export receipt is valid and claimable
+    // function isReceiptClaimable(bytes8 _originChain, bytes8 _destinationChain, address[] _addresses, bytes _extraData, 
+    //     bytes32[] _burnHashes, uint[] _supplyOnAllChains, uint[] _importData, bytes _proof) public view returns(bool) {
+    //     // We want to validate that these hash to the provided hash as a safety check, 
+    //     // then we want to know if the hash is Claimable. 
 
-        // Due to stack too deep error and limitation in using number of local 
-        // variables we have to use uint array here. 
-        // _importData[0] is _blockTimestamp, _importData[1] is _amount, _importData[2] is _fee,
-        // _importData[3] is _burnedAtTick, _importData[4] is _genesisTime,
-        // _importData[5] is _dailyMintable, _importData[6] is _burnSequence,
-        // _addresses[0] is _destMetronomeAddr and _addresses[1] is _recipAddr
+    //     // Due to stack too deep error and limitation in using number of local 
+    //     // variables we have to use uint array here. 
+    //     // _importData[0] is _blockTimestamp, _importData[1] is _amount, _importData[2] is _fee,
+    //     // _importData[3] is _burnedAtTick, _importData[4] is _genesisTime,
+    //     // _importData[5] is _dailyMintable, _importData[6] is _burnSequence,
+    //     // _addresses[0] is _destMetronomeAddr and _addresses[1] is _recipAddr
 
-        if (_burnHashes[1] == keccak256(_importData[0], _originChain, _destinationChain, _addresses[0], 
-            _addresses[1], _importData[1], _importData[3], _importData[4], _importData[5], _supplyOnAllChain[0], 
-            _extraData, _burnHashes[0])) {
-            return true;
-        }
+    //     require(isReceiptValid(_originChain, _destinationChain, _addresses, _extraData, _burnHashes, 
+    //     _supplyOnAllChains, _importData));
+
+    //     if (hashClaimable(_burnHashes[1])) {
+    //         return true;
+    //     } 
         
-        return false;
-    }
+    //     return false;
+    // }
 
-    /// @notice Check export receipt is valid and claimable
-    function isReceiptClaimable(bytes8 _originChain, bytes8 _destinationChain, address[] _addresses, bytes _extraData, 
-        bytes32[] _burnHashes, uint[] _supplyOnAllChains, uint[] _importData, bytes _proof) public view returns(bool) {
-        // We want to validate that these hash to the provided hash as a safety check, 
-        // then we want to know if the hash is Claimable. 
+    // function claimHash(bytes32 hash) internal {
+    //     hashClaimed[hash] = true;
+    // }
 
-        // Due to stack too deep error and limitation in using number of local 
-        // variables we have to use uint array here. 
-        // _importData[0] is _blockTimestamp, _importData[1] is _amount, _importData[2] is _fee,
-        // _importData[3] is _burnedAtTick, _importData[4] is _genesisTime,
-        // _importData[5] is _dailyMintable, _importData[6] is _burnSequence,
-        // _addresses[0] is _destMetronomeAddr and _addresses[1] is _recipAddr
+    function verifyProof(bytes32 _root, bytes32 _leaf, bytes32[] _proof) public pure returns (bool) {
+        require(_root != 0x0 && _leaf != 0x0 && _proof.length != 0);
 
-        require(isReceiptValid(_originChain, _destinationChain, _addresses, _extraData, _burnHashes, 
-        _supplyOnAllChains, _importData));
-
-        if (hashClaimable(_burnHashes[1])) {
-            return true;
-        } 
-        
-        return false;
-    }
-
-    function claimHash(bytes32 hash) internal {
-        require(hashClaimable(hash));
-        hashClaimed[hash] = true;
-    }
-
-    function verifyProof(bytes32 _root, bytes32 _leaf, bytes32[] _proof) public view returns (bool) {
         bytes32 _hash = _leaf;
         for (uint i = 0; i < _proof.length; i++) {
             _hash = sha256(_proof[i], _hash);
@@ -2130,7 +2139,7 @@ contract MerkleTree {
         exportedBurns = hashes;
     }
 
-    function getExportedBurnHashes() public view returns (bytes32[]) {
+    function getExportedBurnHashes() public view returns (bytes32[]) { 
         return exportedBurns;
     }
 
