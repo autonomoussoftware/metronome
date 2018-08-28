@@ -1972,7 +1972,6 @@ contract Validator is Owned {
     Auctions public auctions;
 
     mapping (bytes32 => bool) public hashClaimed;
-    mapping (bytes32 => uint) public voteCount;
 
     uint public threshold = 1;
 
@@ -2053,9 +2052,8 @@ contract Validator is Owned {
         require(_originChain != 0x0);
         require(verifyProof(tokenPorter.merkleRoots(_burnHash), _burnHash, _proof));
         hashAttestations[_burnHash][msg.sender] = true;
-        voteCount[_burnHash]++;
         emit LogAttestation(_burnHash, msg.sender, true);
-        if (hashClaimable(_burnHash)) {
+        if (hashClaimable(_burnHash)) { //TODO: how to avoid using loop for hashClaimable
             bytes32 mintHash = keccak256(_originChain, _recipientAddr, _amount, _fee);
             // Check validators sending same reciepent and amount which was sent during import request.
             require(mintHash == tokenPorter.mintHashes(_burnHash));
@@ -2078,8 +2076,15 @@ contract Validator is Owned {
     /// @param hash burn hash
     /// @return true/false to check whether given hash can be claimed for import
     function hashClaimable(bytes32 hash) public view returns(bool) {
-        if (hashClaimed[hash] || voteCount[hash] < threshold) { return false; }
-        return true;
+        if (hashClaimed[hash]) { return false; }
+
+        uint8 count = 0;
+        for (uint8 i = 0; i < validators.length; i++) {
+            if (hashAttestations[hash][validators[i]]) { count++;} 
+        }
+        if (count >= threshold) { return true; }
+
+        return false;
     }
 
     function verifyProof(bytes32 _root, bytes32 _leaf, bytes32[] _proof) public pure returns (bool) {
