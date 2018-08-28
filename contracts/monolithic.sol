@@ -1739,8 +1739,8 @@ contract TokenPorter is ITokenPorter, Owned {
     /// @notice mapping that tracks valid destination chains for export
     mapping(bytes8 => address) public destinationChains;
 
-    event LogImportRequest(bytes8 originChain, uint indexed burnSequence, bytes32 indexed currentBurnHash,
-    bytes32 prevBurnHash);
+    event LogImportRequest(bytes8 originChain, bytes32 indexed currentBurnHash, address indexed destinationRecipientAddr, 
+        uint amountToImport, uint fee, bytes extraData);
     
     event LogImport(bytes8 originChain, address indexed destinationRecipientAddr, uint amountImported, uint fee,
     bytes extraData, uint indexed importSequence, bytes32 indexed currentHash, bytes32 prevHash);
@@ -1832,12 +1832,17 @@ contract TokenPorter is ITokenPorter, Owned {
         require(_addresses[0] == address(token));
         require(isGlobalSupplyValid(_importData[1], _importData[2]));
         
+        // Todo: shall we revert here instead of return false?
         if (_importData[1] == 0) {
             return false;
         }
+
+        // We do not want to change already deployed interface now hence accepting '_proof' as bytes and converting here to bytes32.
         merkleRoots[_burnHashes[1]] = bytesToBytes32(_proof);
+
+        // mint hash is used for further validation before minting and after attestation by off chain validators. 
         mintHashes[_burnHashes[1]] = keccak256(_originChain, _addresses[1], _importData[1], _importData[2]);
-        emit LogImportRequest(_originChain, _importData[6], _burnHashes[1], _burnHashes[0]);
+        emit LogImportRequest(_originChain, _burnHashes[1], _addresses[1], _importData[1], _importData[2], _extraData);
         return true;
     }
 
@@ -2030,7 +2035,7 @@ contract Validator is Owned {
         token = METToken(_tokenAddr);
     }
 
-    /// @notice Off chain validator call validate hash function to validate and attest the hash. 
+    /// @notice Off chain validator call this function to validate and attest the hash. 
     /// @param _burnHash current burnHash
     /// @param _preBurnHash previous burnHash
     /// @param _originChain source chain
@@ -2039,25 +2044,24 @@ contract Validator is Owned {
     /// @param _fee fee for import-export
     /// @param _proof proof
     /// @param _extraData extra information for import
-    function attestHash(bytes32 _burnHash, bytes32 _preBurnHash, bytes8 _originChain, address _recipientAddr, uint _amount, uint _fee, bytes32[] _proof, bytes _extraData) public {
+    function attestHash(bytes32 _burnHash, bytes32 _preBurnHash, bytes8 _originChain, address _recipientAddr, uint _amount, uint _fee,  bytes32[] _proof, bytes _extraData) public {
         require(isValidator[msg.sender]);
         require(_recipientAddr != 0x0);
         require(_amount != 0);
         require(_proof.length != 0);
         require(_burnHash != 0x0);
         require(_originChain != 0x0);
-        require(_amount.add(_fee).add(token.totalSupply()) <= auctions.globalMetSupply()); //TODO: should we check this on mint only?
-        bytes32 mintHash = keccak256(_originChain, _recipientAddr, _amount, _fee); //TODO: I think we can move this check before mint
-        require(mintHash == tokenPorter.mintHashes(_burnHash));
         require(verifyProof(tokenPorter.merkleRoots(_burnHash), _burnHash, _proof));
         hashAttestations[_burnHash][msg.sender] = true;
         voteCount[_burnHash]++;
         emit LogAttestation(_burnHash, msg.sender, true);
-        if (hashClaimable(_burnHash)) { //TODO: hashClaimable has loop inside, should we find alternate?
+        if (hashClaimable(_burnHash)) {
+            bytes32 mintHash = keccak256(_originChain, _recipientAddr, _amount, _fee);
+            // Check validators sending same reciepent and amount which was sent during import request.
+            require(mintHash == tokenPorter.mintHashes(_burnHash));
             require(tokenPorter.mintToken(_originChain, _recipientAddr, _amount, _fee, 
                 _extraData, _burnHash, _preBurnHash));
-            //claimHash(_burnHash);
-            hashClaimed[_burnHash] = true; // we should claim after minting
+            hashClaimed[_burnHash] = true;
         }
     }
 
@@ -2065,7 +2069,7 @@ contract Validator is Owned {
     /// @param hash Burn hash
     function refuteHash(bytes32 hash) public {
         require(isValidator[msg.sender]);
-        require(!hashClaimed[hash]); //TODO: why this check, shouldn't we accept refute after claim too?
+        require(!hashClaimed[hash]);
         hashAttestations[hash][msg.sender] = false;
         emit LogAttestation(hash, msg.sender, false);
     }
@@ -2075,43 +2079,8 @@ contract Validator is Owned {
     /// @return true/false to check whether given hash can be claimed for import
     function hashClaimable(bytes32 hash) public view returns(bool) {
         if (hashClaimed[hash] || voteCount[hash] < threshold) { return false; }
-
-        // uint8 count = 0;
-
-        // for (uint8 i = 0; i < validators.length; i++) {
-        //     if (hashAttestations[hash][validators[i]]) { count++;} 
-        // }
-
-        // if (count >= threshold) { return true; }
         return true;
     }
-
-    // /// @notice Check export receipt is valid and claimable
-    // function isReceiptClaimable(bytes8 _originChain, bytes8 _destinationChain, address[] _addresses, bytes _extraData, 
-    //     bytes32[] _burnHashes, uint[] _supplyOnAllChains, uint[] _importData, bytes _proof) public view returns(bool) {
-    //     // We want to validate that these hash to the provided hash as a safety check, 
-    //     // then we want to know if the hash is Claimable. 
-
-    //     // Due to stack too deep error and limitation in using number of local 
-    //     // variables we have to use uint array here. 
-    //     // _importData[0] is _blockTimestamp, _importData[1] is _amount, _importData[2] is _fee,
-    //     // _importData[3] is _burnedAtTick, _importData[4] is _genesisTime,
-    //     // _importData[5] is _dailyMintable, _importData[6] is _burnSequence,
-    //     // _addresses[0] is _destMetronomeAddr and _addresses[1] is _recipAddr
-
-    //     require(isReceiptValid(_originChain, _destinationChain, _addresses, _extraData, _burnHashes, 
-    //     _supplyOnAllChains, _importData));
-
-    //     if (hashClaimable(_burnHashes[1])) {
-    //         return true;
-    //     } 
-        
-    //     return false;
-    // }
-
-    // function claimHash(bytes32 hash) internal {
-    //     hashClaimed[hash] = true;
-    // }
 
     function verifyProof(bytes32 _root, bytes32 _leaf, bytes32[] _proof) public pure returns (bool) {
         require(_root != 0x0 && _leaf != 0x0 && _proof.length != 0);
@@ -2121,107 +2090,6 @@ contract Validator is Owned {
             _hash = sha256(_proof[i], _hash);
         } 
         return (_hash == _root);
-    }
-
-}
-
-
-/// @title simple Merkle tree contract to analyse gas usage and performance
-contract MerkleTree {
-    bytes32 public root;
-    bytes32[] exportedBurns;
-
-    function compareTwoHashes(bytes32 a, bytes32 b) view returns (bool) {
-        return (a < b);
-    }
-
-    function setExportedBurnHashes(bytes32[] hashes) public {
-        exportedBurns = hashes;
-    }
-
-    function getExportedBurnHashes() public view returns (bytes32[]) { 
-        return exportedBurns;
-    }
-
-    //@notice WIP. create merkle tree and set root 
-    function createMerkleTreeMethod1() public {
-        uint index = 0;
-        bytes32[] memory newHashes;
-        bytes32[] memory tempHashes;
-        
-        uint i = 0;
-        bytes32 left;
-        bytes32 right;
-
-        tempHashes = exportedBurns;
-        newHashes = new bytes32[]((tempHashes.length + 1) / 2);
-        while (tempHashes.length > 1) {
-            while (index < tempHashes.length) {
-                left = tempHashes[index];
-                index++;
-
-                right;
-                if (index != tempHashes.length) {
-                    right = tempHashes[index];
-                }
-                if (left < right) {
-                    newHashes[i] = sha256(left, right);
-                } else {
-                    newHashes[i] = sha256(right, left);
-                }
-                i++;
-                index++;
-            }
-            tempHashes = newHashes;
-            newHashes = new bytes32[](tempHashes.length / 2);
-            i = 0;
-            index = 0;
-        }
-        root = tempHashes[0];
-    }
-
-    //@notice WIP. create merkle tree and set root
-    function createMerkleTreeMethod2() public {
-        uint index = 0;
-        bytes32[] memory newHashes;
-        bytes32[] memory tempHashes;
-        
-        uint i = 0;
-        bytes32 left;
-        bytes32 right;
-
-        tempHashes = exportedBurns;
-        newHashes = new bytes32[]((tempHashes.length + 1) / 2);
-        bool isLeaf = true;
-        while (tempHashes.length > 1) {
-            while (index < tempHashes.length) {
-                left = tempHashes[index];
-                index++;
-
-                right;
-                if (index != tempHashes.length) {
-                    right = tempHashes[index];
-                }
-                newHashes[i] = sha256(left, right);
-                
-                i++;
-                index++;
-            }
-            isLeaf = false;
-            tempHashes = newHashes;
-            newHashes = new bytes32[](tempHashes.length / 2);
-            i = 0;
-            index = 0;
-        }
-        
-        root = tempHashes[0];
-    }
-
-    function sliceBytes32 (bytes32 data, uint offset) view returns (bytes32) {
-        if(offset == 1000) {
-            return data;
-        }
-        return (data << (offset * 8));
     }
 
 }
