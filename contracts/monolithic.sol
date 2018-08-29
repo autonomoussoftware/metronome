@@ -1807,7 +1807,8 @@ contract TokenPorter is ITokenPorter, Owned {
     }
 
     /// @notice Request for import MET tokens from another chain to this chain. 
-    /// Minting will be done after off chain validators validate
+    /// Minting will be done once off chain validators validate import request.
+    /// @param _originChain source chain name
     /// @param _destinationChain destination chain name
     /// @param _addresses _addresses[0] is destMetronomeAddr and _addresses[1] is recipientAddr
     /// @param _extraData extra information for import
@@ -1816,7 +1817,7 @@ contract TokenPorter is ITokenPorter, Owned {
     /// @param _importData _importData[0] is _blockTimestamp, _importData[1] is _amount, _importData[2] is _fee
     /// _importData[3] is _burnedAtTick, _importData[4] is _genesisTime, _importData[5] is _dailyMintable
     /// _importData[6] is _burnSequence, _importData[7] is _dailyAuctionStartTime
-    /// @param _proof proof
+    /// @param _proof merkle root
     /// @return true/false
     function importMET(bytes8 _originChain, bytes8 _destinationChain, address[] _addresses, bytes _extraData, 
         bytes32[] _burnHashes, uint[] _supplyOnAllChains, uint[] _importData, bytes _proof) public returns (bool)
@@ -1826,39 +1827,24 @@ contract TokenPorter is ITokenPorter, Owned {
         require(_importData.length == 8);
         require(_addresses.length == 2);
         require(_burnHashes.length == 2);
+
         require(isReceiptValid(_originChain, _destinationChain, _addresses, _extraData, _burnHashes, 
         _supplyOnAllChains, _importData));
+        
         require(_destinationChain == auctions.chain());
         require(_addresses[0] == address(token));
+        require(_importData[1] != 0);
         require(isGlobalSupplyValid(_importData[1], _importData[2]));
         
-        // Todo: shall we revert here instead of return false?
-        if (_importData[1] == 0) {
-            return false;
-        }
 
         // We do not want to change already deployed interface, hence accepting '_proof' 
-        // as bytes and converting here to bytes32.
+        // as bytes and converting into bytes32. Here _proof is merkle root.
         merkleRoots[_burnHashes[1]] = bytesToBytes32(_proof);
 
         // mint hash is used for further validation before minting and after attestation by off chain validators. 
         mintHashes[_burnHashes[1]] = keccak256(_originChain, _addresses[1], _importData[1], _importData[2]);
+        
         emit LogImportRequest(_originChain, _burnHashes[1], _addresses[1], _importData[1], _importData[2], _extraData);
-        return true;
-    }
-
-    function mintToken(bytes8 originChain, address destinationRecipientAddr, uint amountImported, 
-        uint fee, bytes extraData, bytes32 currentHash, bytes32 prevHash) public returns (bool) {
-        require(msg.sender == address(validator));
-        require(amountImported > 0);
-        require(isGlobalSupplyValid(amountImported, fee));
-        if (importSequence == 1 && token.totalSupply() == 0) {
-            auctions.prepareAuctionForNonOGChain();
-        }
-        require(token.mint(destinationRecipientAddr, amountImported));
-        emit LogImport(originChain, destinationRecipientAddr, amountImported, fee, extraData, 
-            importSequence, currentHash, prevHash);
-        importSequence++;
         return true;
     }
 
@@ -1919,6 +1905,38 @@ contract TokenPorter is ITokenPorter, Owned {
         return true;
     }
 
+    /// @notice mintToken will be called by validator contract only and that too only after hash attestation.
+    /// @param originChain origin chain from where these token burnt.
+    /// @param recipientAddress tokens will be minted for this address.
+    /// @param amount amount being imported/minted
+    /// @param fee fee paid during export
+    /// @param extraData any extra data related to export-import process.
+    /// @param currentHash current export hash from source/origin chain.
+    /// @return true/false indicating minting was successful or not
+    function mintToken(bytes8 originChain, address recipientAddress, uint amount, 
+        uint fee, bytes extraData, bytes32 currentHash, bytes32 prevHash) public returns (bool) {
+        require(msg.sender == address(validator));
+        require(originChain != 0x0);
+        require(recipientAddress != 0x0);
+        require(amount > 0);
+        require(currentHash != 0x0);
+
+        //Validate that mint data is same as the data received during import request.
+        require(mintHashes[currentHash] ==  keccak256(originChain, recipientAddress, amount, fee));
+
+        require(isGlobalSupplyValid(amount, fee));
+        
+        if (importSequence == 1 && token.totalSupply() == 0) {
+            auctions.prepareAuctionForNonOGChain();
+        }
+        
+        require(token.mint(recipientAddress, amount));
+        emit LogImport(originChain, recipientAddress, amount, fee, extraData, importSequence, currentHash, prevHash);
+        importSequence++;
+        return true;
+    }
+
+    /// @notice Convert bytes to bytes32
     function bytesToBytes32(bytes b) private pure returns (bytes32) {
         bytes32 out;
 
@@ -2037,7 +2055,7 @@ contract Validator is Owned {
 
     /// @notice Off chain validator call this function to validate and attest the hash. 
     /// @param _burnHash current burnHash
-    /// @param _preBurnHash previous burnHash
+    /// @param _preBurnHash previous burnHash TODO: do we really need this?
     /// @param _originChain source chain
     /// @param _recipientAddr recipientAddr
     /// @param _amount amount to import
@@ -2047,25 +2065,19 @@ contract Validator is Owned {
     function attestHash(bytes32 _burnHash, bytes32 _preBurnHash, bytes8 _originChain, address _recipientAddr, 
         uint _amount, uint _fee, bytes32[] _proof, bytes _extraData) public {
         require(isValidator[msg.sender]);
-        require(_recipientAddr != 0x0);
-        require(_amount != 0);
-        require(_proof.length != 0);
         require(_burnHash != 0x0);
-        require(_originChain != 0x0);
         require(verifyProof(tokenPorter.merkleRoots(_burnHash), _burnHash, _proof));
         hashAttestations[_burnHash][msg.sender] = true;
         emit LogAttestation(_burnHash, msg.sender, true);
+        
         if (hashClaimable(_burnHash)) { //TODO: how to avoid using loop for hashClaimable
-            bytes32 mintHash = keccak256(_originChain, _recipientAddr, _amount, _fee);
-            // Check validators sending same reciepent and amount which was sent during import request.
-            require(mintHash == tokenPorter.mintHashes(_burnHash));
             require(tokenPorter.mintToken(_originChain, _recipientAddr, _amount, _fee, 
                 _extraData, _burnHash, _preBurnHash));
             hashClaimed[_burnHash] = true;
         }
     }
 
-    /// @notice off chain validator can invalidate hash
+    /// @notice off chain validator can refute hash, if given export hash is not verified in origin chain.
     /// @param hash Burn hash
     function refuteHash(bytes32 hash) public {
         require(isValidator[msg.sender]);
@@ -2074,7 +2086,7 @@ contract Validator is Owned {
         emit LogAttestation(hash, msg.sender, false);
     }
 
-    /// @notice Check whether given hash has been validated and claimable for import
+    /// @notice Check whether given hash has been attested and claimable for import
     /// @param hash burn hash
     /// @return true/false to check whether given hash can be claimed for import
     function hashClaimable(bytes32 hash) public view returns(bool) {
@@ -2089,7 +2101,12 @@ contract Validator is Owned {
         return false;
     }
 
-    function verifyProof(bytes32 _root, bytes32 _leaf, bytes32[] _proof) public pure returns (bool) {
+    /// @notice verify that the given leaf is in merkle root.
+    /// @param _root merkle root
+    /// @param _leaf leaf node, current burn hash
+    /// @param _proof merkle path
+    /// @return true/false outcome of the verification.
+    function verifyProof(bytes32 _root, bytes32 _leaf, bytes32[] _proof) private pure returns (bool) {
         require(_root != 0x0 && _leaf != 0x0 && _proof.length != 0);
 
         bytes32 _hash = _leaf;
