@@ -1739,8 +1739,8 @@ contract TokenPorter is ITokenPorter, Owned {
     /// @notice mapping that tracks valid destination chains for export
     mapping(bytes8 => address) public destinationChains;
 
-    event LogImportRequest(bytes8 originChain, bytes32 indexed currentBurnHash, address indexed destinationRecipientAddr, 
-        uint amountToImport, uint fee, bytes extraData);
+    event LogImportRequest(bytes8 originChain, bytes32 indexed currentBurnHash, 
+        address indexed destinationRecipientAddr, uint amountToImport, uint fee, bytes extraData);
     
     event LogImport(bytes8 originChain, address indexed destinationRecipientAddr, uint amountImported, uint fee,
     bytes extraData, uint indexed importSequence, bytes32 indexed currentHash, bytes32 prevHash);
@@ -1837,7 +1837,8 @@ contract TokenPorter is ITokenPorter, Owned {
             return false;
         }
 
-        // We do not want to change already deployed interface now hence accepting '_proof' as bytes and converting here to bytes32.
+        // We do not want to change already deployed interface, hence accepting '_proof' 
+        // as bytes and converting here to bytes32.
         merkleRoots[_burnHashes[1]] = bytesToBytes32(_proof);
 
         // mint hash is used for further validation before minting and after attestation by off chain validators. 
@@ -1855,8 +1856,8 @@ contract TokenPorter is ITokenPorter, Owned {
             auctions.prepareAuctionForNonOGChain();
         }
         require(token.mint(destinationRecipientAddr, amountImported));
-        LogImport(originChain, destinationRecipientAddr, amountImported, fee, extraData, 
-        importSequence, currentHash, prevHash);
+        emit LogImport(originChain, destinationRecipientAddr, amountImported, fee, extraData, 
+            importSequence, currentHash, prevHash);
         importSequence++;
         return true;
     }
@@ -1936,7 +1937,7 @@ contract TokenPorter is ITokenPorter, Owned {
 
     /// @notice validate the export receipt
     function isReceiptValid(bytes8 _originChain, bytes8 _destinationChain, address[] _addresses, bytes _extraData, 
-        bytes32[] _burnHashes, uint[] _supplyOnAllChain, uint[] _importData) private view returns(bool) {
+        bytes32[] _burnHashes, uint[] _supplyOnAllChain, uint[] _importData) private pure returns(bool) {
 
         // Due to stack too deep error and limitation in using number of local 
         // variables we had to use array here.
@@ -2043,7 +2044,8 @@ contract Validator is Owned {
     /// @param _fee fee for import-export
     /// @param _proof proof
     /// @param _extraData extra information for import
-    function attestHash(bytes32 _burnHash, bytes32 _preBurnHash, bytes8 _originChain, address _recipientAddr, uint _amount, uint _fee,  bytes32[] _proof, bytes _extraData) public {
+    function attestHash(bytes32 _burnHash, bytes32 _preBurnHash, bytes8 _originChain, address _recipientAddr, 
+        uint _amount, uint _fee, bytes32[] _proof, bytes _extraData) public {
         require(isValidator[msg.sender]);
         require(_recipientAddr != 0x0);
         require(_amount != 0);
