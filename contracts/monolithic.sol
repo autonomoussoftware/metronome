@@ -1922,7 +1922,7 @@ contract TokenPorter is ITokenPorter, Owned {
         require(currentHash != 0x0);
 
         //Validate that mint data is same as the data received during import request.
-        require(mintHashes[currentHash] ==  keccak256(originChain, recipientAddress, amount, fee));
+        require(mintHashes[currentHash] == keccak256(originChain, recipientAddress, amount, fee));
 
         require(isGlobalSupplyValid(amount, fee));
         
