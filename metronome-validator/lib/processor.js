@@ -1,114 +1,58 @@
 
-function parseConfig (configStr) {
+function parseConfig (input) {
   try {
-    return JSON.parse(configStr)
+    return JSON.parse(input)
   } catch (e) {
     console.log('ERROR: Configuration file [config.json] is not a valid JSON!\n')
     process.exit(0)
   }
 }
 
-function parseMetronomeContractString (inputData) {
+function parseMetronomeContractString (input) {
   try {
     // var proceeds = inputData.slice((inputData.indexOf('var Proceeds = ') + 'var Proceeds = '.length), inputData.indexOf(');') + 1)
-    var startSubString = 'var Proceeds = '
-    var endSubString = ';'
-    var proceeds = fetchSubString(inputData, startSubString, endSubString)
-    var proceedsABI = fetchABISubString(proceeds)
-    var proceedAddress = fetchAddressSubString(proceeds)
     var contracts = {}
-    var contractObj = {}
-    contractObj['abi'] = proceedsABI
-    contractObj['address'] = proceedAddress
-    contracts['proceeds'] = contractObj
- 
-    inputData = inputData.replace(startSubString + proceeds + endSubString, '')
-    startSubString = 'var Auctions = '
-    var auctions = fetchSubString(inputData, startSubString, endSubString)
-    inputData = inputData.replace(startSubString + auctions + endSubString, '')
-    var auctionsABI = fetchABISubString(auctions)
-    var auctionsAddress = fetchAddressSubString(auctions)
-    contractObj = {}
-    contractObj['abi'] = auctionsABI
-    contractObj['address'] = auctionsAddress
-    contracts['auctions'] = contractObj
+    while (input.includes('var')) {
+      let contractName = fetchContactName(input)
+      let contractString = fetchContractString(input)
 
-    inputData = inputData.replace(startSubString + auctions + endSubString, '')
-    startSubString = 'var AutonomousConverter = '
-    var ac = fetchSubString(inputData, startSubString, endSubString)
-    inputData = inputData.replace(startSubString + ac + endSubString, '')
-    var acABI = fetchABISubString(ac)
-    var acAddress = fetchAddressSubString(ac)
-    contractObj = {}
-    contractObj['abi'] = acABI
-    contractObj['address'] = acAddress
-    contracts['ac'] = contractObj
+      let contractObj = {}
+      contractObj['abi'] = fetchAbi(contractString)
+      contractObj['address'] = fetchAddress(contractString)
+      contracts[contractName] = contractObj
 
-    inputData = inputData.replace(startSubString + ac + endSubString, '')
-    startSubString = 'var SmartToken = '
-    var smartToken = fetchSubString(inputData, startSubString, endSubString)
-    inputData = inputData.replace(startSubString + smartToken + endSubString, '')
-    var smartTokenABI = fetchABISubString(smartToken)
-    var smartTokenAddress = fetchAddressSubString(smartToken)
-    contractObj = {}
-    contractObj['abi'] = smartTokenABI
-    contractObj['address'] = smartTokenAddress
-    contracts['smartToken'] = contractObj
-
-    inputData = inputData.replace(startSubString + smartToken + endSubString, '')
-    startSubString = 'var METToken = '
-    var metToken = fetchSubString(inputData, startSubString, endSubString)
-    inputData = inputData.replace(startSubString + metToken + endSubString, '')
-    var metTokenABI = fetchABISubString(metToken)
-    var metTokenAddress = fetchAddressSubString(metToken)
-    contractObj = {}
-    contractObj['abi'] = metTokenABI
-    contractObj['address'] = metTokenAddress
-    contracts['metToken'] = contractObj
-
-    inputData = inputData.replace(startSubString + metToken + endSubString, '')
-    startSubString = 'var TokenPorter = '
-    var tokenPorter = fetchSubString(inputData, startSubString, endSubString)
-    inputData = inputData.replace(startSubString + tokenPorter + endSubString, '')
-    var tokenPorterABI = fetchABISubString(tokenPorter)
-    var tokenPorterAddress = fetchAddressSubString(tokenPorter)
-    contractObj = {}
-    contractObj['abi'] = tokenPorterABI
-    contractObj['address'] = tokenPorterAddress
-    contracts['tokenPorter'] = contractObj
-
-    inputData = inputData.replace(startSubString + tokenPorter + endSubString, '')
-    startSubString = 'var Validator = '
-    var validator = fetchSubString(inputData, startSubString, endSubString)
-    inputData = inputData.replace(startSubString + validator + endSubString, '')
-    var validatorABI = fetchABISubString(validator)
-    var validatorAddress = fetchAddressSubString(validator)
-    contractObj = {}
-    contractObj['abi'] = validatorABI
-    contractObj['address'] = validatorAddress
-    contracts['validator'] = contractObj
+      input = input.replace(contractString, '')
+    }
 
     return contracts
   } catch (e) {
-    console.log('ERROR: error while processing metronome.js contents')
+    console.log('ERROR: error while processing contents of metronome.js')
     process.exit(0)
   }
 }
 
-function fetchABISubString (inputData) {
+function fetchContactName (input) {
+  return fetchSubString(input, 'var', '=').trim()
+}
+
+function fetchContractString (input) {
+  return input.slice(0, input.indexOf(';') + 1)
+}
+
+function fetchAbi (input) {
   var startSubString = 'web3.eth.contract('
   var endSubString = ').at("'
-  return fetchSubString(inputData, startSubString, endSubString)
+  return fetchSubString(input, startSubString, endSubString)
 }
 
-function fetchAddressSubString (inputData) {
+function fetchAddress (input) {
   var startSubString = '.at("'
   var endSubString = '")'
-  return fetchSubString(inputData, startSubString, endSubString)
+  return fetchSubString(input, startSubString, endSubString)
 }
 
-function fetchSubString (inputData, startSubString, endSubString) {
-  return inputData.slice((inputData.indexOf(startSubString) + startSubString.length), inputData.indexOf(endSubString))
+function fetchSubString (input, startSubString, endSubString) {
+  return input.slice((input.indexOf(startSubString) + startSubString.length), input.indexOf(endSubString))
 }
 
 module.exports = {parseConfig, parseMetronomeContractString}
