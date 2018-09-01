@@ -6,6 +6,7 @@ const fs = require('fs')
 const process = require('process')
 const Validator = require('./lib/validator')
 const Listener = require('./lib/listener')
+const Processor = require('./lib/processor')
 
 function init () {
   program
@@ -29,6 +30,9 @@ function init () {
 function launchValidator () {
   console.log('I am in launchValidator function')
   const configStr = readConfig()
+  // fs.readFileSync('node_modules/metronome-validator/abi/etc/met.json').toString()
+  var contracts = Processor.parseMetronomeContractString(readMetronomeContractString())
+  console.log('contracts=', contracts)
   Listener.listen(configStr) // TODO: pass abiStr
 }
 
@@ -62,6 +66,10 @@ function writeSampleConfigFile () {
 
 const readConfig = _.memoize(function () {
   return fs.readFileSync('config.json').toString()
+})
+
+const readMetronomeContractString = _.memoize(function () {
+  return fs.readFileSync('./abi/eth/metronome.js').toString()
 })
 
 init()
