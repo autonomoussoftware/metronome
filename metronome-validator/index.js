@@ -5,11 +5,13 @@ const _ = require('lodash')
 const fs = require('fs')
 const process = require('process')
 const Validator = require('./lib/validator')
+const Listener = require('./lib/listener')
 
 function init () {
   program
     .command('init-config')
     .description('create in current directory configuration file for validator')
+  //    .option('--path [file_path]', 'path where sample config file should be generated')
     .action(writeSampleConfigFile)
 
   program
@@ -19,25 +21,30 @@ function init () {
 
   program
     .parse(process.argv)
+
+  program.args.length < 1 &&
+        program.help()
 }
 
 function launchValidator () {
   console.log('I am in launchValidator function')
+  const configStr = readConfig()
+  Listener.listen(configStr) // TODO: pass abiStr
 }
 
 function writeSampleConfigFile () {
-  console.log('writing same config file')
-  const configPath = '.config.json'
+  console.log('writing sample config file')
+  const configPath = 'config.json'
   const sampleConfig = [
     '{                                              ',
     '    "extends": "default",                      ',
     '    "ETH": {                                   ',
-    '       "nodeURL": "http://localhost:8545",     ',
+    '       "nodeUrl": "http://localhost:8545",     ',
     '        "address": "0x0",                      ',
     '        "password": "password1"                ',
     '    },                                         ',
     '    "ETC": {                                   ',
-    '       "nodeURL": "http://localhost:8555",     ',
+    '       "nodeUrl": "http://localhost:8555",     ',
     '        "address": "0x0",                      ',
     '        "password": "password1"                ',
     '    }                                          ',
@@ -47,27 +54,14 @@ function writeSampleConfigFile () {
   if (!fs.existsSync(configPath)) {
     fs.writeFileSync(configPath, sampleConfig.join('\n'))
 
-    console.log('Configuration file created!')
+    console.log('Sample Configuration file created!')
   } else {
     console.log('Configuration file already exists')
   }
 }
 
 const readConfig = _.memoize(function () {
-  let config = {}
-
-  try {
-    const configStr = fs.readFileSync('.config.json').toString()
-    config = JSON.parse(configStr)
-  } catch (e) {
-    if (e instanceof SyntaxError) {
-      console.log('ERROR: Configuration file [.solhint.json] is not a valid JSON!\n')
-      exit(0)
-    }
-  }
-  console.log('config=', config)
-
-  return config
+  return fs.readFileSync('config.json').toString()
 })
 
 init()

@@ -1,11 +1,11 @@
 {
-  "name": "metronomeValidator",
-  "version": "0.1.0",
+  "name": "metronome-validator",
+  "version": "1.0.0",
   "description": "Metronome off chain validators",
   "main": "index.js",
   "preferGlobal": true,
   "bin": {
-    "validator": "index.js"
+    "metronome-validator": "index.js"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
