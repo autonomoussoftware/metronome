@@ -4,9 +4,7 @@ const program = require('commander')
 const _ = require('lodash')
 const fs = require('fs')
 const process = require('process')
-const Validator = require('./lib/validator')
 const Listener = require('./lib/listener')
-const Processor = require('./lib/processor')
 
 function init () {
   program
@@ -29,11 +27,9 @@ function init () {
 
 function launchValidator () {
   console.log('I am in launchValidator function')
-  const configStr = readConfig()
-  // fs.readFileSync('node_modules/metronome-validator/abi/etc/met.json').toString()
-  var contracts = Processor.parseMetronomeContractString(readMetronomeContractString())
-  console.log('contracts=', contracts)
-  Listener.listen(configStr) // TODO: pass abiStr
+  const config = readConfig()
+  const metronome = readMetronome()
+  Listener.listen(config, metronome)
 }
 
 function writeSampleConfigFile () {
@@ -68,8 +64,17 @@ const readConfig = _.memoize(function () {
   return fs.readFileSync('config.json').toString()
 })
 
-const readMetronomeContractString = _.memoize(function () {
-  return fs.readFileSync('./abi/eth/metronome.js').toString()
+const readMetronome = _.memoize(function () {
+  // TODO: read path from cmd and act on it, if not provide do below
+  let chainPath = 'node_modules/metronome-validator/abi/'
+  let fileName = '/metronome.js'
+  let metronome = []
+  let supportedChains = fs.readdirSync(chainPath)
+
+  for (let i = 0; i < supportedChains.length; i++) {
+    metronome[i] = fs.readFileSync(chainPath + supportedChains[i] + fileName).toString()
+  }
+  return metronome
 })
 
 init()

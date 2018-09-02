@@ -1,11 +1,12 @@
-const Processor = require('./processor')
+const Parser = require('./processor')
 const Validator = require('./validator')
 
-function listen (configStr, metronome) {
-  console.log('listening...', configStr)
-  let configuration = Processor.parseConfig(configStr)
-  // TODO: parse abi
+function listen (config, metronome) {
+  console.log('listening...', config)
+  let configuration = Parser.parseConfig(config)
+  let contracts = Parser.parseMetronome(metronome)
   console.log('Eth url is ', configuration.ETH.nodeUrl)
+  console.log('Proceeds address', contracts[1].Proceeds.address)
 }
 
 module.exports = {listen}

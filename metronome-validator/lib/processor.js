@@ -8,7 +8,15 @@ function parseConfig (input) {
   }
 }
 
-function parseMetronomeContractString (input) {
+function parseMetronome (input) {
+  let chains = []
+  for (let i = 0; i < input.length; i++) {
+    chains[i] = parseContracts(input[i])
+  }
+  return chains
+}
+
+function parseContracts (input) {
   try {
     // var proceeds = inputData.slice((inputData.indexOf('var Proceeds = ') + 'var Proceeds = '.length), inputData.indexOf(');') + 1)
     var contracts = {}
@@ -55,4 +63,4 @@ function fetchSubString (input, startSubString, endSubString) {
   return input.slice((input.indexOf(startSubString) + startSubString.length), input.indexOf(endSubString))
 }
 
-module.exports = {parseConfig, parseMetronomeContractString}
+module.exports = {parseConfig, parseContracts, parseMetronome}
