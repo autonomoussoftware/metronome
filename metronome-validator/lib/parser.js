@@ -9,11 +9,11 @@ function parseConfig (input) {
 }
 
 function parseMetronome (input) {
-  let chains = []
-  for (let i = 0; i < input.length; i++) {
-    chains[i] = parseContracts(input[i])
+  let metronome = {}
+  for (var chain in input) {
+    metronome[chain] = parseContracts(input[chain])
   }
-  return chains
+  return metronome
 }
 
 function parseContracts (input) {
@@ -24,10 +24,10 @@ function parseContracts (input) {
       let contractName = fetchContactName(input)
       let contractString = fetchContractString(input)
 
-      let contractObj = {}
-      contractObj['abi'] = fetchAbi(contractString)
-      contractObj['address'] = fetchAddress(contractString)
-      contracts[contractName] = contractObj
+      let contract = {}
+      contract['abi'] = fetchAbi(contractString)
+      contract['address'] = fetchAddress(contractString)
+      contracts[contractName] = contract
 
       input = input.replace(contractString, '')
     }

@@ -38,12 +38,12 @@ function writeSampleConfigFile () {
   const sampleConfig = [
     '{                                              ',
     '    "extends": "default",                      ',
-    '    "ETH": {                                   ',
+    '    "eth": {                                   ',
     '       "nodeUrl": "http://localhost:8545",     ',
     '        "address": "0x0",                      ',
     '        "password": "password1"                ',
     '    },                                         ',
-    '    "ETC": {                                   ',
+    '    "etc": {                                   ',
     '       "nodeUrl": "http://localhost:8555",     ',
     '        "address": "0x0",                      ',
     '        "password": "password1"                ',
@@ -68,11 +68,11 @@ const readMetronome = _.memoize(function () {
   // TODO: read path from cmd and act on it, if not provide do below
   let chainPath = 'node_modules/metronome-validator/abi/'
   let fileName = '/metronome.js'
-  let metronome = []
+  let metronome = {}
   let supportedChains = fs.readdirSync(chainPath)
 
   for (let i = 0; i < supportedChains.length; i++) {
-    metronome[i] = fs.readFileSync(chainPath + supportedChains[i] + fileName).toString()
+    metronome[supportedChains[i]] = fs.readFileSync(chainPath + supportedChains[i] + fileName).toString()
   }
   return metronome
 })
