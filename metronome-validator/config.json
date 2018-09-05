@@ -1,0 +1,13 @@
+{                                              
+    "extends": "default",                      
+    "eth": {                                   
+       "nodeUrl": "http://localhost:8545",     
+        "address": "0x0",                      
+        "password": "password1"                
+    },                                         
+    "etc": {                                   
+       "nodeUrl": "http://localhost:8555",     
+        "address": "0x0",                      
+        "password": "password1"                
+    }                                          
+}                                              

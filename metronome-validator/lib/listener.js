@@ -10,7 +10,8 @@ function listen (config, metronome) {
   // create validator object
   let ethValidator = new Validator(configuration.eth, metronomeContracts.eth)
   let etcValidator = new Validator(configuration.etc, metronomeContracts.etc)
-  console.log('Founder', ethValidator.getFounder(0))
+  ethValidator.watchImportEvent()
+  etcValidator.watchImportEvent()
 }
 
 module.exports = {listen}
