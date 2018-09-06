@@ -45,36 +45,29 @@ const initContracts = function () {
     for (let i = 0; i < supportedChains.length; i++) {
       metronome[supportedChains[i]] = fs.readFileSync(chainPath + supportedChains[i] + fileName).toString()
     }
-    // console.log('metronome', metronome)
-    // console.log('config=', config)
     let configuration = Parser.parseConfig(config)
-    // console.log('configuration=', configuration)
     let metronomeContracts = Parser.parseMetronome(metronome)
-    // console.log('metronomeContracts=', metronomeContracts)
     // create validator object
     eth = new Validator(configuration.eth, metronomeContracts.eth)
     etc = new Validator(configuration.etc, metronomeContracts.etc)
     ethBuyer1 = eth.web3.personal.newAccount('password')
     etcBuyer1 = etc.web3.personal.newAccount('password')
-    await eth.web3.personal.unlockAccount(ethBuyer1, 'password')
+
+    // Send some ether for gas cost and MET
     await eth.web3.eth.sendTransaction({to: ethBuyer1, from: eth.web3.eth.accounts[0], value: 2e18})
-    // send some ether for gas cost
     await etc.web3.eth.sendTransaction({to: etcBuyer1, from: etc.web3.eth.accounts[0], value: 2e18})
 
-    await eth.web3.personal.unlockAccount(ethBuyer1, 'password')
-    let balance = await eth.web3.eth.getBalance(ethBuyer1)
-    console.log('Balance of ethBuyer1 ', balance)
-    await eth.web3.eth.sendTransaction({to: eth.auctions.address, from: ethBuyer1, value: 1e16})
-    var metTokenBalance = await eth.metToken.balanceOf(ethBuyer1)
-    assert(metTokenBalance.toNumber() > 0, 'Exporter has no MET token balance')
     let owner = await eth.tokenPorter.owner()
     await eth.web3.personal.unlockAccount(owner, 'newOwner')
     var tokenAddress = eth.tokenPorter.token()
     await eth.tokenPorter.addDestinationChain('ETC', tokenAddress, {from: owner})
+    await eth.validator.addValidator(eth.web3.eth.accounts[0], {from: owner})
+
     owner = await etc.tokenPorter.owner()
     await etc.web3.personal.unlockAccount(owner, 'newOwner')
     tokenAddress = await etc.tokenPorter.token()
     await etc.tokenPorter.addDestinationChain('ETH', tokenAddress, {from: owner})
+    await etc.validator.addValidator(etc.web3.eth.accounts[0], {from: owner})
     resolve()
   })
 }
@@ -122,7 +115,10 @@ describe('cross chain testing', () => {
   it('Export test 1. Buy token and export to ETC', () => {
     return new Promise(async (resolve, reject) => {
       eth.web3.personal.unlockAccount(ethBuyer1, 'password')
+      // Buy some MET
+      await eth.web3.eth.sendTransaction({to: eth.auctions.address, from: ethBuyer1, value: 1e16})
       var amount = eth.metToken.balanceOf(ethBuyer1)
+      assert(amount.toNumber() > 0, 'Exporter has no MET token balance')
       var extraData = 'D'
       var totalSupplybefore = await eth.metToken.totalSupply()
       var tx = await eth.metToken.export(
@@ -133,13 +129,16 @@ describe('cross chain testing', () => {
         0,
         eth.web3.fromAscii(extraData),
         { from: ethBuyer1 })
-      var totalSupplyAfter = eth.metToken.totalSupply()
+      let totalSupplyAfter = eth.metToken.totalSupply()
       let receipt = eth.web3.eth.getTransactionReceipt(tx)
-      const decoder = ethjsABI.logDecoder(eth.tokenPorter.abi)
-      const logExportReceipt = decoder(receipt.logs)[0]
+      let decoder = ethjsABI.logDecoder(eth.tokenPorter.abi)
+      let logExportReceipt = decoder(receipt.logs)[0]
       assert(totalSupplybefore.sub(totalSupplyAfter), amount, 'Export from ETH failed')
       let importDataObj = await prepareImportData(eth, logExportReceipt)
-      // Todo call import funciton
+      tx = await etc.metToken.importMET(etc.web3.fromAscii('ETH'), logExportReceipt.destinationChain, importDataObj.addresses, logExportReceipt.extraData,
+        importDataObj.burnHashes, logExportReceipt.supplyOnAllChains, importDataObj.importData, importDataObj.root, {from: etcBuyer1})
+
+      // Tood: listen attestation event and verify minting is done correctly
       resolve()
     })
   })

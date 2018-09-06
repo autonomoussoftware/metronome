@@ -2,12 +2,12 @@
     "extends": "default",                      
     "eth": {                                   
        "nodeUrl": "http://localhost:8545",     
-        "address": "0x0",                      
-        "password": "password1"                
+        "address": "0x00a329c0648769a73afac7f9381e08fb43dbea72",                      
+        "password": ""                
     },                                         
     "etc": {                                   
        "nodeUrl": "http://localhost:8555",     
-        "address": "0x0",                      
-        "password": "password1"                
+        "address": "0x00a329c0648769a73afac7f9381e08fb43dbea72",                      
+        "password": ""                
     }                                          
 }                                              
