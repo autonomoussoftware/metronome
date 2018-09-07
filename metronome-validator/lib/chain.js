@@ -22,29 +22,29 @@
     TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
+const Web3 = require('web3')
+const camelCase = require('camelcase')
 
-const Parser = require('./parser')
-const Validator = require('./validator')
-const Chain = require('./chain')
+class Chain {
+  /**
+     * @desc Metronome off chain validator.
+     * @param configuration - contains owner address for validator, passord and URL ( with port)
+     *  of blockchain node i.e. http://host:port
+     * @param {object} contracts
+     */
+  constructor (configuration, contracts = {}) {
+    this.configuration = configuration
+    this.web3 = new Web3(new Web3.providers.HttpProvider(configuration.nodeUrl))
+    this.createContractObj(contracts)
+  }
 
-function listen (config, metronome) {
-  console.log('listening...', config)
-  let configuration = Parser.parseConfig(config)
-  let metronomeContracts = Parser.parseMetronome(metronome)
-
-  let ethChain = new Chain(configuration.eth, metronomeContracts.eth)
-  let etcChain = new Chain(configuration.etc, metronomeContracts.etc)
-  console.log('ethChain=', ethChain)
-  let ethValidator = new Validator(etcChain, ethChain)
-  let etcValidator = new Validator(ethChain, etcChain)
-  try {
-    ethValidator.watchImportEvent()
-    etcValidator.watchImportEvent()
-  } catch (e) {
-    // Log error in log file and Keep listening
-    console.log(e)
-    // todo: log error in log file
+  createContractObj (_contracts) {
+    this.contracts = {}
+    for (var name in _contracts) {
+      let contractName = camelCase(name)
+      let contract = this.web3.eth.contract(JSON.parse(_contracts[name].abi)).at(_contracts[name].address)
+      this.contracts[contractName] = contract
+    }
   }
 }
-
-module.exports = {listen}
+module.exports = Chain

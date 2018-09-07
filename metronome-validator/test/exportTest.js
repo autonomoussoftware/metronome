@@ -27,7 +27,7 @@ const assert = require('chai').assert
 const ethjsABI = require('ethjs-abi')
 const fs = require('fs')
 const Parser = require('../lib/parser')
-const Validator = require('../lib/validator')
+const Chain = require('../lib/chain')
 const MerkleTreeJs = require('merkletreejs')
 const crypto = require('crypto')
 var ethBuyer1
@@ -48,26 +48,26 @@ const initContracts = function () {
     let configuration = Parser.parseConfig(config)
     let metronomeContracts = Parser.parseMetronome(metronome)
     // create validator object
-    eth = new Validator(configuration.eth, metronomeContracts.eth)
-    etc = new Validator(configuration.etc, metronomeContracts.etc)
+    eth = new Chain(configuration.eth, metronomeContracts.eth)
+    etc = new Chain(configuration.etc, metronomeContracts.etc)
+
     ethBuyer1 = eth.web3.personal.newAccount('password')
     etcBuyer1 = etc.web3.personal.newAccount('password')
 
     // Send some ether for gas cost and MET
     await eth.web3.eth.sendTransaction({to: ethBuyer1, from: eth.web3.eth.accounts[0], value: 2e18})
     await etc.web3.eth.sendTransaction({to: etcBuyer1, from: etc.web3.eth.accounts[0], value: 2e18})
-
-    let owner = await eth.tokenPorter.owner()
+    let owner = await eth.contracts.tokenPorter.owner()
     await eth.web3.personal.unlockAccount(owner, 'newOwner')
-    var tokenAddress = eth.tokenPorter.token()
-    await eth.tokenPorter.addDestinationChain('ETC', tokenAddress, {from: owner})
-    await eth.validator.addValidator(eth.web3.eth.accounts[0], {from: owner})
+    var tokenAddress = etc.contracts.metToken.address
+    await eth.contracts.tokenPorter.addDestinationChain('ETC', tokenAddress, {from: owner})
+    await eth.contracts.validator.addValidator(eth.web3.eth.accounts[0], {from: owner})
 
-    owner = await etc.tokenPorter.owner()
+    owner = await etc.contracts.tokenPorter.owner()
     await etc.web3.personal.unlockAccount(owner, 'newOwner')
-    tokenAddress = await etc.tokenPorter.token()
-    await etc.tokenPorter.addDestinationChain('ETH', tokenAddress, {from: owner})
-    await etc.validator.addValidator(etc.web3.eth.accounts[0], {from: owner})
+    tokenAddress = await eth.contracts.metToken.address
+    await etc.contracts.tokenPorter.addDestinationChain('ETH', tokenAddress, {from: owner})
+    await etc.contracts.validator.addValidator(etc.web3.eth.accounts[0], {from: owner})
     resolve()
   })
 }
@@ -78,19 +78,19 @@ function sha256 (data) {
 }
 
 async function prepareImportData (sourceChain, logExportReceipt) {
-  var burnHashes = []
-  var i = 0
+  let burnHashes = []
+  let i = 0
   if (logExportReceipt.burnSequence > 16) {
     i = logExportReceipt.burnSequence - 15
   }
   while (i <= logExportReceipt.burnSequence) {
-    burnHashes.push(await sourceChain.tokenPorter.exportedBurns(i))
+    burnHashes.push(await sourceChain.contracts.tokenPorter.exportedBurns(i))
     i++
   }
   const leaves = burnHashes.map(x => Buffer.from(x.slice(2), 'hex'))
 
   const tree = new MerkleTreeJs(leaves, sha256)
-  var buffer = tree.getProof(leaves[leaves.length - 1])
+  let buffer = tree.getProof(leaves[leaves.length - 1])
   let merkleProof = []
   for (let i = 0; i < buffer.length; i++) {
     merkleProof.push('0x' + ((buffer[i].data).toString('hex')))
@@ -115,30 +115,33 @@ describe('cross chain testing', () => {
   it('Export test 1. Buy token and export to ETC', () => {
     return new Promise(async (resolve, reject) => {
       eth.web3.personal.unlockAccount(ethBuyer1, 'password')
+      etc.web3.personal.unlockAccount(etcBuyer1, 'password')
       // Buy some MET
-      await eth.web3.eth.sendTransaction({to: eth.auctions.address, from: ethBuyer1, value: 1e16})
-      var amount = eth.metToken.balanceOf(ethBuyer1)
+      await eth.web3.eth.sendTransaction({to: eth.contracts.auctions.address, from: ethBuyer1, value: 1e16})
+      let amount = eth.contracts.metToken.balanceOf(ethBuyer1)
       assert(amount.toNumber() > 0, 'Exporter has no MET token balance')
-      var extraData = 'D'
-      var totalSupplybefore = await eth.metToken.totalSupply()
-      var tx = await eth.metToken.export(
+      amount = amount / 2
+      let extraData = 'D'
+      let totalSupplybefore = await eth.contracts.metToken.totalSupply()
+      let tx = await eth.contracts.metToken.export(
         eth.web3.fromAscii('ETC'),
-        etc.metToken.address,
+        etc.contracts.metToken.address,
         etcBuyer1,
         amount.valueOf(),
         0,
         eth.web3.fromAscii(extraData),
         { from: ethBuyer1 })
-      let totalSupplyAfter = eth.metToken.totalSupply()
+      let totalSupplyAfter = eth.contracts.metToken.totalSupply()
       let receipt = eth.web3.eth.getTransactionReceipt(tx)
-      let decoder = ethjsABI.logDecoder(eth.tokenPorter.abi)
+      let decoder = ethjsABI.logDecoder(eth.contracts.tokenPorter.abi)
       let logExportReceipt = decoder(receipt.logs)[0]
       assert(totalSupplybefore.sub(totalSupplyAfter), amount, 'Export from ETH failed')
       let importDataObj = await prepareImportData(eth, logExportReceipt)
-      tx = await etc.metToken.importMET(etc.web3.fromAscii('ETH'), logExportReceipt.destinationChain, importDataObj.addresses, logExportReceipt.extraData,
+      console.log('Hello from this world')
+      tx = await etc.contracts.metToken.importMET(etc.web3.fromAscii('ETH'), logExportReceipt.destinationChain, importDataObj.addresses, logExportReceipt.extraData,
         importDataObj.burnHashes, logExportReceipt.supplyOnAllChains, importDataObj.importData, importDataObj.root, {from: etcBuyer1})
-
-      // Tood: listen attestation event and verify minting is done correctly
+      console.log('hello from the other side of world')
+      // Todo: listen attestation event and verify minting is done correctly
       resolve()
     })
   })
