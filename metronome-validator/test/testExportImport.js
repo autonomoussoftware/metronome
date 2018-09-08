@@ -30,7 +30,6 @@ const Parser = require('../lib/parser')
 const Chain = require('../lib/chain')
 const MerkleTreeJs = require('merkletreejs')
 const crypto = require('crypto')
-// var redis = require('redis')
 var ethBuyer1
 var etcBuyer1
 var eth
@@ -38,13 +37,6 @@ var etc
 
 const initContracts = function () {
   return new Promise(async (resolve, reject) => {
-    // var sub = redis.createClient()
-    // console.log('creating connection')
-    // sub.set('hash', 'burnAmount')
-    // sub.get('hash', function (err, value) {
-    //   // if (err) throw (err)
-    //   console.log(value)
-    // })
     let config = fs.readFileSync('./config.json').toString()
     let chainPath = './abi/'
     let fileName = '/metronome.js'
