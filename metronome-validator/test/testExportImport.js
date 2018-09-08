@@ -112,7 +112,7 @@ before(async () => {
 })
 
 describe('cross chain testing', () => {
-  it('Export test 1. Buy token and export to ETC', () => {
+  it('Export test 1. ETH to ETC', () => {
     return new Promise(async (resolve, reject) => {
       eth.web3.personal.unlockAccount(ethBuyer1, 'password')
       etc.web3.personal.unlockAccount(etcBuyer1, 'password')
@@ -120,7 +120,6 @@ describe('cross chain testing', () => {
       await eth.web3.eth.sendTransaction({to: eth.contracts.auctions.address, from: ethBuyer1, value: 1e16})
       let amount = eth.contracts.metToken.balanceOf(ethBuyer1)
       assert(amount.toNumber() > 0, 'Exporter has no MET token balance')
-      amount = amount / 2
       let extraData = 'D'
       let totalSupplybefore = await eth.contracts.metToken.totalSupply()
       let tx = await eth.contracts.metToken.export(
@@ -137,12 +136,66 @@ describe('cross chain testing', () => {
       let logExportReceipt = decoder(receipt.logs)[0]
       assert(totalSupplybefore.sub(totalSupplyAfter), amount, 'Export from ETH failed')
       let importDataObj = await prepareImportData(eth, logExportReceipt)
-      console.log('Hello from this world')
+      let expectedTotalSupply = etc.contracts.metToken.totalSupply().toNumber() + amount.toNumber()
+      let expectedBalanceOfRecepient = etc.contracts.metToken.balanceOf(logExportReceipt.destinationRecipientAddr).toNumber() + amount.toNumber()
       tx = await etc.contracts.metToken.importMET(etc.web3.fromAscii('ETH'), logExportReceipt.destinationChain, importDataObj.addresses, logExportReceipt.extraData,
         importDataObj.burnHashes, logExportReceipt.supplyOnAllChains, importDataObj.importData, importDataObj.root, {from: etcBuyer1})
-      console.log('hello from the other side of world')
-      // Todo: listen attestation event and verify minting is done correctly
-      resolve()
+      let filter = etc.contracts.tokenPorter.LogImport().watch((err, response) => {
+        if (err) {
+          console.log('export error', err)
+        } else {
+          if (logExportReceipt.currentBurnHash === response.args.currentHash) {
+            filter.stopWatching()
+            console.log('totalSupply=', etc.contracts.metToken.totalSupply())
+            assert.equal(etc.contracts.metToken.totalSupply().valueOf(), expectedTotalSupply, 'Total supply is wrong after import')
+            assert.equal(etc.contracts.metToken.balanceOf(logExportReceipt.destinationRecipientAddr).valueOf(), expectedBalanceOfRecepient, 'Balance of recepient wrong after import')
+            resolve()
+          }
+        }
+      })
+    })
+  })
+
+  it('Export test 2. ETC to ETH', () => {
+    return new Promise(async (resolve, reject) => {
+      eth.web3.personal.unlockAccount(ethBuyer1, 'password')
+      etc.web3.personal.unlockAccount(etcBuyer1, 'password')
+      let amount = etc.contracts.metToken.balanceOf(etcBuyer1)
+      assert(amount.toNumber() > 0, 'Exporter has no MET token balance')
+      let extraData = 'D'
+      let totalSupplybefore = await etc.contracts.metToken.totalSupply()
+      let tx = await etc.contracts.metToken.export(
+        etc.web3.fromAscii('ETH'),
+        eth.contracts.metToken.address,
+        ethBuyer1,
+        amount.valueOf(),
+        0,
+        etc.web3.fromAscii(extraData),
+        { from: etcBuyer1 })
+      let totalSupplyAfter = etc.contracts.metToken.totalSupply()
+      let receipt = etc.web3.eth.getTransactionReceipt(tx)
+      let decoder = ethjsABI.logDecoder(etc.contracts.tokenPorter.abi)
+      let logExportReceipt = decoder(receipt.logs)[0]
+      assert(totalSupplybefore.sub(totalSupplyAfter), amount, 'Export from ETH failed')
+      let importDataObj = await prepareImportData(etc, logExportReceipt)
+      console.log('total Supply in ETH=', eth.contracts.metToken.totalSupply().toNumber())
+      let expectedTotalSupply = eth.contracts.metToken.totalSupply().toNumber() + amount.toNumber()
+      let expectedBalanceOfRecepient = eth.contracts.metToken.balanceOf(logExportReceipt.destinationRecipientAddr).toNumber() + amount.toNumber()
+      tx = await eth.contracts.metToken.importMET(eth.web3.fromAscii('ETC'), logExportReceipt.destinationChain, importDataObj.addresses, logExportReceipt.extraData,
+        importDataObj.burnHashes, logExportReceipt.supplyOnAllChains, importDataObj.importData, importDataObj.root, {from: ethBuyer1})
+      let filter = eth.contracts.tokenPorter.LogImport().watch((err, response) => {
+        if (err) {
+          console.log('export error', err)
+        } else {
+          if (logExportReceipt.currentBurnHash === response.args.currentHash) {
+            filter.stopWatching()
+            console.log('totalSupply in eth=', eth.contracts.metToken.totalSupply().toNumber())
+            assert.equal(eth.contracts.metToken.totalSupply().valueOf(), expectedTotalSupply, 'Total supply is wrong after import')
+            assert.equal(eth.contracts.metToken.balanceOf(logExportReceipt.destinationRecipientAddr).valueOf(), expectedBalanceOfRecepient, 'Balance of recepient wrong after import')
+            resolve()
+          }
+        }
+      })
     })
   })
 })
