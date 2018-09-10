@@ -42,7 +42,6 @@ function parseMetronome (input) {
 
 function parseContracts (input) {
   try {
-    // var proceeds = inputData.slice((inputData.indexOf('var Proceeds = ') + 'var Proceeds = '.length), inputData.indexOf(');') + 1)
     var contracts = {}
     while (input.includes('var')) {
       let contractName = fetchContactName(input)

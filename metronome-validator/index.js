@@ -4,13 +4,12 @@ const program = require('commander')
 const _ = require('lodash')
 const fs = require('fs')
 const process = require('process')
-const Listener = require('./lib/listener')
-
+const path = require('path')
+const listener = require('./lib/listener')
 function init () {
   program
     .command('init-config')
     .description('create in current directory configuration file for validator')
-  //    .option('--path [file_path]', 'path where sample config file should be generated')
     .action(writeSampleConfigFile)
 
   program
@@ -29,7 +28,7 @@ function launchValidator () {
   console.log('I am in launchValidator function')
   const config = readConfig()
   const metronome = readMetronome()
-  Listener.listen(config, metronome)
+  listener.listen(config, metronome)
 }
 
 function writeSampleConfigFile () {
@@ -65,8 +64,7 @@ const readConfig = _.memoize(function () {
 })
 
 const readMetronome = _.memoize(function () {
-  // TODO: read path from cmd and act on it, if not provide do below
-  let chainPath = 'node_modules/metronome-validator/abi/'
+  let chainPath = path.join(__dirname, '/abi/')
   let fileName = '/metronome.js'
   let metronome = {}
   let supportedChains = fs.readdirSync(chainPath)

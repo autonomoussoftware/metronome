@@ -80,7 +80,7 @@ function sha256 (data) {
 async function prepareImportData (sourceChain, logExportReceipt) {
   let burnHashes = []
   let i = 0
-  if (logExportReceipt.burnSequence > 16) {
+  if (logExportReceipt.burnSequence > 15) {
     i = logExportReceipt.burnSequence - 15
   }
   while (i <= logExportReceipt.burnSequence) {

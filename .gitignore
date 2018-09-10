@@ -22,8 +22,12 @@ js/etc/const\.js
 
 js/etc/metronome\.js
 
+js/etc/launched
+
 js/eth/const\.js
 
 js/eth/metronome\.js
+
+js/eth/launched
 
 parity/

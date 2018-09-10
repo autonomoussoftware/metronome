@@ -47,16 +47,16 @@ do
 done
 
 tmux new-window 
-tmux send-keys 'node export-tests/offchain/validator.js' 'C-m'
+tmux send-keys 'cp ./js/etc/metronome.js ./metronome-validator/abi/etc/' 'C-m'
+tmux send-keys 'cp ./js/eth/metronome.js ./metronome-validator/abi/eth/' 'C-m'
+tmux send-keys 'cd metronome-validator' 'C-m'
 tmux rename-window 'Validation'
-
-# tmux new-window 
-# tmux send-keys 'node export-tests/offchain/claimer.js' 'C-m'
-# tmux rename-window 'Claiming'
+tmux send-keys 'node index.js launch' 'C-m'  # 'metronome-validator launch' is actual command
 
 tmux new-window
+tmux send-keys 'cd metronome-validator' 'C-m'
 tmux send-keys 'cat welcome.msg' 'C-m'
-tmux send-keys 'npm run testExport ./export-tests/testCases/crossChainImportExportTest.js' 'C-m'
+tmux send-keys 'npm run testValidator ./test/testExportImport.js' 'C-m'
 
 tmux -2 attach-session -t Metronome
 

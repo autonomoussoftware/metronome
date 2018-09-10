@@ -78,7 +78,7 @@ class Validator {
   createMerklePath (burnSequence) {
     var leaves = []
     var i = 0
-    if (burnSequence > 16) {
+    if (burnSequence > 15) {
       i = burnSequence - 15
     }
     var leave

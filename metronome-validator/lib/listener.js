@@ -23,18 +23,18 @@
     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-const Parser = require('./parser')
+const parser = require('./parser')
 const Validator = require('./validator')
 const Chain = require('./chain')
 
 function listen (config, metronome) {
   console.log('listening...', config)
-  let configuration = Parser.parseConfig(config)
-  let metronomeContracts = Parser.parseMetronome(metronome)
+  let configuration = parser.parseConfig(config)
+  let metronomeContracts = parser.parseMetronome(metronome)
 
   let ethChain = new Chain(configuration.eth, metronomeContracts.eth)
   let etcChain = new Chain(configuration.etc, metronomeContracts.etc)
-  console.log('ethChain=', ethChain)
+
   let ethValidator = new Validator(etcChain, ethChain)
   let etcValidator = new Validator(ethChain, etcChain)
   try {
