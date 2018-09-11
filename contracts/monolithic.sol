@@ -2062,9 +2062,11 @@ contract Validator is Owned {
     /// @param _fee fee for import-export
     /// @param _proof proof
     /// @param _extraData extra information for import
+    /// @param _signature clliptic curve signature
     function attestHash(bytes32 _burnHash, bytes32 _preBurnHash, bytes8 _originChain, address _recipientAddr, 
-        uint _amount, uint _fee, bytes32[] _proof, bytes _extraData) public {
+        uint _amount, uint _fee, bytes32[] _proof, bytes _extraData, bytes _signature) public {
         require(isValidator[msg.sender]);
+        require(fetchSignerAddress(_burnHash, _signature) == msg.sender);
         require(_burnHash != 0x0);
         require(verifyProof(tokenPorter.merkleRoots(_burnHash), _burnHash, _proof));
         hashAttestations[_burnHash][msg.sender] = true;
@@ -2077,13 +2079,51 @@ contract Validator is Owned {
         }
     }
 
+    /// @notice Fetch signer's address from clliptic curve signature
+    /// @param _message original message which was signed 
+    /// @param  _signature clliptic curve signature
+    /// @return address of signer
+    function fetchSignerAddress(bytes32 _message, bytes _signature) public view returns (address) {
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+        bytes memory prefix = "\x19Ethereum Signed Message:\n32";
+        bytes32 prefixedHash = keccak256(prefix, _message);
+        address signer;
+        // Check the signature length
+        if (_signature.length != 65) {
+            return (address(0));
+        }
+
+        // Divide the signature in r, s and v variables
+        // ecrecover takes the signature parameters, and the only way to get them
+        // currently is to use assembly.
+        // solium-disable-next-line security/no-inline-assembly
+        assembly {
+        r := mload(add(_signature, 32))
+        s := mload(add(_signature, 64))
+        v := byte(0, mload(add(_signature, 96)))
+        }
+
+        // Version of signature should be 27 or 28, but 0 and 1 are also possible versions
+        if (v < 27) {
+            v += 27;
+        }
+        if (v != 27 && v != 28) {
+            return (address(0));
+        }
+        return ecrecover(prefixedHash, v, r, s);
+    }
+
     /// @notice off chain validator can refute hash, if given export hash is not verified in origin chain.
-    /// @param hash Burn hash
-    function refuteHash(bytes32 hash) public {
+    /// @param _burnHash Burn hash
+    /// @param _signature clliptic curve signature
+    function refuteHash(bytes32 _burnHash, bytes _signature) public {
         require(isValidator[msg.sender]);
-        require(!hashClaimed[hash]);
-        hashAttestations[hash][msg.sender] = false;
-        emit LogAttestation(hash, msg.sender, false);
+        require(fetchSignerAddress(_burnHash, _signature) == msg.sender);
+        require(!hashClaimed[_burnHash]);
+        hashAttestations[_burnHash][msg.sender] = false;
+        emit LogAttestation(_burnHash, msg.sender, false);
     }
 
     /// @notice Check whether given hash has been attested and claimable for import

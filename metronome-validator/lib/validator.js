@@ -65,9 +65,10 @@ class Validator {
           let merklePath = this.createMerklePath(res[0].args.burnSequence)
           let importDataObj = this.prepareImportData(res[0].args)
           this.web3.personal.unlockAccount(this.configuration.address, this.configuration.password)
+          let signature = this.web3.eth.sign(this.configuration.address, importDataObj.burnHashes[1])
           this.validator.attestHash(importDataObj.burnHashes[1], importDataObj.burnHashes[0], sourceChain,
             importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]),
-            merklePath, importDataObj.extraData, {from: this.configuration.address})
+            merklePath, importDataObj.extraData, signature, {from: this.configuration.address})
         } else {
           // Todo: Do we need to vote -tive if burnHash not found in source chain?
         }
