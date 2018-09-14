@@ -1983,6 +1983,7 @@ contract Validator is Owned {
 
     /// @notice Mapping to store the attestation done by each offchain validator for a hash
     mapping (bytes32 => mapping (address => bool)) public hashAttestations;
+    mapping (bytes32 => uint) public attestationCount;
     mapping (address => bool) public isValidator;
     mapping (address => uint8) public validatorNum;
     address[] public validators;
@@ -2069,11 +2070,13 @@ contract Validator is Owned {
         require(isValidator[msg.sender]);
         require(fetchSignerAddress(_burnHash, _signature) == msg.sender);
         require(_burnHash != 0x0);
+        require(!hashAttestations[_burnHash][msg.sender]);
         require(verifyProof(tokenPorter.merkleRoots(_burnHash), _burnHash, _proof));
         hashAttestations[_burnHash][msg.sender] = true;
+        attestationCount[_burnHash] = attestationCount[_burnHash].add(1);
         emit LogAttestation(_burnHash, msg.sender, true);
         
-        if (hashClaimable(_burnHash)) { //TODO: how to avoid using loop for hashClaimable
+        if (attestationCount[_burnHash] >= threshold && !hashClaimed[_burnHash]) {
             require(tokenPorter.mintToken(_originChain, _recipientAddr, _amount, _fee, 
                 _extraData, _burnHash, _globalSupplyInOtherChains));
             hashClaimed[_burnHash] = true;
@@ -2121,25 +2124,10 @@ contract Validator is Owned {
     /// @param _signature clliptic curve signature
     function refuteHash(bytes32 _burnHash, bytes _signature) public {
         require(isValidator[msg.sender]);
+        require(!hashAttestations[_burnHash][msg.sender]);
         require(fetchSignerAddress(_burnHash, _signature) == msg.sender);
-        require(!hashClaimed[_burnHash]);
         hashAttestations[_burnHash][msg.sender] = false;
         emit LogAttestation(_burnHash, msg.sender, false);
-    }
-
-    /// @notice Check whether given hash has been attested and claimable for import
-    /// @param hash burn hash
-    /// @return true/false to check whether given hash can be claimed for import
-    function hashClaimable(bytes32 hash) public view returns(bool) {
-        if (hashClaimed[hash]) { return false; }
-
-        uint8 count = 0;
-        for (uint8 i = 0; i < validators.length; i++) {
-            if (hashAttestations[hash][validators[i]]) { count++;} 
-        }
-        if (count >= threshold) { return true; }
-
-        return false;
     }
 
     /// @notice verify that the given leaf is in merkle root.
