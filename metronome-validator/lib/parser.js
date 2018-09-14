@@ -23,11 +23,13 @@
     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+const logger = require('./logger')
+
 function parseConfig (input) {
   try {
     return JSON.parse(input)
   } catch (e) {
-    console.log('ERROR: Configuration file [config.json] is not a valid JSON!\n')
+    logger.log('error', 'Configuration file [config.json] is not a valid JSON! ' + e)
     process.exit(0)
   }
 }
@@ -57,7 +59,7 @@ function parseContracts (input) {
 
     return contracts
   } catch (e) {
-    console.log('ERROR: error while processing contents of metronome.js')
+    logger.log('error', 'Error occurred while processing contents of metronome.js ' + e)
     process.exit(0)
   }
 }

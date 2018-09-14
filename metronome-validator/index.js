@@ -25,7 +25,6 @@ function init () {
 }
 
 function launchValidator () {
-  console.log('I am in launchValidator function')
   const config = readConfig()
   const metronome = readMetronome()
   listener.listen(config, metronome)

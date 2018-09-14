@@ -25,6 +25,7 @@
 
 const MerkleTreeJs = require('merkletreejs')
 const crypto = require('crypto')
+const logger = require('./logger')
 
 /**
  * Class reprensenting a Metronome Validator for off chain validations
@@ -46,10 +47,10 @@ class Validator {
 
   watchImportEvent () {
     // TODO: log info/error to log file
-    console.log('watching import event')
-    this.tokenPorter.LogImportRequest().watch((err, response) => {
-      if (err) {
-        console.log('export error', err)
+    logger.log('info', 'Started watching import request event')
+    this.tokenPorter.LogImportRequest().watch((error, response) => {
+      if (error) {
+        logger.log('error', 'Error occurred while watching for import request ' + error)
       } else {
         this.validateAndAttestHash(response.args.originChain, response.args.currentBurnHash)
       }
@@ -58,13 +59,13 @@ class Validator {
 
   validateAndAttestHash (sourceChain, burnHash) {
     var exportLogEvent = this.sourceTokenPorter.ExportReceiptLog({currentBurnHash: burnHash}, {fromBlock: 0, toBlock: 'latest'})
-    exportLogEvent.get((err, res) => {
-      if (err) {
-        throw new Error(err)
+    exportLogEvent.get((error, resonse) => {
+      if (error) {
+        logger.log('error', 'Error occurred while reading export receipt on source chain ' + error)
       } else {
-        if (res && res.length > 0) {
-          let merklePath = this.createMerklePath(res[0].args.burnSequence)
-          let importDataObj = this.prepareImportData(res[0].args)
+        if (resonse && resonse.length > 0) {
+          let merklePath = this.createMerklePath(resonse[0].args.burnSequence)
+          let importDataObj = this.prepareImportData(resonse[0].args)
           this.web3.personal.unlockAccount(this.configuration.address, this.configuration.password)
           let signature = this.web3.eth.sign(this.configuration.address, importDataObj.burnHashes[1])
           let totalSupplyAtSourceChain = (this.sourceMetToken.totalSupply()).toNumber()
