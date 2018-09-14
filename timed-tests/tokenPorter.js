@@ -160,10 +160,10 @@ contract('TokenPorter', accounts => {
 
         let signature = web3.eth.sign(OWNER, importDataObj.burnHashes[1])
         console.log('signer`s address of signature of ' + importDataObj.burnHashes[1] + ' ', await etcValidator.fetchSignerAddress(importDataObj.burnHashes[1], signature))
-
-        await etcValidator.attestHash(importDataObj.burnHashes[1], importDataObj.burnHashes[0], web3.fromAscii('ETH'), importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]), importDataObj.merkelProof, logExportReceipt.extraData, signature, {from: OWNER})
+        let totalSupplyInSourceChain = (await metToken.totalSupply()).toNumber()
+        await etcValidator.attestHash(importDataObj.burnHashes[1], web3.fromAscii('ETH'), importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]), importDataObj.merkelProof, logExportReceipt.extraData, signature, totalSupplyInSourceChain, {from: OWNER})
         signature = web3.eth.sign(accounts[1], importDataObj.burnHashes[1])
-        await etcValidator.attestHash(importDataObj.burnHashes[1], importDataObj.burnHashes[0], web3.fromAscii('ETH'), importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]), importDataObj.merkelProof, logExportReceipt.extraData, signature, {from: accounts[1]})
+        await etcValidator.attestHash(importDataObj.burnHashes[1], web3.fromAscii('ETH'), importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]), importDataObj.merkelProof, logExportReceipt.extraData, signature, totalSupplyInSourceChain, {from: accounts[1]})
         // After minting
         let globalSupplyETH = await auctions.globalMetSupply()
         let globalSupplyETC = await etcAuctions.globalMetSupply()
@@ -243,9 +243,10 @@ contract('TokenPorter', accounts => {
 
         let thrown = false
         let signature
+        let totalSupplyInSourceChain = (await metToken.totalSupply()).toNumber()
         try {
           signature = web3.eth.sign(accounts[5], importDataObj.burnHashes[1])
-          await etcValidator.attestHash(importDataObj.burnHashes[1], importDataObj.burnHashes[0], web3.fromAscii('ETH'), importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]), importDataObj.merkelProof, importDataObj.extraData, signature, {from: accounts[5]})
+          await etcValidator.attestHash(importDataObj.burnHashes[1], web3.fromAscii('ETH'), importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]), importDataObj.merkelProof, importDataObj.extraData, signature, totalSupplyInSourceChain, {from: accounts[5]})
         } catch (e) {
           thrown = true
         }
@@ -253,7 +254,7 @@ contract('TokenPorter', accounts => {
         thrown = false
         try {
           signature = web3.eth.sign(OWNER, importDataObj.burnHashes[1])
-          await etcValidator.attestHash(importDataObj.burnHashes[1], importDataObj.burnHashes[0], web3.fromAscii('ETH'), importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]), importDataObj.merkelProof, importDataObj.extraData, signature, {from: OWNER})
+          await etcValidator.attestHash(importDataObj.burnHashes[1], web3.fromAscii('ETH'), importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]), importDataObj.merkelProof, importDataObj.extraData, signature, totalSupplyInSourceChain, {from: OWNER})
         } catch (e) {
           thrown = true
         }
@@ -315,10 +316,11 @@ contract('TokenPorter', accounts => {
         assert.equal(globalSupplyETC.toNumber(), globalSupplyETC.toNumber(), 'Global supply in ETC is not correct')
 
         // After import 1
+        let totalSupplyInSourceChain = (await metToken.totalSupply()).toNumber()
         let signature = web3.eth.sign(OWNER, importDataObj.burnHashes[1])
-        await etcValidator.attestHash(importDataObj.burnHashes[1], importDataObj.burnHashes[0], web3.fromAscii('ETH'), importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]), importDataObj.merkelProof, importDataObj.extraData, signature, {from: OWNER})
+        await etcValidator.attestHash(importDataObj.burnHashes[1], web3.fromAscii('ETH'), importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]), importDataObj.merkelProof, importDataObj.extraData, signature, totalSupplyInSourceChain, {from: OWNER})
         signature = web3.eth.sign(accounts[1], importDataObj.burnHashes[1])
-        await etcValidator.attestHash(importDataObj.burnHashes[1], importDataObj.burnHashes[0], web3.fromAscii('ETH'), importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]), importDataObj.merkelProof, importDataObj.extraData, signature, {from: accounts[1]})
+        await etcValidator.attestHash(importDataObj.burnHashes[1], web3.fromAscii('ETH'), importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]), importDataObj.merkelProof, importDataObj.extraData, signature, totalSupplyInSourceChain, {from: accounts[1]})
 
         globalSupplyETH = await auctions.globalMetSupply()
         globalSupplyETC = await etcAuctions.globalMetSupply()
@@ -354,10 +356,11 @@ contract('TokenPorter', accounts => {
         assert.equal(globalSupplyETC.toNumber(), globalSupplyETH.toNumber(), 'Global supply in two chain is not correct')
 
         // After minting
+        totalSupplyInSourceChain = (await metToken.totalSupply()).toNumber()
         signature = web3.eth.sign(OWNER, importDataObj.burnHashes[1])
-        await etcValidator.attestHash(importDataObj.burnHashes[1], importDataObj.burnHashes[0], web3.fromAscii('ETH'), importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]), importDataObj.merkelProof, importDataObj.extraData, signature, {from: OWNER})
+        await etcValidator.attestHash(importDataObj.burnHashes[1], web3.fromAscii('ETH'), importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]), importDataObj.merkelProof, importDataObj.extraData, signature, totalSupplyInSourceChain, {from: OWNER})
         signature = web3.eth.sign(accounts[1], importDataObj.burnHashes[1])
-        await etcValidator.attestHash(importDataObj.burnHashes[1], importDataObj.burnHashes[0], web3.fromAscii('ETH'), importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]), importDataObj.merkelProof, importDataObj.extraData, signature, {from: accounts[1]})
+        await etcValidator.attestHash(importDataObj.burnHashes[1], web3.fromAscii('ETH'), importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]), importDataObj.merkelProof, importDataObj.extraData, signature, totalSupplyInSourceChain, {from: accounts[1]})
         let balanceAfterImport = await etcMetToken.balanceOf(importDataObj.addresses[1])
         assert.equal(balanceAfterImport.valueOf(), amountToExport * 2)
         totalSupply = await etcMetToken.totalSupply()
@@ -455,9 +458,10 @@ contract('TokenPorter', accounts => {
 
         // validation and minting
         let signature = web3.eth.sign(OWNER, importDataObj.burnHashes[1])
-        await etcValidator.attestHash(importDataObj.burnHashes[1], importDataObj.burnHashes[0], web3.fromAscii('ETH'), importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]), importDataObj.merkelProof, importDataObj.extraData, signature, {from: OWNER})
+        let totalSupplyInSourceChain = (await metToken.totalSupply()).toNumber()
+        await etcValidator.attestHash(importDataObj.burnHashes[1], web3.fromAscii('ETH'), importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]), importDataObj.merkelProof, importDataObj.extraData, signature, totalSupplyInSourceChain, {from: OWNER})
         signature = web3.eth.sign(accounts[1], importDataObj.burnHashes[1])
-        await etcValidator.attestHash(importDataObj.burnHashes[1], importDataObj.burnHashes[0], web3.fromAscii('ETH'), importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]), importDataObj.merkelProof, importDataObj.extraData, signature, {from: accounts[1]})
+        await etcValidator.attestHash(importDataObj.burnHashes[1], web3.fromAscii('ETH'), importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]), importDataObj.merkelProof, importDataObj.extraData, signature, totalSupplyInSourceChain, {from: accounts[1]})
         // After minting
         let globalSupplyETH = await auctions.globalMetSupply()
         let globalSupplyETC = await etcAuctions.globalMetSupply()
@@ -495,10 +499,11 @@ contract('TokenPorter', accounts => {
         assert.equal(logImportReceipt.currentBurnHash, logExportReceipt.currentBurnHash, 'Hash in import log not correct')
 
         // validation and minting
+        totalSupplyInSourceChain = (await etcMetToken.totalSupply()).toNumber()
         signature = web3.eth.sign(OWNER, importDataObj.burnHashes[1])
-        await validator.attestHash(importDataObj.burnHashes[1], importDataObj.burnHashes[0], web3.fromAscii('ETC'), importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]), importDataObj.merkelProof, importDataObj.extraData, signature, {from: OWNER})
+        await validator.attestHash(importDataObj.burnHashes[1], web3.fromAscii('ETC'), importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]), importDataObj.merkelProof, importDataObj.extraData, signature, totalSupplyInSourceChain, {from: OWNER})
         signature = web3.eth.sign(accounts[1], importDataObj.burnHashes[1])
-        await validator.attestHash(importDataObj.burnHashes[1], importDataObj.burnHashes[0], web3.fromAscii('ETC'), importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]), importDataObj.merkelProof, importDataObj.extraData, signature, {from: accounts[1]})
+        await validator.attestHash(importDataObj.burnHashes[1], web3.fromAscii('ETC'), importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]), importDataObj.merkelProof, importDataObj.extraData, signature, totalSupplyInSourceChain, {from: accounts[1]})
         // After minting
         let totalSupplyETHAfter = await metToken.totalSupply()
         assert((totalSupplyETHAfter.sub(totalSupplyETHBefore)).valueOf(), amountToExport)
@@ -556,9 +561,10 @@ contract('TokenPorter', accounts => {
 
         // validation and minting
         let signature = web3.eth.sign(OWNER, importDataObj.burnHashes[1])
-        await etcValidator.attestHash(importDataObj.burnHashes[1], importDataObj.burnHashes[0], web3.fromAscii('ETH'), importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]), importDataObj.merkelProof, importDataObj.extraData, signature, {from: OWNER})
+        let totalSupplyInSourceChain = (await metToken.totalSupply()).toNumber()
+        await etcValidator.attestHash(importDataObj.burnHashes[1], web3.fromAscii('ETH'), importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]), importDataObj.merkelProof, importDataObj.extraData, signature, totalSupplyInSourceChain, {from: OWNER})
         signature = web3.eth.sign(accounts[1], importDataObj.burnHashes[1])
-        await etcValidator.attestHash(importDataObj.burnHashes[1], importDataObj.burnHashes[0], web3.fromAscii('ETH'), importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]), importDataObj.merkelProof, importDataObj.extraData, signature, {from: accounts[1]})
+        await etcValidator.attestHash(importDataObj.burnHashes[1], web3.fromAscii('ETH'), importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]), importDataObj.merkelProof, importDataObj.extraData, signature, totalSupplyInSourceChain, {from: accounts[1]})
         await TestRPCTime.timeTravel(SECS_IN_MINUTE)
         await TestRPCTime.mineBlock()
         const WEI_SENT = 1e18
@@ -641,9 +647,10 @@ contract('TokenPorter', accounts => {
 
         // validation and minting
         let signature = web3.eth.sign(OWNER, importDataObj.burnHashes[1])
-        await etcValidator.attestHash(importDataObj.burnHashes[1], importDataObj.burnHashes[0], web3.fromAscii('ETH'), importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]), importDataObj.merkelProof, importDataObj.extraData, signature, {from: OWNER})
+        let totalSupplyInSourceChain = (await metToken.totalSupply()).toNumber()
+        await etcValidator.attestHash(importDataObj.burnHashes[1], web3.fromAscii('ETH'), importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]), importDataObj.merkelProof, importDataObj.extraData, signature, totalSupplyInSourceChain, {from: OWNER})
         signature = web3.eth.sign(accounts[1], importDataObj.burnHashes[1])
-        await etcValidator.attestHash(importDataObj.burnHashes[1], importDataObj.burnHashes[0], web3.fromAscii('ETH'), importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]), importDataObj.merkelProof, importDataObj.extraData, signature, {from: accounts[1]})
+        await etcValidator.attestHash(importDataObj.burnHashes[1], web3.fromAscii('ETH'), importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]), importDataObj.merkelProof, importDataObj.extraData, signature, totalSupplyInSourceChain, {from: accounts[1]})
         // After minting
 
         await TestRPCTime.timeTravel(1 * SECS_IN_DAY)
@@ -743,7 +750,8 @@ contract('TokenPorter', accounts => {
         var totalSupply = await etcMetToken.totalSupply()
         assert.equal(totalSupply.valueOf(), 0, 'Total supply in ETC is not 0')
         let signature = web3.eth.sign(OWNER, importDataObj.burnHashes[1])
-        await etcValidator.attestHash(importDataObj.burnHashes[1], importDataObj.burnHashes[0], web3.fromAscii('ETH'), importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]), importDataObj.merkelProof, importDataObj.extraData, signature, {from: OWNER})
+        let totalSupplyInSourceChain = (await metToken.totalSupply()).toNumber()
+        await etcValidator.attestHash(importDataObj.burnHashes[1], web3.fromAscii('ETH'), importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]), importDataObj.merkelProof, importDataObj.extraData, signature, totalSupplyInSourceChain, {from: OWNER})
         // After minting
         let globalSupplyETH = await auctions.globalMetSupply()
         let globalSupplyETC = await etcAuctions.globalMetSupply()

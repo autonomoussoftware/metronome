@@ -39,6 +39,7 @@ class Validator {
     this.configuration = destinationChain.configuration
     this.web3 = destinationChain.web3
     this.sourceTokenPorter = sourceChain.contracts.tokenPorter
+    this.sourceMetToken = sourceChain.contracts.metToken
     this.tokenPorter = destinationChain.contracts.tokenPorter
     this.validator = destinationChain.contracts.validator
   }
@@ -66,9 +67,10 @@ class Validator {
           let importDataObj = this.prepareImportData(res[0].args)
           this.web3.personal.unlockAccount(this.configuration.address, this.configuration.password)
           let signature = this.web3.eth.sign(this.configuration.address, importDataObj.burnHashes[1])
-          this.validator.attestHash(importDataObj.burnHashes[1], importDataObj.burnHashes[0], sourceChain,
+          let totalSupplyAtSourceChain = (this.sourceMetToken.totalSupply()).toNumber()
+          this.validator.attestHash(importDataObj.burnHashes[1], sourceChain,
             importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]),
-            merklePath, importDataObj.extraData, signature, {from: this.configuration.address})
+            merklePath, importDataObj.extraData, signature, totalSupplyAtSourceChain, {from: this.configuration.address})
         } else {
           // Todo: Do we need to vote -tive if burnHash not found in source chain?
         }

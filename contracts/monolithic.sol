@@ -1739,11 +1739,11 @@ contract TokenPorter is ITokenPorter, Owned {
     /// @notice mapping that tracks valid destination chains for export
     mapping(bytes8 => address) public destinationChains;
 
-    event LogImportRequest(bytes8 originChain, bytes32 indexed currentBurnHash, 
+    event LogImportRequest(bytes8 originChain, bytes32 indexed currentBurnHash, bytes32 prevHash,
         address indexed destinationRecipientAddr, uint amountToImport, uint fee, bytes extraData);
     
     event LogImport(bytes8 originChain, address indexed destinationRecipientAddr, uint amountImported, uint fee,
-    bytes extraData, uint indexed importSequence, bytes32 indexed currentHash, bytes32 prevHash);
+    bytes extraData, uint indexed importSequence, bytes32 indexed currentHash);
     
     /// @notice Initialize TokenPorter contract.
     /// @param _tokenAddr Address of metToken contract
@@ -1834,8 +1834,6 @@ contract TokenPorter is ITokenPorter, Owned {
         require(_destinationChain == auctions.chain());
         require(_addresses[0] == address(token));
         require(_importData[1] != 0);
-        require(isGlobalSupplyValid(_importData[1], _importData[2]));
-        
 
         // We do not want to change already deployed interface, hence accepting '_proof' 
         // as bytes and converting into bytes32. Here _proof is merkle root.
@@ -1844,7 +1842,8 @@ contract TokenPorter is ITokenPorter, Owned {
         // mint hash is used for further validation before minting and after attestation by off chain validators. 
         mintHashes[_burnHashes[1]] = keccak256(_originChain, _addresses[1], _importData[1], _importData[2]);
         
-        emit LogImportRequest(_originChain, _burnHashes[1], _addresses[1], _importData[1], _importData[2], _extraData);
+        emit LogImportRequest(_originChain, _burnHashes[1], _burnHashes[0], _addresses[1], _importData[1],
+            _importData[2], _extraData);
         return true;
     }
 
@@ -1914,7 +1913,7 @@ contract TokenPorter is ITokenPorter, Owned {
     /// @param currentHash current export hash from source/origin chain.
     /// @return true/false indicating minting was successful or not
     function mintToken(bytes8 originChain, address recipientAddress, uint amount, 
-        uint fee, bytes extraData, bytes32 currentHash, bytes32 prevHash) public returns (bool) {
+        uint fee, bytes extraData, bytes32 currentHash, uint _globalSupplyInOtherChains) public returns (bool) {
         require(msg.sender == address(validator));
         require(originChain != 0x0);
         require(recipientAddress != 0x0);
@@ -1924,14 +1923,14 @@ contract TokenPorter is ITokenPorter, Owned {
         //Validate that mint data is same as the data received during import request.
         require(mintHashes[currentHash] == keccak256(originChain, recipientAddress, amount, fee));
 
-        require(isGlobalSupplyValid(amount, fee));
+        require(isGlobalSupplyValid(amount, fee, _globalSupplyInOtherChains));
         
         if (importSequence == 1 && token.totalSupply() == 0) {
             auctions.prepareAuctionForNonOGChain();
         }
         
         require(token.mint(recipientAddress, amount));
-        emit LogImport(originChain, recipientAddress, amount, fee, extraData, importSequence, currentHash, prevHash);
+        emit LogImport(originChain, recipientAddress, amount, fee, extraData, importSequence, currentHash);
         importSequence++;
         return true;
     }
@@ -1948,9 +1947,10 @@ contract TokenPorter is ITokenPorter, Owned {
 
     //TODO: what to do with fee? should it be part of global supply check?
     /// @notice Check global supply is still valid with current import amount and fee
-    function isGlobalSupplyValid(uint amount, uint fee) private view returns (bool) {
+    function isGlobalSupplyValid(uint amount, uint fee, uint globalSupplyInOtherChains) private view returns (bool) {
         uint amountToImport = amount.add(fee);
-        return (amountToImport.add(token.totalSupply()) <= auctions.globalMetSupply());
+        uint currentGlobalSupply = globalSupplyInOtherChains.add(token.totalSupply());
+        return (amountToImport.add(currentGlobalSupply) <= auctions.globalMetSupply());
     }
 
     /// @notice validate the export receipt
@@ -2055,7 +2055,6 @@ contract Validator is Owned {
 
     /// @notice Off chain validator call this function to validate and attest the hash. 
     /// @param _burnHash current burnHash
-    /// @param _preBurnHash previous burnHash TODO: do we really need this?
     /// @param _originChain source chain
     /// @param _recipientAddr recipientAddr
     /// @param _amount amount to import
@@ -2063,8 +2062,10 @@ contract Validator is Owned {
     /// @param _proof proof
     /// @param _extraData extra information for import
     /// @param _signature clliptic curve signature
-    function attestHash(bytes32 _burnHash, bytes32 _preBurnHash, bytes8 _originChain, address _recipientAddr, 
-        uint _amount, uint _fee, bytes32[] _proof, bytes _extraData, bytes _signature) public {
+    /// @param _globalSupplyInOtherChains total supply in all other chains except this chain
+    function attestHash(bytes32 _burnHash, bytes8 _originChain, address _recipientAddr, 
+        uint _amount, uint _fee, bytes32[] _proof, bytes _extraData, bytes _signature,
+        uint _globalSupplyInOtherChains) public {
         require(isValidator[msg.sender]);
         require(fetchSignerAddress(_burnHash, _signature) == msg.sender);
         require(_burnHash != 0x0);
@@ -2074,7 +2075,7 @@ contract Validator is Owned {
         
         if (hashClaimable(_burnHash)) { //TODO: how to avoid using loop for hashClaimable
             require(tokenPorter.mintToken(_originChain, _recipientAddr, _amount, _fee, 
-                _extraData, _burnHash, _preBurnHash));
+                _extraData, _burnHash, _globalSupplyInOtherChains));
             hashClaimed[_burnHash] = true;
         }
     }
