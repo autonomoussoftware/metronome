@@ -100,6 +100,55 @@ contract('TokenPorter', accounts => {
     let destMetAddr
     const METTokenETCInitialSupply = 0
 
+    it('set export fee correctly', () => {
+      return new Promise(async (resolve, reject) => {
+        const {tokenPorter} = await METGlobal.initContracts(accounts, TestRPCTime.getCurrentBlockTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+        let miniumExportFee = 100
+        await tokenPorter.setMinimumExportFee(miniumExportFee, {from: OWNER})
+        assert.equal((await tokenPorter.minimumExportFee()).valueOf(), miniumExportFee, 'miniumExportFee is not set correctly')
+
+        let exportFee = 10
+        await tokenPorter.setExportFeePerTenThousand(exportFee, {from: OWNER})
+        assert.equal((await tokenPorter.exportFee()).valueOf(), exportFee, 'exportFeeInPercent is not set correctly')
+        let thrown = false
+        miniumExportFee = 0
+        try {
+          await tokenPorter.setMinimumExportFee(miniumExportFee, {from: OWNER})
+        } catch (error) {
+          thrown = true
+        }
+
+        console.log('minium fee', (await tokenPorter.minimumExportFee()).valueOf())
+        assert.isTrue(thrown, 'Minimum export fee must be > 0')
+
+        resolve()
+      })
+    })
+
+    it('set export fee correctly- Non owner user should not be able to set export fee', () => {
+      return new Promise(async (resolve, reject) => {
+        const {tokenPorter} = await METGlobal.initContracts(accounts, TestRPCTime.getCurrentBlockTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+        let thrown = false
+        let miniumExportFee = 100
+        let exportFee = 10
+        try {
+          await tokenPorter.setMinimumExportFee(miniumExportFee, {from: accounts[1]})
+        } catch (error) {
+          thrown = true
+        }
+        console.log('thrown=', thrown)
+        assert.isTrue(thrown, 'Only owner should be able to set minium export fee')
+        thrown = false
+        try {
+          await tokenPorter.setExportFeePerTenThousand(exportFee, {from: accounts[1]})
+        } catch (error) {
+          thrown = true
+        }
+        assert.isTrue(thrown, 'Only owner should be able to set export fee')
+        resolve()
+      })
+    })
+
     it('Basic export test . ETH to ETC', () => {
       return new Promise(async (resolve, reject) => {
         const exportFee = 0

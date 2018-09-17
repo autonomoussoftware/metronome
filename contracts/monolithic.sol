@@ -1732,6 +1732,9 @@ contract TokenPorter is ITokenPorter, Owned {
 
     uint public burnSequence = 1;
     uint public importSequence = 1;
+    uint public minimumExportFee = 0.001 * (10 ** 18);
+    // export fee per 10,000 MET. 1 means 0.01% or 1 met as fee for export of 10,000 met
+    uint public exportFee = 0;
     bytes32[] public exportedBurns;
     uint[] public supplyOnAllChains = new uint[](6);
     mapping (bytes32 => bytes32) public merkleRoots;
@@ -1753,6 +1756,21 @@ contract TokenPorter is ITokenPorter, Owned {
         require(_auctionsAddr != 0x0);
         auctions = Auctions(_auctionsAddr);
         token = METToken(_tokenAddr);
+    }
+
+    /// @notice set minimum export fee. Minimum flat fee applicable for export-import 
+    /// @param _minimumExportFee minimum export fee
+    function setMinimumExportFee(uint _minimumExportFee) public onlyOwner returns (bool) {
+        require(_minimumExportFee > 0);
+        minimumExportFee = _minimumExportFee;
+        return true;
+    }
+
+    /// @notice set export fee in percentage. 
+    /// @param _exportFee fee amount per 10,000 met
+    function setExportFeePerTenThousand(uint _exportFee) public onlyOwner returns (bool) {
+        exportFee = _exportFee;
+        return true;
     }
 
     /// @notice set address of validator contract
@@ -2073,7 +2091,7 @@ contract Validator is Owned {
         require(!hashAttestations[_burnHash][msg.sender]);
         require(verifyProof(tokenPorter.merkleRoots(_burnHash), _burnHash, _proof));
         hashAttestations[_burnHash][msg.sender] = true;
-        attestationCount[_burnHash] = attestationCount[_burnHash].add(1);
+        attestationCount[_burnHash]++;
         emit LogAttestation(_burnHash, msg.sender, true);
         
         if (attestationCount[_burnHash] >= threshold && !hashClaimed[_burnHash]) {
@@ -2083,17 +2101,27 @@ contract Validator is Owned {
         }
     }
 
+    /// @notice off chain validator can refute hash, if given export hash is not verified in origin chain.
+    /// @param _burnHash Burn hash
+    /// @param _signature clliptic curve signature
+    function refuteHash(bytes32 _burnHash, bytes _signature) public {
+        require(isValidator[msg.sender]);
+        require(!hashAttestations[_burnHash][msg.sender]);
+        require(fetchSignerAddress(_burnHash, _signature) == msg.sender);
+        hashAttestations[_burnHash][msg.sender] = false;
+        emit LogAttestation(_burnHash, msg.sender, false);
+    }
+
     /// @notice Fetch signer's address from clliptic curve signature
     /// @param _message original message which was signed 
     /// @param  _signature clliptic curve signature
     /// @return address of signer
-    function fetchSignerAddress(bytes32 _message, bytes _signature) public view returns (address) {
+    function fetchSignerAddress(bytes32 _message, bytes _signature) public pure returns (address) {
         bytes32 r;
         bytes32 s;
         uint8 v;
         bytes memory prefix = "\x19Ethereum Signed Message:\n32";
         bytes32 prefixedHash = keccak256(prefix, _message);
-        address signer;
         // Check the signature length
         if (_signature.length != 65) {
             return (address(0));
@@ -2117,17 +2145,6 @@ contract Validator is Owned {
             return (address(0));
         }
         return ecrecover(prefixedHash, v, r, s);
-    }
-
-    /// @notice off chain validator can refute hash, if given export hash is not verified in origin chain.
-    /// @param _burnHash Burn hash
-    /// @param _signature clliptic curve signature
-    function refuteHash(bytes32 _burnHash, bytes _signature) public {
-        require(isValidator[msg.sender]);
-        require(!hashAttestations[_burnHash][msg.sender]);
-        require(fetchSignerAddress(_burnHash, _signature) == msg.sender);
-        hashAttestations[_burnHash][msg.sender] = false;
-        emit LogAttestation(_burnHash, msg.sender, false);
     }
 
     /// @notice verify that the given leaf is in merkle root.
