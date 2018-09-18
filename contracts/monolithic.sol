@@ -1732,6 +1732,7 @@ contract TokenPorter is ITokenPorter, Owned {
 
     uint public burnSequence = 1;
     uint public importSequence = 1;
+    // This is flat fee and must be in 18 decimal value
     uint public minimumExportFee = 0.001 * (10 ** 18);
     // export fee per 10,000 MET. 1 means 0.01% or 1 met as fee for export of 10,000 met
     uint public exportFee = 0;
@@ -1880,6 +1881,7 @@ contract TokenPorter is ITokenPorter, Owned {
         require(destinationChains[_destChain] == _destMetronomeAddr);
         
         require(token.balanceOf(tokenOwner) >= _amount.add(_fee));
+        require(_fee >= minimumExportFee && _fee >= (_amount.mul(exportFee).div(10000)));
 
         token.destroy(tokenOwner, _amount.add(_fee));
 
@@ -1903,10 +1905,10 @@ contract TokenPorter is ITokenPorter, Owned {
             _destMetronomeAddr, 
             _destRecipAddr, 
             _amount,
+            _fee,
             currentTick,
             auctions.genesisTime(),
             dailyMintable,
-            token.totalSupply(),
             _extraData,
             exportedBurns[burnSequence - 1]);
        
@@ -1929,9 +1931,11 @@ contract TokenPorter is ITokenPorter, Owned {
     /// @param fee fee paid during export
     /// @param extraData any extra data related to export-import process.
     /// @param currentHash current export hash from source/origin chain.
+    /// @param validators validators
     /// @return true/false indicating minting was successful or not
     function mintToken(bytes8 originChain, address recipientAddress, uint amount, 
-        uint fee, bytes extraData, bytes32 currentHash, uint _globalSupplyInOtherChains) public returns (bool) {
+        uint fee, bytes extraData, bytes32 currentHash, uint globalSupplyInOtherChains, 
+        address[] validators) public returns (bool) {
         require(msg.sender == address(validator));
         require(originChain != 0x0);
         require(recipientAddress != 0x0);
@@ -1941,13 +1945,19 @@ contract TokenPorter is ITokenPorter, Owned {
         //Validate that mint data is same as the data received during import request.
         require(mintHashes[currentHash] == keccak256(originChain, recipientAddress, amount, fee));
 
-        require(isGlobalSupplyValid(amount, fee, _globalSupplyInOtherChains));
+        require(isGlobalSupplyValid(amount, fee, globalSupplyInOtherChains));
         
         if (importSequence == 1 && token.totalSupply() == 0) {
             auctions.prepareAuctionForNonOGChain();
         }
         
         require(token.mint(recipientAddress, amount));
+        // fee amount has already been validated during export and its part of burn hash
+        // so we may not need to calculate it again.
+        uint feeToDistribute =  fee.div(validators.length);
+        for (uint i = 0; i < validators.length; i++) {
+            token.mint(validators[i], feeToDistribute);
+        }
         emit LogImport(originChain, recipientAddress, amount, fee, extraData, importSequence, currentHash);
         importSequence++;
         return true;
@@ -1984,7 +1994,7 @@ contract TokenPorter is ITokenPorter, Owned {
         // _burnHashes[0] is previous burnHash, _burnHashes[1] is current burnHash
 
         if (_burnHashes[1] == keccak256(_importData[0], _originChain, _destinationChain, _addresses[0], 
-            _addresses[1], _importData[1], _importData[3], _importData[4], _importData[5], _supplyOnAllChain[0], 
+            _addresses[1], _importData[1], _importData[2], _importData[3], _importData[4], _importData[5], 
             _extraData, _burnHashes[0])) {
             return true;
         }
@@ -2095,9 +2105,9 @@ contract Validator is Owned {
         emit LogAttestation(_burnHash, msg.sender, true);
         
         if (attestationCount[_burnHash] >= threshold && !hashClaimed[_burnHash]) {
-            require(tokenPorter.mintToken(_originChain, _recipientAddr, _amount, _fee, 
-                _extraData, _burnHash, _globalSupplyInOtherChains));
             hashClaimed[_burnHash] = true;
+            require(tokenPorter.mintToken(_originChain, _recipientAddr, _amount, _fee, 
+                _extraData, _burnHash, _globalSupplyInOtherChains, validators));
         }
     }
 
