@@ -1733,7 +1733,7 @@ contract TokenPorter is ITokenPorter, Owned {
     uint public burnSequence = 1;
     uint public importSequence = 1;
     // This is flat fee and must be in 18 decimal value
-    uint public minimumExportFee = 0.001 * (10 ** 18);
+    uint public minimumExportFee = 1 * (10 ** 12);
     // export fee per 10,000 MET. 1 means 0.01% or 1 met as fee for export of 10,000 met
     uint public exportFee = 0;
     bytes32[] public exportedBurns;
