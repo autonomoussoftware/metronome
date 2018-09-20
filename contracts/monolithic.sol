@@ -2027,13 +2027,9 @@ contract Validator is Owned {
 
     /// @param _validator validator address
     function addValidator(address _validator) public onlyOwner {
+        require(!isValidator[_validator]);
         validators.push(_validator);
         isValidator[_validator] = true;
-    }
-
-    /// @param _validator validator address
-    function disableValidator(address _validator) public onlyOwner {
-        delete isValidator[_validator];
     }
 
     /// @param _validator validator address
@@ -2048,6 +2044,11 @@ contract Validator is Owned {
                 break;
             }
         }  
+    }
+
+    /// @notice fetch count of validators
+    function getValidatorsCount() public view returns (uint) { 
+        return  validators.length;
     }
 
     /// @notice set threshold for validation and minting
