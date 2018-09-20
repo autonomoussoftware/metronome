@@ -53,10 +53,13 @@ const initContracts = function () {
 
     ethBuyer1 = eth.web3.personal.newAccount('password')
     etcBuyer1 = etc.web3.personal.newAccount('password')
-
     // Send some ether for gas cost and MET
+    await eth.web3.personal.unlockAccount(eth.web3.eth.accounts[0], '')
+    await etc.web3.personal.unlockAccount(etc.web3.eth.accounts[0], '')
+
     await eth.web3.eth.sendTransaction({to: ethBuyer1, from: eth.web3.eth.accounts[0], value: 2e18})
     await etc.web3.eth.sendTransaction({to: etcBuyer1, from: etc.web3.eth.accounts[0], value: 2e18})
+
     let owner = await eth.contracts.tokenPorter.owner()
     await eth.web3.personal.unlockAccount(owner, 'newOwner')
     var tokenAddress = etc.contracts.metToken.address

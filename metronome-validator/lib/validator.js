@@ -46,34 +46,36 @@ class Validator {
   }
 
   watchImportEvent () {
-    // TODO: log info/error to log file
     logger.log('info', 'Started watching import request event')
     this.tokenPorter.LogImportRequest().watch((error, response) => {
       if (error) {
-        logger.log('error', 'Error occurred while watching for import request ' + error)
+        logger.log('error', 'Error occurred while watching for import request %s', error)
       } else {
         this.validateAndAttestHash(response.args.originChain, response.args.currentBurnHash)
       }
     })
   }
 
-  validateAndAttestHash (sourceChain, burnHash) {
+  validateAndAttestHash (sourceChainName, burnHash) {
     var exportLogEvent = this.sourceTokenPorter.ExportReceiptLog({currentBurnHash: burnHash}, {fromBlock: 0, toBlock: 'latest'})
-    exportLogEvent.get((error, resonse) => {
+    exportLogEvent.get((error, response) => {
       if (error) {
-        logger.log('error', 'Error occurred while reading export receipt on source chain ' + error)
+        logger.log('error', 'Error occurred while reading export receipt on source chain, %s ', error)
       } else {
-        if (resonse && resonse.length > 0) {
-          let merklePath = this.createMerklePath(resonse[0].args.burnSequence)
-          let importDataObj = this.prepareImportData(resonse[0].args)
+        if (response && response.length > 0) {
+          let merklePath = this.createMerklePath(response[0].args.burnSequence)
+          let importDataObj = this.prepareImportData(response[0].args)
           this.web3.personal.unlockAccount(this.configuration.address, this.configuration.password)
           let signature = this.web3.eth.sign(this.configuration.address, importDataObj.burnHashes[1])
           let totalSupplyAtSourceChain = (this.sourceMetToken.totalSupply()).toNumber()
-          this.validator.attestHash(importDataObj.burnHashes[1], sourceChain,
+          this.validator.attestHash(importDataObj.burnHashes[1], sourceChainName,
             importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]),
             merklePath, importDataObj.extraData, signature, totalSupplyAtSourceChain, {from: this.configuration.address})
+          logger.log('info', 'Attested burn hash ' + burnHash)
         } else {
-          // Todo: Do we need to vote -tive if burnHash not found in source chain?
+          let signature = this.web3.eth.sign(this.configuration.address, burnHash)
+          this.validator.refuteHash(burnHash, signature, {from: this.configuration.address})
+          logger.log('info', 'Refuted burn hash ' + burnHash)
         }
       }
     })
@@ -92,7 +94,6 @@ class Validator {
       leaves.push(leave)
       i++
     }
-    console.log('leaves=', leaves)
     const tree = new MerkleTreeJs(leaves, this.sha256)
     var merkleProof = []
     var buffer = tree.getProof(leaves[leaves.length - 1])

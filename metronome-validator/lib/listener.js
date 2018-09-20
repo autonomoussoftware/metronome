@@ -29,7 +29,6 @@ const Chain = require('./chain')
 const logger = require('./logger')
 
 function listen (config, metronome) {
-  console.log('listening...', config)
   let configuration = parser.parseConfig(config)
   let metronomeContracts = parser.parseMetronome(metronome)
 
@@ -42,7 +41,7 @@ function listen (config, metronome) {
     ethValidator.watchImportEvent()
     etcValidator.watchImportEvent()
   } catch (e) {
-    logger.log('error', 'Error occurred while listening events' + e)
+    logger.log('error', 'Error occurred while listening events, %s', e)
   }
 }
 
