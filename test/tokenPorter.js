@@ -344,17 +344,18 @@ contract('TokenPorter', accounts => {
         await auctions.sendTransaction({ from: buyer, value: amount })
 
         var totalSupplyBefore = await metToken.totalSupply()
-        var mtTokenBalanceBefore = await metToken.balanceOf(buyer)
-        assert.isAbove(mtTokenBalanceBefore.toNumber(), 0, 'Buyer has no MET Tokens to export')
-
+        var mtTokenBalanceBefore = (await metToken.balanceOf(buyer)).toNumber()
+        assert.isAbove(mtTokenBalanceBefore, 0, 'Buyer has no MET Tokens to export')
+        let fee = 1e16
+        let amountToExport = mtTokenBalanceBefore - fee
         // export all tokens tokens
         const expectedExtraData = 'extra data'
         const tx = await metToken.export(
           destChain,
           destAddr,
           buyer,
-          mtTokenBalanceBefore,
-          0,
+          amountToExport,
+          fee,
           web3.fromAscii(expectedExtraData),
           { from: buyer })
 
@@ -367,7 +368,7 @@ contract('TokenPorter', accounts => {
         assert.equal(burnLog.event, 'Transfer', 'Burn was not emitted')
         assert.equal(burnLog.args._from, buyer, 'From is wrong')
         assert.equal(burnLog.args._to, 0x0, 'To is wrong')
-        assert.equal(burnLog.args._value.toNumber(), mtTokenBalanceBefore.toNumber(), 'Value is wrong')
+        assert.equal(burnLog.args._value.toNumber(), amountToExport + fee, 'Value is wrong')
 
         // check for export receipt
         const decoder = ethjsABI.logDecoder(tokenPorter.abi)
@@ -376,7 +377,7 @@ contract('TokenPorter', accounts => {
         const logExportReceipt = tokenPorterEvents[0]
         assert.equal(logExportReceipt._eventName, 'ExportReceiptLog', 'Log name is wrong')
         const amountToBurn = parseInt(logExportReceipt.amountToBurn.toString(), 10)
-        assert.equal(amountToBurn, mtTokenBalanceBefore.toNumber(), 'Amounts are different')
+        assert.equal(amountToBurn, amountToExport, 'Amounts are different')
         const destinationChain = logExportReceipt.destinationChain
         assert.equal(web3.toHex(destinationChain), web3.toHex(destChain) + '0000000000', 'Dest Chain is different')
         const destMetronomeAddr = logExportReceipt.destinationMetronomeAddr
@@ -411,10 +412,10 @@ contract('TokenPorter', accounts => {
         assert.isAbove(logExportReceipt.genesisTime.toNumber(), 0, 'genesisTime is wrong')
 
         // reconcile balances
-        var mtTokenBalanceAfter = await metToken.balanceOf(buyer)
-        assert.equal(totalSupplyBefore.sub(totalSupplyAfter).toNumber(), amountToBurn, 'After export, total supply is not correct')
-        assert.equal(mtTokenBalanceBefore.sub(mtTokenBalanceAfter).toNumber(), amountToBurn, 'After export, metTokenBalance is not correct')
-        assert.equal(mtTokenBalanceAfter.toNumber(), 0, 'metTokenBalance after export should be zero')
+        var mtTokenBalanceAfter = (await metToken.balanceOf(buyer)).toNumber()
+        assert.equal(totalSupplyBefore.sub(totalSupplyAfter).toNumber(), amountToExport + fee, 'After export, total supply is not correct')
+        assert.equal(mtTokenBalanceBefore - mtTokenBalanceAfter, amountToExport + fee, 'After export, metTokenBalance is not correct')
+        assert.equal(mtTokenBalanceAfter, 0, 'metTokenBalance after export should be zero')
 
         resolve()
       })
@@ -441,17 +442,18 @@ contract('TokenPorter', accounts => {
           await auctions.sendTransaction({ from: buyer, value: amount })
 
           var totalSupplyBefore = await metToken.totalSupply()
-          var mtTokenBalanceBefore = await metToken.balanceOf(buyer)
-          assert.isAbove(mtTokenBalanceBefore.toNumber(), 0, 'Buyer has no MET Tokens to export')
-
+          var mtTokenBalanceBefore = (await metToken.balanceOf(buyer)).toNumber()
+          assert.isAbove(mtTokenBalanceBefore, 0, 'Buyer has no MET Tokens to export')
+          let fee = 1e16
+          let amountToExport = mtTokenBalanceBefore - fee
           // export all tokens tokens
           const expectedExtraData = 'extra data'
           const tx = await metToken.export(
             destChain,
             destMET,
             buyer,
-            mtTokenBalanceBefore,
-            0,
+            amountToExport,
+            fee,
             web3.fromAscii(expectedExtraData),
             { from: buyer })
 
@@ -461,10 +463,10 @@ contract('TokenPorter', accounts => {
           assert.equal(burnLog.event, 'Transfer', 'Burn was not emitted')
           assert.equal(burnLog.args._from, buyer, 'From is wrong')
           assert.equal(burnLog.args._to, 0x0, 'To is wrong')
-          assert.equal(burnLog.args._value.toNumber(), mtTokenBalanceBefore.toNumber(), 'Value is wrong')
+          assert.equal(burnLog.args._value.toNumber(), amountToExport + fee, 'Value is wrong')
 
           const claimable = await tokenPorter.claimables(destMET, buyer)
-          assert.equal(claimable.toNumber(), mtTokenBalanceBefore.toNumber(), 'Claimable was not recorded')
+          assert.equal(claimable.toNumber(), amountToExport, 'Claimable was not recorded')
 
           // check for export receipt
           const decoder = ethjsABI.logDecoder(tokenPorter.abi)
@@ -473,7 +475,7 @@ contract('TokenPorter', accounts => {
           const logExportReceipt = tokenPorterEvents[0]
           assert.equal(logExportReceipt._eventName, 'ExportReceiptLog', 'Log name is wrong')
           const amountToBurn = parseInt(logExportReceipt.amountToBurn.toString(), 10)
-          assert.equal(amountToBurn, mtTokenBalanceBefore.toNumber(), 'Amounts are different')
+          assert.equal(amountToBurn, amountToExport, 'Amounts are different')
           const destinationChain = logExportReceipt.destinationChain
           assert.equal(web3.toHex(destinationChain), web3.toHex(destChain) + '0000000000', 'Dest Chain is different')
           const destMetronomeAddr = logExportReceipt.destinationMetronomeAddr
@@ -509,10 +511,10 @@ contract('TokenPorter', accounts => {
           assert.isAbove(logExportReceipt.genesisTime.toNumber(), 0, 'genesisTime is wrong')
 
           // reconcile balances
-          var mtTokenBalanceAfter = await metToken.balanceOf(buyer)
-          assert.equal(totalSupplyBefore.sub(totalSupplyAfter).toNumber(), amountToBurn, 'After export, total supply is not correct')
-          assert.equal(mtTokenBalanceBefore.sub(mtTokenBalanceAfter).toNumber(), amountToBurn, 'After export, metTokenBalance is not correct')
-          assert.equal(mtTokenBalanceAfter.toNumber(), 0, 'metTokenBalance after export should be zero')
+          var mtTokenBalanceAfter = (await metToken.balanceOf(buyer)).toNumber()
+          assert.equal(totalSupplyBefore.sub(totalSupplyAfter).toNumber(), amountToExport + fee, 'After export, total supply is not correct')
+          assert.equal(mtTokenBalanceBefore - mtTokenBalanceAfter, amountToExport + fee, 'After export, metTokenBalance is not correct')
+          assert.equal(mtTokenBalanceAfter, 0, 'metTokenBalance after export should be zero')
         }
 
         const count = await tokenPorter.claimReceivables.call(claims.map(c => c.address), {from: destMET})
