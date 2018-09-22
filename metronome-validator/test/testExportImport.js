@@ -119,10 +119,10 @@ describe('cross chain testing', () => {
       eth.web3.personal.unlockAccount(ethBuyer1, 'password')
       etc.web3.personal.unlockAccount(etcBuyer1, 'password')
       // Buy some MET
-      await eth.web3.eth.sendTransaction({to: eth.contracts.auctions.address, from: ethBuyer1, value: 1e16})
+      await eth.web3.eth.sendTransaction({to: eth.contracts.auctions.address, from: ethBuyer1, value: 2e16})
       let amount = (eth.contracts.metToken.balanceOf(ethBuyer1)).toNumber()
       assert(amount > 0, 'Exporter has no MET token balance')
-      let fee = 1e14
+      let fee = amount / 2
       amount = amount - fee
       let extraData = 'D'
       let totalSupplybefore = await eth.contracts.metToken.totalSupply()
@@ -142,6 +142,7 @@ describe('cross chain testing', () => {
       let importDataObj = await prepareImportData(eth, logExportReceipt)
       let expectedTotalSupply = etc.contracts.metToken.totalSupply().toNumber() + amount + fee
       let expectedBalanceOfRecepient = etc.contracts.metToken.balanceOf(logExportReceipt.destinationRecipientAddr).toNumber() + amount
+      let balanceOfValidatorBefore = etc.contracts.metToken.balanceOf(etc.configuration.address).toNumber()
       tx = await etc.contracts.metToken.importMET(etc.web3.fromAscii('ETH'), logExportReceipt.destinationChain, importDataObj.addresses, logExportReceipt.extraData,
         importDataObj.burnHashes, logExportReceipt.supplyOnAllChains, importDataObj.importData, importDataObj.root, {from: etcBuyer1})
       let filter = etc.contracts.tokenPorter.LogImport().watch((err, response) => {
@@ -150,9 +151,11 @@ describe('cross chain testing', () => {
         } else {
           if (logExportReceipt.currentBurnHash === response.args.currentHash) {
             filter.stopWatching()
-            console.log('totalSupply=', etc.contracts.metToken.totalSupply())
             assert.closeTo(etc.contracts.metToken.totalSupply().toNumber(), expectedTotalSupply, 3, 'Total supply is wrong after import')
             assert.equal(etc.contracts.metToken.balanceOf(logExportReceipt.destinationRecipientAddr).valueOf(), expectedBalanceOfRecepient, 'Balance of recepient wrong after import')
+            let balanceOfValidatorAfter = etc.contracts.metToken.balanceOf(etc.configuration.address).toNumber()
+            let expectedFee = fee / (etc.contracts.validator.getValidatorsCount().toNumber())
+            assert(balanceOfValidatorAfter - balanceOfValidatorBefore, expectedFee, 'Validator did not get correct export fee')
             resolve()
           }
         }
@@ -166,7 +169,7 @@ describe('cross chain testing', () => {
       etc.web3.personal.unlockAccount(etcBuyer1, 'password')
       let amount = (etc.contracts.metToken.balanceOf(etcBuyer1)).toNumber()
       assert(amount > 0, 'Exporter has no MET token balance')
-      let fee = 1e14
+      let fee = 3e14
       amount = amount - fee
       let extraData = 'D'
       let totalSupplybefore = await etc.contracts.metToken.totalSupply()
@@ -184,9 +187,9 @@ describe('cross chain testing', () => {
       let logExportReceipt = decoder(receipt.logs)[0]
       assert(totalSupplybefore.sub(totalSupplyAfter), amount + fee, 'Export from ETH failed')
       let importDataObj = await prepareImportData(etc, logExportReceipt)
-      console.log('total Supply in ETH=', eth.contracts.metToken.totalSupply().toNumber())
       let expectedTotalSupply = eth.contracts.metToken.totalSupply().toNumber() + amount + fee
       let expectedBalanceOfRecepient = eth.contracts.metToken.balanceOf(logExportReceipt.destinationRecipientAddr).toNumber() + amount
+      let balanceOfValidatorBefore = eth.contracts.metToken.balanceOf(eth.configuration.address).toNumber()
       tx = await eth.contracts.metToken.importMET(eth.web3.fromAscii('ETC'), logExportReceipt.destinationChain, importDataObj.addresses, logExportReceipt.extraData,
         importDataObj.burnHashes, logExportReceipt.supplyOnAllChains, importDataObj.importData, importDataObj.root, {from: ethBuyer1})
       let filter = eth.contracts.tokenPorter.LogImport().watch((err, response) => {
@@ -195,9 +198,11 @@ describe('cross chain testing', () => {
         } else {
           if (logExportReceipt.currentBurnHash === response.args.currentHash) {
             filter.stopWatching()
-            console.log('totalSupply in eth=', eth.contracts.metToken.totalSupply().toNumber())
             assert.equal(eth.contracts.metToken.totalSupply().valueOf(), expectedTotalSupply, 'Total supply is wrong after import')
             assert.equal(eth.contracts.metToken.balanceOf(logExportReceipt.destinationRecipientAddr).valueOf(), expectedBalanceOfRecepient, 'Balance of recepient wrong after import')
+            let balanceOfValidatorAfter = eth.contracts.metToken.balanceOf(eth.configuration.address).toNumber()
+            let expectedFee = fee / (eth.contracts.validator.getValidatorsCount().toNumber())
+            assert(balanceOfValidatorAfter - balanceOfValidatorBefore, expectedFee, 'Validator did not get correct export fee')
             resolve()
           }
         }

@@ -11,7 +11,7 @@
     "migrate": "truffle migrate",
     "migrate:clean": "truffle migrate --reset",
     "solhint": "solhint contracts/*.sol",
-    "eslint": "eslint test/*.js timed-tests/*.js",
+    "eslint": "eslint test/*.js timed-tests/*.js metronome-validator/lib/*.js metronome-validator/test/*.js",
     "ganache": "kill -9 $(lsof -ti :8545) & (ganache-cli -p 8545 -e 1000 -a 15 > /dev/null & truffle test) && kill -9 $(lsof -ti :8545)",
     "ganache:single": "kill -9 $(lsof -ti :8545) & (ganache-cli -p 8545 -e 1000 -a 15 > /dev/null & truffle test $TESTFILE) && kill -9 $(lsof -ti :8545)",
     "ganache:subs": "kill -9 $(lsof -ti :8545) & (ganache-cli -p 8545 -e 1000 -a 15 > /dev/null & truffle test timed-tests/subscriptions.js) && kill -9 $(lsof -ti :8545)",

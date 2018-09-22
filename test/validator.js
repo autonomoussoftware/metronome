@@ -57,6 +57,25 @@ contract('Validator', accounts => {
     })
   })
 
+  it('Owner should not be able to add same validator multiple time', () => {
+    return new Promise(async (resolve, reject) => {
+      await validator.addValidator(validatorAddress2, {from: OWNER})
+      assert.equal(await validator.validators(0), validatorAddress2, 'New validator is not added correctly')
+      assert.isTrue(await validator.isValidator(validatorAddress2), 'validator is not set correctly')
+      let validatorCountBefore = await validator.getValidatorsCount()
+      let thrown
+      try {
+        await validator.addValidator(validatorAddress2, {from: OWNER})
+      } catch (e) {
+        thrown = true
+      }
+      let validatorCountAfter = await validator.getValidatorsCount()
+      assert.equal(validatorCountAfter.toNumber(), validatorCountBefore.toNumber(), 'Duplicate validator added')
+      assert.isTrue(thrown, 'addValidator did not throw when adding same validator again')
+      resolve()
+    })
+  })
+
   it('Owner should be able to remove validators and array should shrink', () => {
     return new Promise(async (resolve, reject) => {
       await validator.addValidator(accounts[1], {from: OWNER})
