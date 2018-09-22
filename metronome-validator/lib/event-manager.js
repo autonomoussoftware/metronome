@@ -23,34 +23,29 @@
     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-const logger = require('./logger')
-
-class Listener {
-  constructor (destinationChain, eventManager) {
-    this.chainName = destinationChain.name
-    this.web3 = destinationChain.web3
-    this.tokenPorter = destinationChain.contracts.tokenPorter
-    this.eventManager = eventManager
+class EventManager {
+  constructor (queue) {
+    this.queue = queue
+    this.safeBlockHeight = 6
   }
 
-  watchImportEvent () {
-    const key = this.chainName + 'pending-import'
-
-    logger.log('info', 'Started watching import request event')
-    this.tokenPorter.LogImportRequest().watch((error, response) => {
-      if (error) {
-        logger.log('error', 'Error occurred while watching for import request %s', error)
-      } else {
-        const pendingEvent = this.createEvent(response.args.currentBurnHash, response.blockNumber)
-        this.eventManager.push(key, pendingEvent)
-      }
-    })
+  push (key, value) {
+    this.queue.push(key, value)
   }
 
-  createEvent (burnHash, blockNumber) {
-    const event = {hash: burnHash, blockNumber: blockNumber}
-    return JSON.stringify(event)
+  pop (key) {
+    // TODO: rethink about this await and async.
+    // possiblity restructure queue and queue-manager
+    const value = this.queue.pop(key)
+    console.log('returned hash is', value)
+    return value
+  }
+
+  checkBlockHeight () {
+    // TODO:
+    // run every x seconds and check block height compare to import/export block
+    // this.queue.get(key)
   }
 }
 
-module.exports = Listener
+module.exports = EventManager

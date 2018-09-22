@@ -37,7 +37,8 @@ class Validator {
      */
 
   constructor (sourceChain, destinationChain) {
-    this.configuration = destinationChain.configuration
+    this.address = destinationChain.validatorAddress
+    this.passowrd = destinationChain.validatorPassword
     this.web3 = destinationChain.web3
     this.sourceTokenPorter = sourceChain.contracts.tokenPorter
     this.sourceMetToken = sourceChain.contracts.metToken
@@ -65,16 +66,16 @@ class Validator {
         if (response && response.length > 0) {
           let merklePath = this.createMerklePath(response[0].args.burnSequence)
           let importDataObj = this.prepareImportData(response[0].args)
-          this.web3.personal.unlockAccount(this.configuration.address, this.configuration.password)
-          let signature = this.web3.eth.sign(this.configuration.address, importDataObj.burnHashes[1])
+          this.web3.personal.unlockAccount(this.address, this.password)
+          let signature = this.web3.eth.sign(this.address, importDataObj.burnHashes[1])
           let totalSupplyAtSourceChain = (this.sourceMetToken.totalSupply()).toNumber()
           this.validator.attestHash(importDataObj.burnHashes[1], sourceChainName,
             importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]),
-            merklePath, importDataObj.extraData, signature, totalSupplyAtSourceChain, {from: this.configuration.address})
+            merklePath, importDataObj.extraData, signature, totalSupplyAtSourceChain, {from: this.address})
           logger.log('info', 'Attested burn hash ' + burnHash)
         } else {
-          let signature = this.web3.eth.sign(this.configuration.address, burnHash)
-          this.validator.refuteHash(burnHash, signature, {from: this.configuration.address})
+          let signature = this.web3.eth.sign(this.address, burnHash)
+          this.validator.refuteHash(burnHash, signature, {from: this.address})
           logger.log('info', 'Refuted burn hash ' + burnHash)
         }
       }

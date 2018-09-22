@@ -23,34 +23,37 @@
     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+const parser = require('./parser')
+const Chain = require('./chain')
+const Queue = require('./queue')
+const EventManager = require('./event-manager')
 const logger = require('./logger')
+const Listener = require('./listener')
 
-class Listener {
-  constructor (destinationChain, eventManager) {
-    this.chainName = destinationChain.name
-    this.web3 = destinationChain.web3
-    this.tokenPorter = destinationChain.contracts.tokenPorter
-    this.eventManager = eventManager
-  }
+function launch (config, metronome) {
+  let configuration = parser.parseConfig(config)
+  let metronomeContracts = parser.parseMetronome(metronome)
 
-  watchImportEvent () {
-    const key = this.chainName + 'pending-import'
+  let ethChain = new Chain(configuration.eth, metronomeContracts.eth)
+  let etcChain = new Chain(configuration.etc, metronomeContracts.etc)
 
-    logger.log('info', 'Started watching import request event')
-    this.tokenPorter.LogImportRequest().watch((error, response) => {
-      if (error) {
-        logger.log('error', 'Error occurred while watching for import request %s', error)
-      } else {
-        const pendingEvent = this.createEvent(response.args.currentBurnHash, response.blockNumber)
-        this.eventManager.push(key, pendingEvent)
-      }
-    })
-  }
+  let eventQueue = new Queue()
 
-  createEvent (burnHash, blockNumber) {
-    const event = {hash: burnHash, blockNumber: blockNumber}
-    return JSON.stringify(event)
+  let ethEventManager = new EventManager(eventQueue)
+  let etcEventManager = new EventManager(eventQueue)
+
+  let ethListener = new Listener(ethChain, ethEventManager)
+  let etcListener = new Listener(etcChain, etcEventManager)
+
+  // TODO: validator should onle validate and vote/attast
+  // TODO: event manager will call validator based on block height of 6
+
+  try {
+    ethListener.watchImportEvent()
+    etcListener.watchImportEvent()
+  } catch (e) {
+    logger.log('error', 'Error occurred while listening events, %s', e)
   }
 }
 
-module.exports = Listener
+module.exports = {launch}
