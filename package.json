@@ -7,21 +7,22 @@
   },
   "scripts": {
     "test": "./test-all",
-    "compile": "truffle compile",
-    "migrate": "truffle migrate",
-    "migrate:clean": "truffle migrate --reset",
+    "compile": "./node_modules/.bin/truffle compile",
+    "migrate": "./node_modules/.bin/truffle migrate",
+    "migrate:clean": "./node_modules/.bin/truffle migrate --reset",
+    "generate:ts": "./node_modules/.bin/truffle compile && ./node_modules/.bin/typechain --target truffle --outDir ./ts/ './build/contracts/*.json'",
     "generate:go": "abigen --sol=./contracts/monolithic.sol --pkg=metronome > metronome.go",
-    "solhint": "solhint contracts/*.sol",
-    "eslint": "eslint test/*.js timed-tests/*.js",
-    "ganache": "kill -9 $(lsof -ti :8545) & (ganache-cli -p 8545 -e 1000 -a 15 > /dev/null & truffle test) && kill -9 $(lsof -ti :8545)",
-    "ganache:single": "kill -9 $(lsof -ti :8545) & (ganache-cli -p 8545 -e 1000 -a 15 > /dev/null & truffle test $TESTFILE) && kill -9 $(lsof -ti :8545)",
-    "ganache:subs": "kill -9 $(lsof -ti :8545) & (ganache-cli -p 8545 -e 1000 -a 15 > /dev/null & truffle test timed-tests/subscriptions.js) && kill -9 $(lsof -ti :8545)",
-    "ganache:ac": "kill -9 $(lsof -ti :8545) & (ganache-cli -p 8545 -e 1000 -a 100 > /dev/null & truffle test timed-tests/ac.js) && kill -9 $(lsof -ti :8545)",
-    "ganache:auctions": "kill -9 $(lsof -ti :8545) & (ganache-cli -p 8545 -e 1000 -a 15 > /dev/null & truffle test timed-tests/auctions.js) && kill -9 $(lsof -ti :8545)",
-    "ganache:proceeds": "kill -9 $(lsof -ti :8545) & (ganache-cli -p 8545 -e 1000 -a 15 > /dev/null & truffle test timed-tests/proceeds.js) && kill -9 $(lsof -ti :8545)",
-    "ganache:tokenLocker": "kill -9 $(lsof -ti :8545) & (ganache-cli -p 8545 -e 1000 -a 15 > /dev/null & truffle test timed-tests/tokenLocker.js) && kill -9 $(lsof -ti :8545)",
+    "solhint": "./node_modules/.bin/solhint contracts/*.sol",
+    "eslint": "./node_modules/.bin/eslint test/*.js timed-tests/*.js",
+    "ganache": "kill -9 $(lsof -ti :8545) & (./node_modules/.bin/ganache-cli -p 8545 -e 1000 -a 15 > /dev/null & ./node_modules/.bin/truffle test) && kill -9 $(lsof -ti :8545)",
+    "ganache:single": "kill -9 $(lsof -ti :8545) & (./node_modules/.bin/ganache-cli -p 8545 -e 1000 -a 15 > /dev/null & ./node_modules/.bin/truffle test $TESTFILE) && kill -9 $(lsof -ti :8545)",
+    "ganache:subs": "kill -9 $(lsof -ti :8545) & (./node_modules/.bin/ganache-cli -p 8545 -e 1000 -a 15 > /dev/null & ./node_modules/.bin/truffle test timed-tests/subscriptions.js) && kill -9 $(lsof -ti :8545)",
+    "ganache:ac": "kill -9 $(lsof -ti :8545) & (./node_modules/.bin/ganache-cli -p 8545 -e 1000 -a 100 > /dev/null & ./node_modules/.bin/truffle test timed-tests/ac.js) && kill -9 $(lsof -ti :8545)",
+    "ganache:auctions": "kill -9 $(lsof -ti :8545) & (./node_modules/.bin/ganache-cli -p 8545 -e 1000 -a 15 > /dev/null & ./node_modules/.bin/truffle test timed-tests/auctions.js) && kill -9 $(lsof -ti :8545)",
+    "ganache:proceeds": "kill -9 $(lsof -ti :8545) & (./node_modules/.bin/ganache-cli -p 8545 -e 1000 -a 15 > /dev/null & ./node_modules/.bin/truffle test timed-tests/proceeds.js) && kill -9 $(lsof -ti :8545)",
+    "ganache:tokenLocker": "kill -9 $(lsof -ti :8545) & (./node_modules/.bin/ganache-cli -p 8545 -e 1000 -a 15 > /dev/null & ./node_modules/.bin/truffle test timed-tests/tokenLocker.js) && kill -9 $(lsof -ti :8545)",
     "precommit-msg": "echo 'Pre-commit checks...' && exit 0",
-    "testExport": "./node_modules/mocha/bin/mocha --timeout 10000"
+    "postinstall": "npm run generate:ts"
   },
   "pre-commit": [
     "eslint",
@@ -54,22 +55,24 @@
     "eslint-plugin-node": "^5.2.1",
     "eslint-plugin-promise": "^3.6.0",
     "eslint-plugin-standard": "^3.0.1",
+    "minimist": "^1.2.0",
     "pre-commit": "^1.2.2",
     "solhint": "^1.1.10",
-    "truffle": "4.1.5",
-    "minimist": "^1.2.0"
+    "truffle": "4.1.5"
   },
   "engines": {
-    "node": "8",
-    "npm": "5"
+    "node": "10",
+    "npm": "6"
   },
   "dependencies": {
     "bignumber.js": "^6.0.0",
     "chai": "^4.1.2",
     "ethjs-abi": "^0.2.1",
     "fs": "0.0.1-security",
+    "ganache-cli": "^6.1.8",
     "lodash": "^4.17.5",
     "mocha": "5.1.0",
+    "typechain": "^0.3.5",
     "web3": "^0.19.0"
   }
 }
