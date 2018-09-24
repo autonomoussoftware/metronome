@@ -24,32 +24,33 @@
 */
 
 const logger = require('./logger')
+const constant = require('./const.js')
 
 class Listener {
-  constructor (destinationChain, eventManager) {
+  constructor (queue, destinationChain) {
     this.chainName = destinationChain.name
     this.web3 = destinationChain.web3
     this.tokenPorter = destinationChain.contracts.tokenPorter
-    this.eventManager = eventManager
+    this.queue = queue
   }
 
   watchImportEvent () {
-    const key = this.chainName + 'pending-import'
+    let key
+    if (this.chainName === 'ETH') {
+      key = constant.queueName.eth.pendingImport
+    } else {
+      key = constant.queueName.etc.pendingImport
+    }
 
     logger.log('info', 'Started watching import request event')
     this.tokenPorter.LogImportRequest().watch((error, response) => {
       if (error) {
         logger.log('error', 'Error occurred while watching for import request %s', error)
       } else {
-        const pendingEvent = this.createEvent(response.args.currentBurnHash, response.blockNumber)
-        this.eventManager.push(key, pendingEvent)
+        logger.log('debug', 'Pushing value in redis queue %s', response)
+        this.queue.push(key, JSON.stringify(response))
       }
     })
-  }
-
-  createEvent (burnHash, blockNumber) {
-    const event = {hash: burnHash, blockNumber: blockNumber}
-    return JSON.stringify(event)
   }
 }
 

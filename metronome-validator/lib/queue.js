@@ -28,41 +28,69 @@ const redis = require('redis')
 const logger = require('./logger')
 
 class Queue {
-  constructor (keyPrefix) {
+  constructor () {
     // promisifing redis
+    console.log('queue constructor')
     bluebird.promisifyAll(redis)
-    this.client = redis.createClient({prefix: keyPrefix})
+    this.client = redis.createClient()
   }
 
   // TODO: how do we want to deal with exception while push and pop
   // Push value at the end of the queue
-  push (key, value) {
-    return this.client.rpushAsync(key, value).then(function (response) {
-      logger.log('debug', 'Queue size is %s after pushing value %s', response, value)
+  push (key, data) {
+    return this.client.rpushAsync(key, data).then((response) => {
+      logger.log('debug', 'pushed value for key %s after pushing value %s', key, data)
       return response
-    }).catch(function (error) {
-      logger.log('error', 'Error while pushing %s in queue, %s', value, error)
+    }).catch((error) => {
+      logger.log('error', 'Error while pushing %s in queue, %s', data, error)
     })
   }
 
   // Remove first value from queue and return the same
   pop (key) {
-    return this.client.lpopAsync(key).then(function (response) {
-      logger.log('debug', 'Poped value from queue is %s', response)
+    return this.client.lpopAsync(key).then((response) => {
+      logger.log('debug', 'Poped value from queue for key %s is %s', key, response)
       return response
-    }).catch(function (error) {
+    }).catch((error) => {
       logger.log('error', 'Error while poping value from queue, %s', error)
     })
   }
 
   // Read first value from queue and return it
   get (key) {
-    return this.client.lrange(key, 0, 0).then(function (response) {
-      logger.log('debug', 'Retrieved value from queue is %s', response)
-      return response
-    }).catch(function (error) {
+    logger.log('debug', 'calling get function for key $s', key)
+    return this.client.lrangeAsync(key, 0, 0).then((response) => {
+      if (response.length > 0 && this.isValueValid(response)) {
+        logger.log('debug', 'Retrieved value for key %s from queue is %s', key, response)
+        return response
+      } else {
+        if (response && response.length > 0) {
+          logger.log('debug', 'Retrieved value for key %s from queue is %s . Its not valid value hence removing from queue', key, response)
+          this.pop(key)
+        }
+        return null
+      }
+    }).catch((error) => {
       logger.log('error', 'Error while retrieving value from queue, %s', error)
     })
+  }
+
+  formatValue (burnHash, blockNumber) {
+    const event = {hash: burnHash, blockNumber: blockNumber}
+    return JSON.stringify(event)
+  }
+
+  isValueValid (value) {
+    try {
+      let obj = JSON.parse(value)
+      if (obj) {
+        return true
+      } else {
+        return false
+      }
+    } catch (e) {
+      return false
+    }
   }
 }
 

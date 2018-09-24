@@ -33,10 +33,9 @@ class Chain {
      * @param {object} contracts
      */
   constructor (configuration, contracts = {}) {
-    this.validatorAddress = configuration.address
-    this.validatorPassword = configuration.password
     this.nodeUrl = configuration.nodeUrl
     this.name = configuration.chainName
+    this.configuration = configuration
     this.web3 = new Web3(new Web3.providers.HttpProvider(this.nodeUrl))
     this.createContractObj(contracts)
   }

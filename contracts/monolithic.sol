@@ -1744,7 +1744,7 @@ contract TokenPorter is ITokenPorter, Owned {
     mapping(bytes8 => address) public destinationChains;
 
     event LogImportRequest(bytes8 originChain, bytes32 indexed currentBurnHash, bytes32 prevHash,
-        address indexed destinationRecipientAddr, uint amountToImport, uint fee, bytes extraData);
+        address indexed destinationRecipientAddr, uint amountToImport, uint fee, uint exportTimeStamp, uint burnSequence, bytes extraData);
     
     event LogImport(bytes8 originChain, address indexed destinationRecipientAddr, uint amountImported, uint fee,
     bytes extraData, uint indexed importSequence, bytes32 indexed currentHash);
@@ -1862,7 +1862,7 @@ contract TokenPorter is ITokenPorter, Owned {
         mintHashes[_burnHashes[1]] = keccak256(_originChain, _addresses[1], _importData[1], _importData[2]);
         
         emit LogImportRequest(_originChain, _burnHashes[1], _burnHashes[0], _addresses[1], _importData[1],
-            _importData[2], _extraData);
+            _importData[2], _importData[0], _importData[6], _extraData);
         return true;
     }
 

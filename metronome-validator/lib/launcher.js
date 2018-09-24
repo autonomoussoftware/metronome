@@ -39,15 +39,15 @@ function launch (config, metronome) {
 
   let eventQueue = new Queue()
 
-  let ethEventManager = new EventManager(eventQueue)
-  let etcEventManager = new EventManager(eventQueue)
-
-  let ethListener = new Listener(ethChain, ethEventManager)
-  let etcListener = new Listener(etcChain, etcEventManager)
+  let ethEventManager = new EventManager(eventQueue, etcChain, ethChain)
+  let etcEventManager = new EventManager(eventQueue, ethChain, etcChain)
+  let ethListener = new Listener(eventQueue, ethChain)
+  let etcListener = new Listener(eventQueue, etcChain)
 
   // TODO: validator should onle validate and vote/attast
   // TODO: event manager will call validator based on block height of 6
-
+  ethEventManager.setupAndTriggerJob()
+  etcEventManager.setupAndTriggerJob()
   try {
     ethListener.watchImportEvent()
     etcListener.watchImportEvent()

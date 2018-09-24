@@ -37,8 +37,8 @@ class Validator {
      */
 
   constructor (sourceChain, destinationChain) {
-    this.address = destinationChain.validatorAddress
-    this.passowrd = destinationChain.validatorPassword
+    this.address = destinationChain.configuration.address
+    this.password = destinationChain.configuration.password
     this.web3 = destinationChain.web3
     this.sourceTokenPorter = sourceChain.contracts.tokenPorter
     this.sourceMetToken = sourceChain.contracts.metToken
@@ -46,39 +46,43 @@ class Validator {
     this.validator = destinationChain.contracts.validator
   }
 
-  watchImportEvent () {
-    logger.log('info', 'Started watching import request event')
-    this.tokenPorter.LogImportRequest().watch((error, response) => {
-      if (error) {
-        logger.log('error', 'Error occurred while watching for import request %s', error)
-      } else {
-        this.validateAndAttestHash(response.args.originChain, response.args.currentBurnHash)
-      }
+  validateHash (burnHash) {
+    return new Promise((resolve, reject) => {
+      var exportLogEvent = this.sourceTokenPorter.ExportReceiptLog({currentBurnHash: burnHash}, {fromBlock: 0, toBlock: 'latest'})
+      exportLogEvent.get((error, response) => {
+        if (error) {
+          logger.log('error', 'Error occurred while reading export receipt on source chain, %s ', error)
+          reject(new Error('Error occurred while reading export receipt on source chain'))
+        } else {
+          if (response && response.length > 0) {
+            logger.log('info', 'Burn hash found in source chain. Current burn hash is ' + response[0].args.currentBurnHash + '. Previous burn hash is ' + response[0].args.prevBurnHash)
+            let obj = {hashExist: true}
+            obj.exportReceipt = response
+            resolve(obj)
+          } else {
+            logger.log('info', 'Burn hash not found in source chain. ' + burnHash)
+            let obj = {hashExist: false}
+            resolve(obj)
+          }
+        }
+      })
     })
   }
 
-  validateAndAttestHash (sourceChainName, burnHash) {
-    var exportLogEvent = this.sourceTokenPorter.ExportReceiptLog({currentBurnHash: burnHash}, {fromBlock: 0, toBlock: 'latest'})
-    exportLogEvent.get((error, response) => {
-      if (error) {
-        logger.log('error', 'Error occurred while reading export receipt on source chain, %s ', error)
-      } else {
-        if (response && response.length > 0) {
-          let merklePath = this.createMerklePath(response[0].args.burnSequence)
-          let importDataObj = this.prepareImportData(response[0].args)
-          this.web3.personal.unlockAccount(this.address, this.password)
-          let signature = this.web3.eth.sign(this.address, importDataObj.burnHashes[1])
-          let totalSupplyAtSourceChain = (this.sourceMetToken.totalSupply()).toNumber()
-          this.validator.attestHash(importDataObj.burnHashes[1], sourceChainName,
-            importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]),
-            merklePath, importDataObj.extraData, signature, totalSupplyAtSourceChain, {from: this.address})
-          logger.log('info', 'Attested burn hash ' + burnHash)
-        } else {
-          let signature = this.web3.eth.sign(this.address, burnHash)
-          this.validator.refuteHash(burnHash, signature, {from: this.address})
-          logger.log('info', 'Refuted burn hash ' + burnHash)
-        }
-      }
+  attestHash (sourceChainName, data) {
+    return new Promise((resolve, reject) => {
+      let merklePath = this.createMerklePath(data.args.burnSequence)
+      let importDataObj = this.prepareImportData(data.args)
+      this.web3.personal.unlockAccount(this.address, this.password)
+      let signature = this.web3.eth.sign(this.address, importDataObj.burnHashes[1])
+      let totalSupplyAtSourceChain = (this.sourceMetToken.totalSupply()).toNumber()
+      let tx = this.validator.attestHash(importDataObj.burnHashes[1], sourceChainName,
+        importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]),
+        merklePath, importDataObj.extraData, signature, totalSupplyAtSourceChain, {from: this.address})
+      let receipt = this.web3.eth.getTransactionReceipt(tx)
+      console.log('receipt=', receipt)
+      logger.log('info', 'Attested burn hash ' + data.args.currentBurnHash)
+      resolve(receipt)
     })
   }
 
