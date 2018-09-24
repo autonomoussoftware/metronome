@@ -322,7 +322,7 @@ contract Ownable {
     }
 
     /// @notice Allows the current owner to transfer control of the contract to a newOwner.
-    /// @param _newOwner 
+    /// @param _newOwner ...
     /// @return true/false
     function changeOwnership(address _newOwner) public onlyOwner returns (bool) {
         require(_newOwner != address(0));
@@ -340,7 +340,7 @@ contract Owned is Ownable {
     address public newOwner;
 
     /// @notice Allows the current owner to transfer control of the contract to a newOwner.
-    /// @param _newOwner 
+    /// @param _newOwner ...
     /// @return true/false
     function changeOwnership(address _newOwner) public onlyOwner returns (bool) {
         require(_newOwner != owner);
@@ -377,9 +377,9 @@ contract Mintable is Owned {
     ITokenPorter public tokenPorter;
 
     /// @notice init reference of other contract and initial supply
-    /// @param _autonomousConverter 
-    /// @param _minter 
-    /// @param _initialSupply 
+    /// @param _autonomousConverter ...
+    /// @param _minter ...
+    /// @param _initialSupply ...
     /// @param _decmult Decimal places
     function initMintable(address _autonomousConverter, address _minter, uint _initialSupply, 
         uint _decmult) public onlyOwner {
@@ -410,7 +410,7 @@ contract Mintable is Owned {
     }
 
     /// @notice allow minter and tokenPorter to mint token and assign to address
-    /// @param _to 
+    /// @param _to ...
     /// @param _value Amount to be minted  
     function mint(address _to, uint _value) public returns (bool) {
         require(msg.sender == minter || msg.sender == address(tokenPorter));
@@ -422,7 +422,7 @@ contract Mintable is Owned {
     }
 
     /// @notice allow autonomousConverter and tokenPorter to mint token and assign to address
-    /// @param _from 
+    /// @param _from ...
     /// @param _value Amount to be destroyed
     function destroy(address _from, uint _value) public returns (bool) {
         require(msg.sender == autonomousConverter || msg.sender == address(tokenPorter));
@@ -696,8 +696,8 @@ contract METToken is Token {
     }
 
     /// @notice get subcription details
-    /// @param _owner 
-    /// @param _recipient 
+    /// @param _owner ...
+    /// @param _recipient ...
     /// @return startTime, payPerWeek, lastWithdrawTime
     function getSubscription(address _owner, address _recipient) public constant
         returns (uint startTime, uint payPerWeek, uint lastWithdrawTime) 
@@ -733,8 +733,8 @@ contract METToken is Token {
 
     /// @notice Trigger MET token transfers for all pairs of subscribers and beneficiaries
     /// @dev address at i index in owners and recipients array is subcriber-beneficiary pair.
-    /// @param _owners 
-    /// @param _recipients 
+    /// @param _owners ...
+    /// @param _recipients ...
     /// @return number of successful transfer done
     function multiSubWithdrawFor(address[] _owners, address[] _recipients) public returns (uint) {
         // owners and recipients need 1-to-1 mapping, must be same length
