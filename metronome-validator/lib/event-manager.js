@@ -33,135 +33,103 @@ class EventManager {
     this.source = source
     this.destination = destination
     this.validator = new Validator(source, destination)
+    if (this.destination.name === 'ETH') {
+      this.validationQ = constant.queueName.eth.validationQ
+      this.attestationQ = constant.queueName.eth.attestationQ
+    } else if (this.destination.name === 'ETC') {
+      this.validationQ = constant.queueName.etc.validationQ
+      this.attestationQ = constant.queueName.etc.attestationQ
+    }
   }
 
   setupAndTriggerJob () {
-    let job1 = new CronJob(constant.cronJobPattern, () => {
+    let validationJob = new CronJob(constant.cronJobPattern, () => {
       logger.log('info', 'Cron job started to process pending validations')
       this.processPendingValidations()
     }, null, false, 'UTC')
-    job1.start()
+    validationJob.start()
 
-    let job2 = new CronJob(constant.cronJobPattern, () => {
+    let attestationJob = new CronJob(constant.cronJobPattern, () => {
       logger.log('info', 'Cron job started to process pending attestation')
       this.processPendingAttestation()
-    }, null, true, 'UTC')
-    job2.start()
+    }, null, false, 'UTC')
+    attestationJob.start()
   }
 
   async processPendingValidations () {
     // Todo: implement logic to avoid multiple cron triggering this method without earlier execution finish
-    let key1, key2
-    console.log('this.destination=', this.destination.name)
-    if (this.destination.name === 'ETH') {
-      key1 = constant.queueName.eth.pendingImport
-      key2 = constant.queueName.eth.pendingAttestation
-    } else {
-      key1 = constant.queueName.etc.pendingImport
-      key2 = constant.queueName.etc.pendingAttestation
-    }
-    try {
-      var burnHash
-      var safeBlockHeightReached
-      var value
-      logger.log('info', 'Processing pending validations.')
-      do {
-        burnHash = ''
-        safeBlockHeightReached = false
-        value = ''
-        value = await this.queue.get(key1)
+    var count = await this.queue.length(this.validationQ)
+    while (count > 0) {
+      count--
+      try {
+        var value = await this.queue.get(this.validationQ)
         logger.log('info', 'Processing pending validations for value=', value)
-        if (!value) {
-          break
-        }
         var valueObj = JSON.parse(value)
-        burnHash = valueObj.args.currentBurnHash
-        let response = await this.validator.validateHash(burnHash)
-        let currentBlockTimestmap = (await this.source.web3.eth.getBlock('latest')).timestamp
-        if (!response) {
-          logger.log('info', 'Processing pending validations: export receipt not found in source chain hence poping up from queue for burnHash %s', burnHash)
-          await this.queue.pop(key1)
-          // Todo: refute hash. call validator function
-        } else if (!response.hashExist) {
-          if (currentBlockTimestmap < valueObj.args.exportTimeStamp) {
-            // Source chain is not synced properly. should wait.
-            // To avoid waiting infinite on one hash, push it at last of queue.
-            logger.log('info', 'Processing pending validations: export receipt not found in source chain because source chain is not synced properly. Should wait and try again. Burn hash %s', burnHash)
-            value = await this.queue.pop(key1)
-            this.queue.push(key1, value)
+        var safeBlockHeight = (this.destination.web3.eth.blockNumber >= (valueObj.blockNumber + constant.safeBlockHeight))
+        if (safeBlockHeight) {
+          let response = await this.validator.validateHash(valueObj.args.currentBurnHash)
+          if (response.hashExist) {
+            // Hash found in source chain
+            var exportReceiptObj = (response.exportReceipt)[0]
+            let readyForAttest = (this.source.web3.eth.blockNumber >= (exportReceiptObj.blockNumber + constant.safeBlockHeight))
+            if (readyForAttest) {
+              exportReceiptObj.attestationAttempt = 0
+              this.queue.push(this.attestationQ, JSON.stringify(exportReceiptObj))
+              await this.queue.pop(this.validationQ)
+            } else {
+              // Todo: do we need to pop and push at end of queue?
+            }
           } else {
-            logger.log('info', 'Processing pending validations: export receipt not found in source chain. Burn hash %s', burnHash)
-            value = await this.queue.pop(key1)
+            logger.log('info', 'Processing pending validations: export receipt not found in source chain for burn hash %s', valueObj.args.currentBurnHash)
+            let currentBlockTimestmap = (await this.source.web3.eth.getBlock('latest')).timestamp
+            if (currentBlockTimestmap >= valueObj.args.exportTimeStamp) {
+              // Todo: refute hash
+              await this.queue.pop(this.validationQ)
+            } else {
+              logger.log('info', 'Source chain is not synced properly. Should wait and try again. Burn hash %s', valueObj.args.currentBurnHash)
+            }
           }
         } else {
-          // response.hashExist = true . Hash found in source chain
-          var exportReceiptObj = (response.exportReceipt)[0]
-          safeBlockHeightReached = (this.source.web3.eth.blockNumber >= (exportReceiptObj.blockNumber + constant.safeBlockHeight))
-          exportReceiptObj.blockNumberInDestinationChain = valueObj.blockNumber
-          exportReceiptObj.attestationAttempt = 0
-          var exportReceiptStr = JSON.stringify(exportReceiptObj)
-          logger.log('info', 'Processing pending validations: export receipt found in source chain. Burn hash %s  . Export receipt is %s', burnHash, exportReceiptStr)
-          logger.log('debug', 'Processing pending validations: safeBlockHeightReached %s', safeBlockHeightReached)
-          if (safeBlockHeightReached) {
-            value = await this.queue.pop(key1)
-            logger.log('info', 'Processing pending validations: safe block height reached hence poping and pushing in other queue for further processing %s', value)
-            logger.log('info', 'Processing pending validations: pushing in attestation queue %s', exportReceiptStr)
-            this.queue.push(key2, exportReceiptStr)
-          }
+          // Todo: to avoid accidental dead lock on corrupt queue item. Pop and push item in back queue.
+          // Try this item for n times and pop permanently if fail
         }
-      } while (safeBlockHeightReached)
-    } catch (error) {
-      logger.log('error', 'Processing pending validations: Error while processing pending validations, %s . value was %s   . export receipt was', error, JSON.stringify(value), exportReceiptStr)
+      } catch (error) {
+        logger.log('error', 'Processing pending validations: Error while processing pending validations, %s . value was %s   . export receipt was', error, JSON.stringify(value), JSON.stringify(exportReceiptObj))
+      }
     }
   }
 
   async processPendingAttestation () {
     // Todo: implement logic to avoid multiple cron triggering this method without earlier execution finish
-    let key
-    if (this.destination.name === 'ETH') {
-      key = constant.queueName.eth.pendingAttestation
-    } else {
-      key = constant.queueName.etc.pendingAttestation
-    }
-    try {
-      var safeBlockHeightReached
-      var value
-      logger.log('info', 'Processing pending attestation.')
-      do {
-        safeBlockHeightReached = false
-        value = ''
-        value = await this.queue.get(key)
-        if (!value || value.length === 0) {
-          logger.log('info', 'Processing pending attestation: empty queue')
-          break
-        }
-        value = JSON.parse(value)
-        safeBlockHeightReached = (this.destination.web3.eth.blockNumber >= (value.blockNumberInDestinationChain + constant.safeBlockHeight))
-        logger.log('debug', 'Processing pending attestation: safeBlockHeightReached %s.', safeBlockHeightReached)
-        if (safeBlockHeightReached) {
-          logger.log('info', 'Processing pending attestation: Safe block heigh reached. attesting hash now %s.', JSON.stringify(value))
-          // Todo: shall we check in smart contract whether tokenPorter.merkleRoots has value for this hash?
-          var receipt = await this.validator.attestHash(this.source.name, value)
-          if (receipt && receipt.status === '0x1') {
-            value = await this.queue.pop(key)
-            logger.log('info', 'Processing pending attestation: Attestation done. %s', JSON.stringify(receipt))
-          } else {
-            let hashClaimed = await this.destination.contracts.validator.hashClaimed(value.args.currentBurnHash)
-            await this.queue.pop(key)
-            logger.log('debug', 'Hash claimed %s ', hashClaimed)
-            if (!hashClaimed && value.attestationAttempt < 10) {
-              // Push again at end of queue to try again in future
-              value.attestationAttempt = value.attestationAttempt + 1
-              await this.queue.push(key, value)
-              logger.log('error', 'Processing pending attestation: Attestation failed. adding in queue to try again %s', JSON.stringify(receipt))
-            } else {
-              logger.log('error', 'Processing pending attestation: Attestation failed. %s', JSON.stringify(receipt))
-            }
+
+    logger.log('info', 'Processing pending attestation.')
+    // Process all pending attestion
+    var count = await this.queue.length(this.attestationQ)
+    while (count > 0) {
+      count--
+      try {
+        var value = await this.queue.get(this.attestationQ)
+        var valueObj = JSON.parse(value)
+        logger.log('info', 'Processing pending attestation: Safe block heigh reached. attesting hash now %s.', value)
+        // Todo: shall we check in smart contract whether tokenPorter.merkleRoots() has value for this hash?
+        var receipt = await this.validator.attestHash(this.source.name, valueObj)
+        if (receipt && receipt.status === '0x1') {
+          await this.queue.pop(this.attestationQ)
+          logger.log('info', 'Processing pending attestation: Attestation done. %s', JSON.stringify(receipt))
+        } else {
+          await this.queue.pop(this.attestationQ)
+          let hashClaimed = await this.destination.contracts.validator.hashClaimed(valueObj.args.currentBurnHash)
+          logger.log('error', 'Processing pending attestation: Attestation failed. %s', JSON.stringify(valueObj))
+          if (!hashClaimed && valueObj.attestationAttempt < constant.retryCount) {
+          // Push again at end of queue to try again in future
+            logger.log('error', 'Processing pending attestation: Adding in queue to try again %s', JSON.stringify(valueObj))
+            valueObj.attestationAttempt = valueObj.attestationAttempt + 1
+            await this.queue.push(this.attestationQ, JSON.stringify(valueObj))
           }
         }
-      } while (safeBlockHeightReached)
-    } catch (error) {
-      logger.log('error', 'Processing pending attestation: Error while processing pending attestation, %s. value was %s', error, JSON.stringify(value))
+      } catch (error) {
+        logger.log('error', 'Processing pending attestation: Error while processing pending attestation, %s. value was %s', error, value)
+      }
     }
   }
 }

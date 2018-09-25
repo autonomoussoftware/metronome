@@ -1,14 +1,15 @@
 module.exports = Object.freeze({
   queueName: {
     eth: {
-      pendingImport: 'ETHpending-import',
-      pendingAttestation: 'ETHpending-attestion'
+      validationQ: 'ETHpending-import',
+      attestationQ: 'ETHpending-attestion'
     },
     etc: {
-      pendingImport: 'ETCpending-import',
-      pendingAttestation: 'ETCpending-attestion'
+      validationQ: 'ETCpending-import',
+      attestationQ: 'ETCpending-attestion'
     }
   },
   safeBlockHeight: 0,
-  cronJobPattern: '*/20 * * * * *'
+  cronJobPattern: '*/5 * * * * *',
+  retryCount: 10
 })

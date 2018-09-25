@@ -75,9 +75,13 @@ class Queue {
     })
   }
 
-  formatValue (burnHash, blockNumber) {
-    const event = {hash: burnHash, blockNumber: blockNumber}
-    return JSON.stringify(event)
+  length (key) {
+    return this.client.llenAsync(key).then((response) => {
+      logger.log('debug', 'Length of queue for key %s is %s', key, response)
+      return response
+    }).catch((error) => {
+      logger.log('error', 'Error while poping value from queue, %s', error)
+    })
   }
 
   isValueValid (value) {

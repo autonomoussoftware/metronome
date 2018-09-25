@@ -32,23 +32,21 @@ class Listener {
     this.web3 = destinationChain.web3
     this.tokenPorter = destinationChain.contracts.tokenPorter
     this.queue = queue
+    if (this.chainName === 'ETH') {
+      this.valiationQ = constant.queueName.eth.validationQ
+    } else if (this.chainName === 'ETC') {
+      this.valiationQ = constant.queueName.etc.validationQ
+    }
   }
 
   watchImportEvent () {
-    let key
-    if (this.chainName === 'ETH') {
-      key = constant.queueName.eth.pendingImport
-    } else {
-      key = constant.queueName.etc.pendingImport
-    }
-
     logger.log('info', 'Started watching import request event')
     this.tokenPorter.LogImportRequest().watch((error, response) => {
       if (error) {
         logger.log('error', 'Error occurred while watching for import request %s', error)
       } else {
         logger.log('debug', 'Pushing value in redis queue %s', response)
-        this.queue.push(key, JSON.stringify(response))
+        this.queue.push(this.valiationQ, JSON.stringify(response))
       }
     })
   }
