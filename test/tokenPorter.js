@@ -396,6 +396,8 @@ contract('TokenPorter', accounts => {
         var totalSupplyAfter = await metToken.totalSupply()
         const currentBurnHash = logExportReceipt.currentBurnHash
         assert.isNotEmpty(currentBurnHash, 'Burn Hash is empty')
+        var sequence = await tokenPorter.burnHashes(currentBurnHash)
+        assert.equal(sequence.toNumber(), burnSequence.toNumber(), 'burnSequence is not correct')
         const prevBurnHash = logExportReceipt.prevBurnHash
         assert.isNotEmpty(prevBurnHash, 'Prev Burn Hash is empty')
         const dailyMintable = logExportReceipt.dailyMintable

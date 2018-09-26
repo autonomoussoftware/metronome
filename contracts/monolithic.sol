@@ -1740,11 +1740,15 @@ contract TokenPorter is ITokenPorter, Owned {
     uint[] public supplyOnAllChains = new uint[](6);
     mapping (bytes32 => bytes32) public merkleRoots;
     mapping (bytes32 => bytes32) public mintHashes;
+    // store burn hashes and burnSequence to find burn hash exist or not. 
+    // Burn sequence may be used to find chain of burn hashes
+    mapping (bytes32 => uint) public burnHashes;
     /// @notice mapping that tracks valid destination chains for export
     mapping(bytes8 => address) public destinationChains;
 
     event LogImportRequest(bytes8 originChain, bytes32 indexed currentBurnHash, bytes32 prevHash,
-        address indexed destinationRecipientAddr, uint amountToImport, uint fee, uint exportTimeStamp, uint burnSequence, bytes extraData);
+        address indexed destinationRecipientAddr, uint amountToImport, uint fee, uint exportTimeStamp,
+        uint burnSequence, bytes extraData);
     
     event LogImport(bytes8 originChain, address indexed destinationRecipientAddr, uint amountImported, uint fee,
     bytes extraData, uint indexed importSequence, bytes32 indexed currentHash);
@@ -1913,7 +1917,7 @@ contract TokenPorter is ITokenPorter, Owned {
             exportedBurns[burnSequence - 1]);
        
         exportedBurns.push(currentBurn);
-
+        burnHashes[currentBurn] = burnSequence;
         supplyOnAllChains[0] = token.totalSupply();
         
         emit ExportReceiptLog(_destChain, _destMetronomeAddr, _destRecipAddr, _amount, _fee, _extraData, 
