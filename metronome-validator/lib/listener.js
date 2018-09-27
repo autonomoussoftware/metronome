@@ -45,6 +45,7 @@ class Listener {
       if (error) {
         logger.log('error', 'Error occurred while watching for import request %s', error)
       } else {
+        response.failedAttempts = 0
         logger.log('debug', 'Pushing value in redis queue %s', response)
         this.queue.push(this.valiationQ, JSON.stringify(response))
       }

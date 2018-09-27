@@ -48,24 +48,27 @@ class Validator {
 
   validateHash (burnHash) {
     return new Promise((resolve, reject) => {
-      var exportLogEvent = this.sourceTokenPorter.ExportReceiptLog({currentBurnHash: burnHash}, {fromBlock: 0, toBlock: 'latest'})
-      exportLogEvent.get((error, response) => {
-        if (error) {
-          logger.log('error', 'Error occurred while reading export receipt on source chain, %s ', error)
-          reject(new Error('Error occurred while reading export receipt on source chain'))
-        } else {
-          if (response && response.length > 0) {
-            logger.log('info', 'Burn hash found in source chain. Current burn hash is ' + response[0].args.currentBurnHash + '. Previous burn hash is ' + response[0].args.prevBurnHash)
-            let obj = {hashExist: true}
-            obj.exportReceipt = response
-            resolve(obj)
+      var burnSequence = (this.sourceTokenPorter.burnHashes(burnHash)).toNumber()
+      if (burnSequence <= 0) {
+        logger.log('info', 'Burn hash not found in source chain. ' + burnHash)
+        let obj = {hashExist: false}
+        resolve(obj)
+      } else {
+        var exportLogEvent = this.sourceTokenPorter.ExportReceiptLog({currentBurnHash: burnHash}, {fromBlock: 0, toBlock: 'latest'})
+        exportLogEvent.get((error, response) => {
+          if (error) {
+            logger.log('error', 'Error occurred while reading export receipt on source chain, %s ', error)
+            reject(new Error('Error occurred while reading export receipt on source chain'))
           } else {
-            logger.log('info', 'Burn hash not found in source chain. ' + burnHash)
-            let obj = {hashExist: false}
-            resolve(obj)
+            if (response && response.length > 0) {
+              logger.log('info', 'Burn hash found in source chain. Current burn hash is ' + response[0].args.currentBurnHash + '. Previous burn hash is ' + response[0].args.prevBurnHash)
+              let obj = {hashExist: true}
+              obj.exportReceipt = response
+              resolve(obj)
+            }
           }
-        }
-      })
+        })
+      }
     })
   }
 
@@ -80,8 +83,18 @@ class Validator {
         importDataObj.addresses[1], parseInt(importDataObj.importData[1]), parseInt(importDataObj.importData[2]),
         merklePath, importDataObj.extraData, signature, totalSupplyAtSourceChain, {from: this.address})
       let receipt = this.web3.eth.getTransactionReceipt(tx)
-      console.log('receipt=', receipt)
       logger.log('info', 'Attested burn hash ' + data.args.currentBurnHash)
+      resolve(receipt)
+    })
+  }
+
+  refuteHash (burnHash) {
+    return new Promise((resolve, reject) => {
+      this.web3.personal.unlockAccount(this.address, this.password)
+      let signature = this.web3.eth.sign(this.address, burnHash)
+      let tx = this.validator.attestHash(burnHash, signature, {from: this.address})
+      let receipt = this.web3.eth.getTransactionReceipt(tx)
+      logger.log('info', 'Refuted burn hash ' + burnHash)
       resolve(receipt)
     })
   }

@@ -54,7 +54,12 @@ tmux rename-window 'Validation'
 tmux send-keys 'node index.js launch' 'C-m'  # 'metronome-validator launch' is actual command
 
 tmux new-window
+tmux rename-window 'Redis server'
+tmux send-keys 'redis-server' 'C-m'
+
+tmux new-window
 tmux send-keys 'cd metronome-validator' 'C-m'
+tmux rename-window 'Test-cases'
 tmux send-keys 'cat welcome.msg' 'C-m'
 tmux send-keys 'npm run testValidator ./test/testExportImport.js' 'C-m'
 

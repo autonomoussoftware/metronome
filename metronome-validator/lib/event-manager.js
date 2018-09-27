@@ -74,7 +74,7 @@ class EventManager {
             var exportReceiptObj = (response.exportReceipt)[0]
             let readyForAttest = (this.source.web3.eth.blockNumber >= (exportReceiptObj.blockNumber + constant.safeBlockHeight))
             if (readyForAttest) {
-              exportReceiptObj.attestationAttempt = 0
+              exportReceiptObj.failedAttempts = 0
               this.queue.push(this.attestationQ, JSON.stringify(exportReceiptObj))
             } else {
               processLater = true
@@ -87,13 +87,15 @@ class EventManager {
               processLater = true
             } else {
               // Todo: refute hash
+              console.log('refute hash')
             }
           }
         } else {
           processLater = true
         }
-        if (processLater & value && value.length > 0) {
-          this.queue.push(this.validationQ, value)
+        if (processLater & valueObj.failedAttempts < constant.retryCount) {
+          valueObj.failedAttempts++
+          this.queue.push(this.validationQ, JSON.stringify(valueObj))
         }
       } catch (error) {
         logger.log('error', 'Processing pending validations: Error while processing pending validations, %s . value was %s   . export receipt was', error, JSON.stringify(value), JSON.stringify(exportReceiptObj))
@@ -120,10 +122,10 @@ class EventManager {
         } else {
           let hashClaimed = await this.destination.contracts.validator.hashClaimed(valueObj.args.currentBurnHash)
           logger.log('error', 'Processing pending attestation: Attestation failed. %s', JSON.stringify(valueObj))
-          if (!hashClaimed && valueObj.attestationAttempt < constant.retryCount) {
+          if (!hashClaimed && valueObj.failedAttempts < constant.retryCount) {
           // Push again at end of queue to try again in future
             logger.log('error', 'Processing pending attestation: Adding in queue to try again %s', JSON.stringify(valueObj))
-            valueObj.attestationAttempt = valueObj.attestationAttempt + 1
+            valueObj.failedAttempts++
             await this.queue.push(this.attestationQ, JSON.stringify(valueObj))
           }
         }
