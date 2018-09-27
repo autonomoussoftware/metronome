@@ -25,6 +25,7 @@
 
 const assert = require('chai').assert
 const ethjsABI = require('ethjs-abi')
+const _ = require('lodash')
 const fs = require('fs')
 const Parser = require('../lib/parser')
 const Chain = require('../lib/chain')
@@ -78,6 +79,10 @@ function sha256 (data) {
   // returns Buffer
   return crypto.createHash('sha256').update(data).digest()
 }
+
+const getDataForImport = _.memoize(function () {
+  return fs.readFileSync('import-data.json').toString()
+})
 
 async function prepareImportData (sourceChain, logExportReceipt) {
   let burnHashes = []
@@ -207,6 +212,61 @@ describe('cross chain testing', () => {
           }
         }
       })
+    })
+  })
+
+  it('ETH to ETC: Fake export receipt, should pass on-chain validation and fail on off-chain validation', () => {
+    return new Promise(async (resolve, reject) => {
+      eth.web3.personal.unlockAccount(ethBuyer1, 'password')
+      etc.web3.personal.unlockAccount(etcBuyer1, 'password')
+      // Buy some MET
+      await eth.web3.eth.sendTransaction({to: eth.contracts.auctions.address, from: ethBuyer1, value: 2e16})
+      let amount = (eth.contracts.metToken.balanceOf(ethBuyer1)).toNumber()
+      assert(amount > 0, 'Exporter has no MET token balance')
+      let fee = amount / 2
+      amount = amount - fee
+      let extraData = 'D'
+      let totalSupplybefore = await eth.contracts.metToken.totalSupply()
+      let tx = await eth.contracts.metToken.export(
+        eth.web3.fromAscii('ETC'),
+        etc.contracts.metToken.address,
+        etcBuyer1,
+        amount,
+        fee,
+        eth.web3.fromAscii(extraData),
+        { from: ethBuyer1 })
+      let totalSupplyAfter = eth.contracts.metToken.totalSupply()
+      let receipt = eth.web3.eth.getTransactionReceipt(tx)
+      let decoder = ethjsABI.logDecoder(eth.contracts.tokenPorter.abi)
+      let logExportReceipt = decoder(receipt.logs)[0]
+      assert(totalSupplybefore.sub(totalSupplyAfter), amount + fee, 'Export from ETH failed')
+      // /let importDataObj = await prepareImportData(eth, logExportReceipt)
+
+      const importDataJson = JSON.parse(getDataForImport())
+
+      const data = importDataJson.intData
+      const burnHashes = importDataJson.burnHashes
+      const addresses = importDataJson.addresses
+
+      let res = etc.contracts.metToken.importMET.call(importDataJson.eth, importDataJson.etc, addresses, importDataJson.extraData,
+        burnHashes, logExportReceipt.supplyOnAllChains, data, importDataJson.root, {from: etcBuyer1})
+      console.log('import res', res)
+      tx = await etc.contracts.metToken.importMET(importDataJson.eth, importDataJson.etc, addresses, importDataJson.extraData,
+        burnHashes, logExportReceipt.supplyOnAllChains, data, importDataJson.root, {from: etcBuyer1})
+
+      let filter = etc.contracts.validator.LogAttestation().watch((err, response) => {
+        if (err) {
+          console.log('Attestation error', err)
+        } else {
+          if (logExportReceipt.currentBurnHash === response.args.hash) {
+            console.log('Is this import valid? ', response.args.isValid)
+            assert.isFalse(response.args.isValid)
+            filter.stopWatching()
+            resolve()
+          }
+        }
+      })
+      resolve()
     })
   })
 })
