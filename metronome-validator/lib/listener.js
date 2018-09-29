@@ -34,22 +34,49 @@ class Listener {
     this.queue = queue
     if (this.chainName === 'ETH') {
       this.valiationQ = constant.queueName.eth.validationQ
+      this.block = constant.queueName.eth.block
     } else if (this.chainName === 'ETC') {
       this.valiationQ = constant.queueName.etc.validationQ
+      this.block = constant.queueName.etc.block
     }
   }
 
-  watchImportEvent () {
+  async watchImportEvent () {
     logger.log('info', 'Started watching import request event')
+    var block = await this.queue.get(this.block)
+    if (block && block > '0') {
+      this.tokenPorter.LogImportRequest({}, {fromBlock: parseInt(block, 10), toBlock: 'latest'}).get((error, response) => {
+        if (error) {
+          logger.log('error', 'Error occurred while read for import events %s', error)
+        } else {
+          for (let eventData of response) {
+            console.log('===========================found old LogImportRequest event' + eventData.blockNumber)
+            this.processEventData(eventData)
+          }
+        }
+      })
+    }
+
     this.tokenPorter.LogImportRequest().watch((error, response) => {
       if (error) {
         logger.log('error', 'Error occurred while watching for import request %s', error)
       } else {
-        response.failedAttempts = 0
-        logger.log('debug', 'Pushing value in redis queue %s', response)
-        this.queue.push(this.valiationQ, JSON.stringify(response))
+        this.processEventData(response)
       }
     })
+  }
+
+  async processEventData (response) {
+    response.failedAttempts = 0
+    logger.log('debug', 'Pushing value in redis queue %s', JSON.stringify(response))
+    this.queue.push(this.valiationQ, JSON.stringify(response))
+    var block = await this.queue.get(this.block)
+    console.log('current block in redis in ' + this.chainName + '=', block)
+    console.log('current block ' + this.chainName + '=', response.blockNumber)
+    if (!block || block < response.blockNumber) {
+      this.queue.pop(this.block)
+      this.queue.push(this.block, JSON.stringify(response.blockNumber))
+    }
   }
 }
 

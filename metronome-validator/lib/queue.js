@@ -58,7 +58,7 @@ class Queue {
 
   // Read first value from queue and return it
   get (key) {
-    logger.log('debug', 'calling get function for key $s', key)
+    logger.log('debug', 'calling get function for key %s', key)
     return this.client.lrangeAsync(key, 0, 0).then((response) => {
       if (response.length > 0 && this.isValueValid(response)) {
         logger.log('debug', 'Retrieved value for key %s from queue is %s', key, response)

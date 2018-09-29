@@ -2,11 +2,13 @@ module.exports = Object.freeze({
   queueName: {
     eth: {
       validationQ: 'ETHpending-validation',
-      attestationQ: 'ETHpending-attestion'
+      attestationQ: 'ETHpending-attestion',
+      block: 'eth-block'
     },
     etc: {
       validationQ: 'ETCpending-validation',
-      attestationQ: 'ETCpending-attestion'
+      attestationQ: 'ETCpending-attestion',
+      block: 'etc-block'
     }
   },
   safeBlockHeight: 0,
