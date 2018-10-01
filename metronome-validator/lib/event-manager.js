@@ -24,7 +24,7 @@
 */
 const Validator = require('./validator')
 const constant = require('./const.js')
-const logger = require('./logger')
+const logger = require('./logger')(__filename)
 var CronJob = require('cron').CronJob
 
 class EventManager {

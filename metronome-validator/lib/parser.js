@@ -23,7 +23,7 @@
     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-const logger = require('./logger')
+const logger = require('./logger')(__filename)
 
 function parseConfig (input) {
   try {

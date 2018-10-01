@@ -64,7 +64,7 @@ const logger = winston.createLogger({
     splat(),
     timestamp(),
     printf(info => {
-      return `${info.timestamp} [${info.level}]: ${info.message}`
+      return `${info.timestamp} [${info.level}] ${info.message}`
     })
   ),
   transports: [
@@ -75,4 +75,41 @@ const logger = winston.createLogger({
   exitOnError: false // do not exit on handled exceptions
 })
 
-module.exports = logger
+function getModuleName (fileName) {
+  let start = fileName.indexOf('lib\\')
+  const unixStart = fileName.indexOf('lib/')
+  const end = fileName.indexOf('.js')
+
+  if (start === -1) {
+    start = unixStart
+  }
+  return fileName.slice(start + 4, end)
+}
+// module.exports = logger
+
+module.exports = function (fileName) {
+  var moduleName = getModuleName(fileName)
+
+  var myLogger = {
+    log: function (level, msg) {
+      if (level === 'error') {
+        this.error(msg)
+      } else if (level === 'info') {
+        this.info(msg)
+      } else {
+        this.debug(msg)
+      }
+    },
+    error: function (msg) {
+      logger.error(moduleName + ': ' + msg)
+    },
+    info: function (msg) {
+      logger.info(moduleName + ': ' + msg)
+    },
+    debug: function (msg) {
+      logger.debug('[' + moduleName + ']: ' + msg)
+    }
+  }
+
+  return myLogger
+}

@@ -25,7 +25,7 @@
 
 const bluebird = require('bluebird')
 const redis = require('redis')
-const logger = require('./logger')
+const logger = require('./logger')(__filename)
 
 class Queue {
   constructor () {

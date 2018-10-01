@@ -27,7 +27,7 @@ const parser = require('./parser')
 const Chain = require('./chain')
 const Queue = require('./queue')
 const EventManager = require('./event-manager')
-const logger = require('./logger')
+const logger = require('./logger')(__filename)
 const Listener = require('./listener')
 
 function launch (config, metronome) {

@@ -25,7 +25,7 @@
 
 const MerkleTreeJs = require('merkletreejs')
 const crypto = require('crypto')
-const logger = require('./logger')
+const logger = require('./logger')(__filename)
 
 /**
  * Class reprensenting a Metronome Validator for off chain validations
