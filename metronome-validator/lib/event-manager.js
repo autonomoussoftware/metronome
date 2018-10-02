@@ -86,8 +86,7 @@ class EventManager {
               logger.log('info', 'Source chain is not synced properly. Should wait and try again. Burn hash %s', valueObj.args.currentBurnHash)
               processLater = true
             } else {
-              // Todo: refute hash
-              console.log('refute hash')
+              await this.validator.attestHash(valueObj.args.currentBurnHash)
             }
           }
         } else {
