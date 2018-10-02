@@ -76,7 +76,7 @@ class EventManager {
       try {
         var value = await this.queue.pop(this.validationQ)
         var processLater = false
-        logger.log('info', 'Processing pending validations for value=', value)
+        logger.log('info', 'Processing pending validations for value= %s', value)
         var valueObj = JSON.parse(value)
         var safeBlockHeight =
           this.destination.web3.eth.blockNumber >=
@@ -117,7 +117,7 @@ class EventManager {
               )
               processLater = true
             } else {
-              await this.validator.attestHash(valueObj.args.currentBurnHash)
+              await this.validator.refuteHash(valueObj.args.currentBurnHash)
             }
           }
         } else {
@@ -132,7 +132,7 @@ class EventManager {
           'error',
           'Processing pending validations: Error while processing pending validations, %s . value was %s   . export receipt was',
           error,
-          JSON.stringify(value),
+          JSON.stringify(valueObj),
           JSON.stringify(exportReceiptObj)
         )
       }

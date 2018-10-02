@@ -387,7 +387,6 @@ describe('cross chain testing', () => {
         { from: ethBuyer1 }
       )
       let receipt = eth.web3.eth.getTransactionReceipt(tx)
-      console.log('receipt=', receipt)
       if (receipt.status === '0x0') {
         reject(new Error('export function reverted'))
       }
@@ -428,16 +427,19 @@ describe('cross chain testing', () => {
         importDataJson.root,
         { from: etcBuyer1 }
       )
-
+      receipt = etc.web3.eth.getTransactionReceipt(tx)
+      decoder = ethjsABI.logDecoder(etc.contracts.tokenPorter.abi)
+      let logData = decoder(receipt.logs)[0]
+      if (receipt.status === '0x0') {
+        reject(new Error('importMET function reverted'))
+      }
       let filter = etc.contracts.validator
         .LogAttestation()
         .watch((err, response) => {
           if (err) {
             console.log('Attestation error', err)
           } else {
-            console.log('Hash refuted', response)
-            if (logExportReceipt.currentBurnHash === response.args.hash) {
-              console.log('Is this import valid? ', response.args.isValid)
+            if (logData.currentBurnHash === response.args.hash) {
               assert.isFalse(response.args.isValid)
               filter.stopWatching()
               resolve()

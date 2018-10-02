@@ -123,11 +123,12 @@ class Validator {
     return new Promise((resolve, reject) => {
       this.web3.personal.unlockAccount(this.address, this.password)
       let signature = this.web3.eth.sign(this.address, burnHash)
-      let tx = this.validator.attestHash(burnHash, signature, {
+      let tx = this.validator.refuteHash(burnHash, signature, {
         from: this.address
       })
       let receipt = this.web3.eth.getTransactionReceipt(tx)
-      logger.log('info', 'Refuted burn hash ' + burnHash)
+      logger.log('info', 'Refuted burn hash %s', burnHash)
+      logger.log('info', 'Refuted burn hash receipt %s', JSON.stringify(receipt))
       resolve(receipt)
     })
   }
