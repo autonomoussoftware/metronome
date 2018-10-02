@@ -91,23 +91,23 @@ module.exports = function (fileName) {
   var moduleName = getModuleName(fileName)
 
   var myLogger = {
-    log: function (level, msg) {
+    log: function (level, msg, ...vars) {
       if (level === 'error') {
-        this.error(msg)
+        this.error(msg, vars)
       } else if (level === 'info') {
-        this.info(msg)
+        this.info(msg, vars)
       } else {
-        this.debug(msg)
+        this.debug(msg, vars)
       }
     },
-    error: function (msg) {
-      logger.error(moduleName + ': ' + msg)
+    error: function (msg, vars) {
+      logger.error(moduleName + ': ' + msg, ...vars)
     },
-    info: function (msg) {
-      logger.info(moduleName + ': ' + msg)
+    info: function (msg, vars) {
+      logger.info(moduleName + ': ' + msg, ...vars)
     },
-    debug: function (msg) {
-      logger.debug('[' + moduleName + ']: ' + msg)
+    debug: function (msg, vars) {
+      logger.debug('[' + moduleName + ']: ' + msg, ...vars)
     }
   }
 
