@@ -27,11 +27,11 @@ const camelCase = require('camelcase')
 
 class Chain {
   /**
-     * @desc Metronome off chain validator.
-     * @param configuration - contains owner address for validator, passord and URL ( with port)
-     *  of blockchain node i.e. http://host:port
-     * @param {object} contracts
-     */
+   * @desc Metronome off chain validator.
+   * @param configuration - contains owner address for validator, passord and URL ( with port)
+   *  of blockchain node i.e. http://host:port
+   * @param {object} contracts
+   */
   constructor (configuration, contracts = {}) {
     this.nodeUrl = configuration.nodeUrl
     this.name = configuration.chainName
@@ -44,7 +44,9 @@ class Chain {
     this.contracts = {}
     for (var name in _contracts) {
       let contractName = camelCase(name)
-      let contract = this.web3.eth.contract(JSON.parse(_contracts[name].abi)).at(_contracts[name].address)
+      let contract = this.web3.eth
+        .contract(JSON.parse(_contracts[name].abi))
+        .at(_contracts[name].address)
       this.contracts[contractName] = contract
     }
   }

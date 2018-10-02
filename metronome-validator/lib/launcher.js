@@ -56,4 +56,4 @@ function launch (config, metronome) {
   }
 }
 
-module.exports = {launch}
+module.exports = { launch }

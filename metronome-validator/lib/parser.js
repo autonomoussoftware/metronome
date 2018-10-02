@@ -29,7 +29,10 @@ function parseConfig (input) {
   try {
     return JSON.parse(input)
   } catch (e) {
-    logger.log('error', 'Configuration file [config.json] is not a valid JSON! ' + e)
+    logger.log(
+      'error',
+      'Configuration file [config.json] is not a valid JSON! ' + e
+    )
     process.exit(0)
   }
 }
@@ -59,7 +62,10 @@ function parseContracts (input) {
 
     return contracts
   } catch (e) {
-    logger.log('error', 'Error occurred while processing contents of metronome.js ' + e)
+    logger.log(
+      'error',
+      'Error occurred while processing contents of metronome.js ' + e
+    )
     process.exit(0)
   }
 }
@@ -85,7 +91,10 @@ function fetchAddress (input) {
 }
 
 function fetchSubString (input, startSubString, endSubString) {
-  return input.slice((input.indexOf(startSubString) + startSubString.length), input.indexOf(endSubString))
+  return input.slice(
+    input.indexOf(startSubString) + startSubString.length,
+    input.indexOf(endSubString)
+  )
 }
 
-module.exports = {parseConfig, parseContracts, parseMetronome}
+module.exports = { parseConfig, parseContracts, parseMetronome }
