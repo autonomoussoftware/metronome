@@ -2027,7 +2027,7 @@ contract Validator is Owned {
 
     uint public threshold = 1;
 
-    event LogAttestation(bytes32 indexed hash, address indexed who, bool isValid);
+    event LogAttestation(bytes32 indexed hash, bool isValid);
 
     /// @param _validator validator address
     function addValidator(address _validator) public onlyOwner {
@@ -2107,7 +2107,7 @@ contract Validator is Owned {
         require(verifyProof(tokenPorter.merkleRoots(_burnHash), _burnHash, _proof));
         hashAttestations[_burnHash][msg.sender] = true;
         attestationCount[_burnHash]++;
-        emit LogAttestation(_burnHash, msg.sender, true);
+        emit LogAttestation(_burnHash, true);
         
         if (attestationCount[_burnHash] >= threshold && !hashClaimed[_burnHash]) {
             hashClaimed[_burnHash] = true;
@@ -2124,7 +2124,7 @@ contract Validator is Owned {
         require(!hashAttestations[_burnHash][msg.sender]);
         require(fetchSignerAddress(_burnHash, _signature) == msg.sender);
         hashAttestations[_burnHash][msg.sender] = false;
-        emit LogAttestation(_burnHash, msg.sender, false);
+        emit LogAttestation(_burnHash, false);
     }
 
     /// @notice Fetch signer's address from clliptic curve signature
