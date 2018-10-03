@@ -46,6 +46,14 @@ do
   sleep 1
 done
 
+sleep 5
+
+tmux select-window -t='MET ETH'
+tmux send-keys 'geth attach http://127.0.0.1:8545 --preload js/eth/metronome.js' 'C-m'
+
+tmux select-window -t='MET ETC'
+tmux send-keys 'geth attach http://127.0.0.1:8555 --preload js/etc/metronome.js' 'C-m'
+
 tmux new-window 
 tmux send-keys 'cp ./js/etc/metronome.js ./metronome-validator/abi/etc/' 'C-m'
 tmux send-keys 'cp ./js/eth/metronome.js ./metronome-validator/abi/eth/' 'C-m'
