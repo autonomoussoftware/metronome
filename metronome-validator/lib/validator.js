@@ -50,7 +50,7 @@ class Validator {
     return new Promise((resolve, reject) => {
       var burnSequence = this.sourceTokenPorter.burnHashes(burnHash).toNumber()
       if (burnSequence <= 0) {
-        logger.log('info', 'Burn hash not found in source chain. ' + burnHash)
+        logger.info('Burn hash %s is not found in source chain', burnHash)
         let obj = { hashExist: false }
         resolve(obj)
       } else {
@@ -60,8 +60,7 @@ class Validator {
         )
         exportLogEvent.get((error, response) => {
           if (error) {
-            logger.log(
-              'error',
+            logger.error(
               'Error occurred while reading export receipt on source chain, %s ',
               error
             )
@@ -72,12 +71,8 @@ class Validator {
             )
           } else {
             if (response && response.length > 0) {
-              logger.log(
-                'info',
-                'Burn hash found in source chain. Current burn hash is ' +
-                  response[0].args.currentBurnHash +
-                  '. Previous burn hash is ' +
-                  response[0].args.prevBurnHash
+              logger.info(
+                'Burn hash %s is exist in source chain. previous burn has is %s', response[0].args.currentBurnHash, response[0].args.prevBurnHash
               )
               let obj = { hashExist: true }
               obj.exportReceipt = response
@@ -114,7 +109,7 @@ class Validator {
         { from: this.address }
       )
       let receipt = this.web3.eth.getTransactionReceipt(tx)
-      logger.log('info', 'Attested burn hash ' + data.args.currentBurnHash)
+      logger.info('Attested burn hash ' + data.args.currentBurnHash)
       resolve(receipt)
     })
   }
@@ -127,8 +122,7 @@ class Validator {
         from: this.address
       })
       let receipt = this.web3.eth.getTransactionReceipt(tx)
-      logger.log('info', 'Refuted burn hash %s', burnHash)
-      logger.log('info', 'Refuted burn hash receipt %s', JSON.stringify(receipt))
+      logger.info('Refuted burn hash %s, receipt is %s', burnHash, JSON.stringify(receipt))
       resolve(receipt)
     })
   }

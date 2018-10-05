@@ -29,9 +29,8 @@ function parseConfig (input) {
   try {
     return JSON.parse(input)
   } catch (e) {
-    logger.log(
-      'error',
-      'Configuration file [config.json] is not a valid JSON! ' + e
+    logger.error(
+      'Configuration file [config.json] is not a valid JSON! %s', e
     )
     process.exit(0)
   }
@@ -62,9 +61,8 @@ function parseContracts (input) {
 
     return contracts
   } catch (e) {
-    logger.log(
-      'error',
-      'Error occurred while processing contents of metronome.js ' + e
+    logger.error(
+      'Error occurred while processing contents of metronome.js %s', e
     )
     process.exit(0)
   }

@@ -46,7 +46,7 @@ class EventManager {
     let validationJob = new CronJob(
       constant.cronJobPattern,
       () => {
-        logger.log('info', 'Cron job started to process pending validations')
+        logger.info('Cron job started to process pending validations')
         this.processPendingValidations()
       },
       null,
@@ -58,7 +58,7 @@ class EventManager {
     let attestationJob = new CronJob(
       constant.cronJobPattern,
       () => {
-        logger.log('info', 'Cron job started to process pending attestation')
+        logger.info('Cron job started to process pending attestation')
         this.processPendingAttestation()
       },
       null,
@@ -76,7 +76,7 @@ class EventManager {
       try {
         var value = await this.queue.pop(this.validationQ)
         var processLater = false
-        logger.log('info', 'Processing pending validations for value= %s', value)
+        logger.info('Processing pending validations for value = %s', value)
         var valueObj = JSON.parse(value)
         var safeBlockHeight =
           this.destination.web3.eth.blockNumber >=
@@ -101,8 +101,7 @@ class EventManager {
               processLater = true
             }
           } else {
-            logger.log(
-              'info',
+            logger.info(
               'Processing pending validations: export receipt not found in source chain for burn hash %s',
               valueObj.args.currentBurnHash
             )
@@ -110,9 +109,8 @@ class EventManager {
               'latest'
             )).timestamp
             if (currentBlockTimestmap < valueObj.args.exportTimeStamp) {
-              logger.log(
-                'info',
-                'Source chain is not synced properly. Should wait and try again. Burn hash %s',
+              logger.info(
+                'Source chain is not synced properly. Will wait and try again for burn hash %s',
                 valueObj.args.currentBurnHash
               )
               processLater = true
@@ -128,9 +126,8 @@ class EventManager {
           this.queue.push(this.validationQ, JSON.stringify(valueObj))
         }
       } catch (error) {
-        logger.log(
-          'error',
-          'Processing pending validations: Error while processing pending validations, %s . value was %s   . export receipt was',
+        logger.error(
+          'Processing pending validations: Error while processing pending validations %s. value in queue was %s. export receipt was %s',
           error,
           JSON.stringify(valueObj),
           JSON.stringify(exportReceiptObj)
@@ -142,7 +139,7 @@ class EventManager {
   async processPendingAttestation () {
     // Todo: implement logic to avoid multiple cron triggering this method without earlier execution finish
 
-    logger.log('info', 'Processing pending attestation.')
+    logger.info('Processing pending attestation.')
     // Process all pending attestion
     var count = await this.queue.length(this.attestationQ)
     while (count > 0) {
@@ -150,8 +147,7 @@ class EventManager {
       try {
         var value = await this.queue.pop(this.attestationQ)
         var valueObj = JSON.parse(value)
-        logger.log(
-          'info',
+        logger.info(
           'Processing pending attestation: Safe block heigh reached. attesting hash now %s.',
           value
         )
@@ -161,8 +157,7 @@ class EventManager {
           valueObj
         )
         if (receipt && receipt.status === '0x1') {
-          logger.log(
-            'info',
+          logger.info(
             'Processing pending attestation: Attestation done. %s',
             JSON.stringify(receipt)
           )
@@ -170,16 +165,14 @@ class EventManager {
           let hashClaimed = await this.destination.contracts.validator.hashClaimed(
             valueObj.args.currentBurnHash
           )
-          logger.log(
-            'error',
-            'Processing pending attestation: Attestation failed. %s',
+          logger.error(
+            'Processing pending attestation: Attestation failed for value %s',
             JSON.stringify(valueObj)
           )
           if (!hashClaimed && valueObj.failedAttempts < constant.retryCount) {
             // Push again at end of queue to try again in future
-            logger.log(
-              'error',
-              'Processing pending attestation: Adding in queue to try again %s',
+            logger.error(
+              'Processing pending attestation: Adding the value in queue to try again later, %s',
               JSON.stringify(valueObj)
             )
             valueObj.failedAttempts++
@@ -187,9 +180,8 @@ class EventManager {
           }
         }
       } catch (error) {
-        logger.log(
-          'error',
-          'Processing pending attestation: Error while processing pending attestation, %s. value was %s',
+        logger.error(
+          'Processing pending attestation: Error while processing pending attestation, %s. value in queue was %s',
           error,
           value
         )

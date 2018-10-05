@@ -34,35 +34,24 @@ class Listener {
     this.queue = queue
     if (this.chainName === 'ETH') {
       this.valiationQ = constant.queueName.eth.validationQ
-      this.block = constant.queueName.eth.block
+      this.blockKey = constant.queueName.eth.block
     } else if (this.chainName === 'ETC') {
       this.valiationQ = constant.queueName.etc.validationQ
-      this.block = constant.queueName.etc.block
+      this.blockKey = constant.queueName.etc.block
     }
   }
 
   async watchImportEvent () {
-    logger.log('info', 'Started watching import request event')
-    var block = await this.queue.get(this.block)
+    logger.info('Started watching import request event on chain %s', this.chainName)
+    var block = await this.queue.get(this.blockKey)
     if (block && block > '0') {
-      this.tokenPorter
-        .LogImportRequest(
-          {},
-          { fromBlock: parseInt(block, 10), toBlock: 'latest' }
-        )
+      this.tokenPorter.LogImportRequest({}, { fromBlock: parseInt(block, 10), toBlock: 'latest' })
         .get((error, response) => {
           if (error) {
-            logger.log(
-              'error',
-              'Error occurred while read for import events %s',
-              error
-            )
+            logger.error('Error occurred while reading pending import events %s', error)
           } else {
             for (let eventData of response) {
-              console.log(
-                '===========================found old LogImportRequest event' +
-                  eventData.blockNumber
-              )
+              logger.debug('Found old LogImportRequest event in block number %s', eventData.blockNumber)
               this.processEventData(eventData)
             }
           }
@@ -71,11 +60,7 @@ class Listener {
 
     this.tokenPorter.LogImportRequest().watch((error, response) => {
       if (error) {
-        logger.log(
-          'error',
-          'Error occurred while watching for import request %s',
-          error
-        )
+        logger.error('Error occurred while watching for import request %s', error)
       } else {
         this.processEventData(response)
       }
@@ -84,18 +69,14 @@ class Listener {
 
   async processEventData (response) {
     response.failedAttempts = 0
-    logger.log(
-      'debug',
-      'Pushing value in redis queue %s',
-      JSON.stringify(response)
-    )
+    logger.debug('Pushing import request in redis queue %s', JSON.stringify(response))
     this.queue.push(this.valiationQ, JSON.stringify(response))
-    var block = await this.queue.get(this.block)
-    console.log('current block in redis in ' + this.chainName + '=', block)
-    console.log('current block ' + this.chainName + '=', response.blockNumber)
+    var block = await this.queue.get(this.blockKey)
+    logger.debug('Redis: Last processed block for chain %s is %s', this.chainName, block)
+    logger.debug('OnChain: current processing block for chain %s is %s', this.chainName, response.blockNumber)
     if (!block || block < response.blockNumber) {
-      this.queue.pop(this.block)
-      this.queue.push(this.block, JSON.stringify(response.blockNumber))
+      this.queue.pop(this.blockKey)
+      this.queue.push(this.blockKey, JSON.stringify(response.blockNumber))
     }
   }
 }

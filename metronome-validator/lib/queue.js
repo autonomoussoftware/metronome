@@ -30,27 +30,21 @@ const logger = require('./logger')(__filename)
 class Queue {
   constructor () {
     // promisifing redis
-    console.log('queue constructor')
     bluebird.promisifyAll(redis)
     this.client = redis.createClient()
   }
 
   // TODO: how do we want to deal with exception while push and pop
   // Push value at the end of the queue
-  push (key, data) {
+  push (key, value) {
     return this.client
-      .rpushAsync(key, data)
+      .rpushAsync(key, value)
       .then(response => {
-        logger.log(
-          'debug',
-          'pushed value for key %s after pushing value %s',
-          key,
-          data
-        )
+        logger.debug('Pushed data with value as %s and key as %s', value, key)
         return response
       })
       .catch(error => {
-        logger.log('error', 'Error while pushing %s in queue, %s', data, error)
+        logger.error('Error while pushing value %s in queue, %s', value, error)
       })
   }
 
@@ -59,37 +53,26 @@ class Queue {
     return this.client
       .lpopAsync(key)
       .then(response => {
-        logger.log(
-          'debug',
-          'Poped value from queue for key %s is %s',
-          key,
-          response
-        )
+        logger.debug('Poped value for key %s is %s', key, response)
         return response
       })
       .catch(error => {
-        logger.log('error', 'Error while poping value from queue, %s', error)
+        logger.error('Error while poping value for key %s, error is %s', key, error)
       })
   }
 
   // Read first value from queue and return it
   get (key) {
-    logger.log('debug', 'calling get function for key %s', key)
+    logger.debug('Calling get function for key %s', key)
     return this.client
       .lrangeAsync(key, 0, 0)
       .then(response => {
         if (response.length > 0 && this.isValueValid(response)) {
-          logger.log(
-            'debug',
-            'Retrieved value for key %s from queue is %s',
-            key,
-            response
-          )
+          logger.debug('Retrieved value for key %s from queue is %s', key, response)
           return response
         } else {
           if (response && response.length > 0) {
-            logger.log(
-              'debug',
+            logger.debug(
               'Retrieved value for key %s from queue is %s . Its not valid value hence removing from queue',
               key,
               response
@@ -100,11 +83,7 @@ class Queue {
         }
       })
       .catch(error => {
-        logger.log(
-          'error',
-          'Error while retrieving value from queue, %s',
-          error
-        )
+        logger.error('Error while retrieving value from queue, %s', error)
       })
   }
 
@@ -112,11 +91,11 @@ class Queue {
     return this.client
       .llenAsync(key)
       .then(response => {
-        logger.log('debug', 'Length of queue for key %s is %s', key, response)
+        logger.debug('Length of queue for key %s is %s', key, response)
         return response
       })
       .catch(error => {
-        logger.log('error', 'Error while poping value from queue, %s', error)
+        logger.error('Error while poping value from queue, %s', error)
       })
   }
 

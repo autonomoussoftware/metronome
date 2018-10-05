@@ -44,15 +44,13 @@ function launch (config, metronome) {
   let ethListener = new Listener(eventQueue, ethChain)
   let etcListener = new Listener(eventQueue, etcChain)
 
-  // TODO: validator should onle validate and vote/attast
-  // TODO: event manager will call validator based on block height of 6
   ethEventManager.setupAndTriggerJob()
   etcEventManager.setupAndTriggerJob()
   try {
     ethListener.watchImportEvent()
     etcListener.watchImportEvent()
   } catch (e) {
-    logger.log('error', 'Error occurred while listening events, %s', e)
+    logger.error('Error occurred while listening events %s', e)
   }
 }
 
