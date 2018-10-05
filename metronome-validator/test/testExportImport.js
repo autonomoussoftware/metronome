@@ -371,18 +371,18 @@ describe('cross chain testing', () => {
         from: ethBuyer1,
         value: 2e16
       })
-      let amount = eth.contracts.metToken.balanceOf(ethBuyer1).toNumber()
-      assert(amount > 0, 'Exporter has no MET token balance')
-      let fee = amount / 2
-      amount = amount - fee
+      let metBalance = eth.contracts.metToken.balanceOf(ethBuyer1)
+      assert(metBalance > 0, 'Exporter has no MET token balance')
+      let fee = Math.floor(metBalance.div(2))
+      let amount = metBalance.sub(fee)
       let extraData = 'D'
       let totalSupplybefore = await eth.contracts.metToken.totalSupply()
       let tx = await eth.contracts.metToken.export(
         eth.web3.fromAscii('ETC'),
         etc.contracts.metToken.address,
         etcBuyer1,
-        amount,
-        fee,
+        amount.valueOf(),
+        fee.valueOf(),
         eth.web3.fromAscii(extraData),
         { from: ethBuyer1 }
       )
@@ -395,7 +395,7 @@ describe('cross chain testing', () => {
       let logExportReceipt = decoder(receipt.logs)[0]
       assert(
         totalSupplybefore.sub(totalSupplyAfter),
-        amount + fee,
+        amount.add(fee),
         'Export from ETH failed'
       )
       const importDataJson = JSON.parse(getDataForImport())
