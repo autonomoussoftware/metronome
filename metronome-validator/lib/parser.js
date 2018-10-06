@@ -25,17 +25,6 @@
 
 const logger = require('./logger')(__filename)
 
-function parseConfig (input) {
-  try {
-    return JSON.parse(input)
-  } catch (e) {
-    logger.error(
-      'Configuration file [config.json] is not a valid JSON! %s', e
-    )
-    process.exit(0)
-  }
-}
-
 function parseMetronome (input) {
   let metronome = {}
   for (var chain in input) {
@@ -61,10 +50,8 @@ function parseContracts (input) {
 
     return contracts
   } catch (e) {
-    logger.error(
-      'Error occurred while processing contents of metronome.js %s', e
-    )
-    process.exit(0)
+    logger.error('Error occurred while processing contents of metronome.js %s', e)
+    process.exit(1)
   }
 }
 
@@ -95,4 +82,4 @@ function fetchSubString (input, startSubString, endSubString) {
   )
 }
 
-module.exports = { parseConfig, parseContracts, parseMetronome }
+module.exports = { parseMetronome }

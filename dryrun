@@ -54,16 +54,16 @@ tmux send-keys 'geth attach http://127.0.0.1:8545 --preload js/eth/metronome.js'
 tmux select-window -t='MET ETC'
 tmux send-keys 'geth attach http://127.0.0.1:8555 --preload js/etc/metronome.js' 'C-m'
 
+tmux new-window
+tmux rename-window 'Redis server'
+tmux send-keys 'redis-server' 'C-m'
+
 tmux new-window 
 tmux send-keys 'cp ./js/etc/metronome.js ./metronome-validator/abi/etc/' 'C-m'
 tmux send-keys 'cp ./js/eth/metronome.js ./metronome-validator/abi/eth/' 'C-m'
 tmux send-keys 'cd metronome-validator' 'C-m'
-tmux rename-window 'Validation'
-tmux send-keys 'node index.js launch' 'C-m'  # 'metronome-validator launch' is actual command
-
-tmux new-window
-tmux rename-window 'Redis server'
-tmux send-keys 'redis-server' 'C-m'
+tmux rename-window 'Off-chain Validator'
+tmux send-keys 'node index.js launch --dev' 'C-m'  # 'metronome-validator launch' is actual command
 
 tmux new-window
 tmux send-keys 'cd metronome-validator' 'C-m'

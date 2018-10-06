@@ -27,7 +27,8 @@ const assert = require('chai').assert
 const ethjsABI = require('ethjs-abi')
 const _ = require('lodash')
 const fs = require('fs')
-const Parser = require('../lib/parser')
+const reader = require('../lib/file-reader')
+const parser = require('../lib/parser')
 const Chain = require('../lib/chain')
 const MerkleTreeJs = require('merkletreejs')
 const crypto = require('crypto')
@@ -38,18 +39,12 @@ var etc
 
 const initContracts = function () {
   return new Promise(async (resolve, reject) => {
-    let config = fs.readFileSync('./config.json').toString()
-    let chainPath = './abi/'
-    let fileName = '/metronome.js'
-    let metronome = {}
-    let supportedChains = fs.readdirSync(chainPath)
-    for (let i = 0; i < supportedChains.length; i++) {
-      metronome[supportedChains[i]] = fs
-        .readFileSync(chainPath + supportedChains[i] + fileName)
-        .toString()
-    }
-    let configuration = Parser.parseConfig(config)
-    let metronomeContracts = Parser.parseMetronome(metronome)
+    let configuration = reader.readFileAsJson('./config.json')
+    configuration.eth.password = ''
+    configuration.etc.password = ''
+
+    let metronome = reader.readMetronome()
+    let metronomeContracts = parser.parseMetronome(metronome)
     // create validator object
     eth = new Chain(configuration.eth, metronomeContracts.eth)
     etc = new Chain(configuration.etc, metronomeContracts.etc)

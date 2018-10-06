@@ -30,8 +30,7 @@ const EventManager = require('./event-manager')
 const logger = require('./logger')(__filename)
 const Listener = require('./listener')
 
-function launch (config, metronome) {
-  let configuration = parser.parseConfig(config)
+function launch (configuration, metronome) {
   let metronomeContracts = parser.parseMetronome(metronome)
 
   let ethChain = new Chain(configuration.eth, metronomeContracts.eth)
