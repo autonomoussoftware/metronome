@@ -26,6 +26,7 @@
 const program = require('commander')
 const fs = require('fs')
 const process = require('process')
+const logger = require('./lib/logger')(__filename)
 const reader = require('./lib/file-reader')
 const launcher = require('./lib/launcher')
 
@@ -48,7 +49,6 @@ function init () {
         program.help()
 }
 
-// TODO: use logger if possible
 function launchValidator (ethPassword, etcPassword) {
   const config = reader.readFileAsJson('config.json')
   config.eth.password = processArgument(ethPassword)
@@ -59,7 +59,7 @@ function launchValidator (ethPassword, etcPassword) {
 }
 
 function writeSampleConfigFile () {
-  console.log('writing sample config file')
+  logger.info('writing sample config file')
   const configPath = 'config.json'
   const sampleConfig = [
     '{                                              ',
@@ -81,9 +81,9 @@ function writeSampleConfigFile () {
   if (!fs.existsSync(configPath)) {
     fs.writeFileSync(configPath, sampleConfig.join('\n'))
 
-    console.log('Sample Configuration file created!')
+    logger.info('Sample Configuration file created!')
   } else {
-    console.log('Configuration file already exists')
+    logger.info('Configuration file already exists')
   }
 }
 
@@ -91,7 +91,7 @@ function processArgument (argument) {
   if (program.dev && !argument) {
     argument = ''
   } else if (!argument) {
-    console.error('Password for ETH/ETC is required in production environment, use --dev option for development environment')
+    logger.error('Password for ETH/ETC is required in production environment, use --dev option for development environment')
     process.exit(1)
   }
   return argument

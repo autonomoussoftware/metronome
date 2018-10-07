@@ -27,164 +27,43 @@ const assert = require('chai').assert
 const ethjsABI = require('ethjs-abi')
 const _ = require('lodash')
 const fs = require('fs')
-const reader = require('../lib/file-reader')
-const parser = require('../lib/parser')
-const Chain = require('../lib/chain')
-const MerkleTreeJs = require('merkletreejs')
-const crypto = require('crypto')
+const util = require('./testUtil')
 var ethBuyer1
 var etcBuyer1
 var eth
 var etc
 
-const initContracts = function () {
-  return new Promise(async (resolve, reject) => {
-    let configuration = reader.readFileAsJson('./config.json')
-    configuration.eth.password = ''
-    configuration.etc.password = ''
-
-    let metronome = reader.readMetronome()
-    let metronomeContracts = parser.parseMetronome(metronome)
-    // create validator object
-    eth = new Chain(configuration.eth, metronomeContracts.eth)
-    etc = new Chain(configuration.etc, metronomeContracts.etc)
-    ethBuyer1 = eth.web3.personal.newAccount('password')
-    etcBuyer1 = etc.web3.personal.newAccount('password')
-    // Send some ether for gas cost and MET
-    await eth.web3.personal.unlockAccount(eth.web3.eth.accounts[0], '')
-    await etc.web3.personal.unlockAccount(etc.web3.eth.accounts[0], '')
-
-    await eth.web3.eth.sendTransaction({
-      to: ethBuyer1,
-      from: eth.web3.eth.accounts[0],
-      value: 2e18
-    })
-    await etc.web3.eth.sendTransaction({
-      to: etcBuyer1,
-      from: etc.web3.eth.accounts[0],
-      value: 2e18
-    })
-
-    let owner = await eth.contracts.tokenPorter.owner()
-    await eth.web3.personal.unlockAccount(owner, 'newOwner')
-    var tokenAddress = etc.contracts.metToken.address
-    await eth.contracts.tokenPorter.addDestinationChain('ETC', tokenAddress, {
-      from: owner
-    })
-    await eth.contracts.validator.addValidator(eth.web3.eth.accounts[0], {
-      from: owner
-    })
-
-    owner = await etc.contracts.tokenPorter.owner()
-    await etc.web3.personal.unlockAccount(owner, 'newOwner')
-    tokenAddress = await eth.contracts.metToken.address
-    await etc.contracts.tokenPorter.addDestinationChain('ETH', tokenAddress, {
-      from: owner
-    })
-    await etc.contracts.validator.addValidator(etc.web3.eth.accounts[0], {
-      from: owner
-    })
-    resolve()
-  })
-}
-
 function validateMinting (
-  destinationChain,
+  chain,
+  recipient,
   expectedTotalSupply,
   expectedBalanceOfRecepient,
   fee,
   balanceOfValidatorBefore
 ) {
-  let chain = etc
-  let recepient = etcBuyer1
-  let validator = etc.configuration.address
-  if (destinationChain === 'eth') {
-    chain = eth
-    recepient = ethBuyer1
-    validator = eth.configuration.address
-  }
+  let validator = chain.configuration.address
+
   let currentTotalSupply = chain.contracts.metToken.totalSupply()
-  assert.closeTo(
-    currentTotalSupply.sub(expectedTotalSupply).toNumber(),
-    0,
-    3,
-    'Total supply is wrong after import'
-  )
-  assert.equal(
-    chain.contracts.metToken.balanceOf(recepient).valueOf(),
-    expectedBalanceOfRecepient.valueOf(),
-    'Balance of recepient wrong after import'
-  )
+  assert.closeTo(currentTotalSupply.sub(expectedTotalSupply).toNumber(), 0, 3, 'Total supply is wrong after import')
+
+  assert.equal(chain.contracts.metToken.balanceOf(recipient).valueOf(),
+    expectedBalanceOfRecepient.valueOf(), 'Balance of recepient wrong after import')
+
   let balanceOfValidatorAfter = chain.contracts.metToken.balanceOf(validator)
   let expectedFee = fee / chain.contracts.validator.getValidatorsCount()
-  assert(
-    balanceOfValidatorAfter - balanceOfValidatorBefore,
-    expectedFee,
-    'Validator did not get correct export fee'
-  )
-}
-
-function sha256 (data) {
-  // returns Buffer
-  return crypto
-    .createHash('sha256')
-    .update(data)
-    .digest()
+  assert(balanceOfValidatorAfter - balanceOfValidatorBefore, expectedFee, 'Validator did not get correct export fee')
 }
 
 const getDataForImport = _.memoize(function () {
   return fs.readFileSync('import-data.json').toString()
 })
 
-async function prepareImportData (chain, receipt) {
-  let burnHashes = []
-  let i = 0
-  let decoder = ethjsABI.logDecoder(chain.contracts.tokenPorter.abi)
-  let logExportReceipt = decoder(receipt.logs)[0]
-  if (logExportReceipt.burnSequence > 15) {
-    i = logExportReceipt.burnSequence - 15
-  }
-  while (i <= logExportReceipt.burnSequence) {
-    burnHashes.push(await chain.contracts.tokenPorter.exportedBurns(i))
-    i++
-  }
-  const leaves = burnHashes.map(x => Buffer.from(x.slice(2), 'hex'))
-
-  const tree = new MerkleTreeJs(leaves, sha256)
-  let buffer = tree.getProof(leaves[leaves.length - 1])
-  let merkleProof = []
-  for (let i = 0; i < buffer.length; i++) {
-    merkleProof.push('0x' + buffer[i].data.toString('hex'))
-  }
-  return {
-    addresses: [
-      logExportReceipt.destinationMetronomeAddr,
-      logExportReceipt.destinationRecipientAddr
-    ],
-    burnHashes: [
-      logExportReceipt.prevBurnHash,
-      logExportReceipt.currentBurnHash
-    ],
-    importData: [
-      logExportReceipt.blockTimestamp,
-      logExportReceipt.amountToBurn,
-      logExportReceipt.fee,
-      logExportReceipt.currentTick,
-      logExportReceipt.genesisTime,
-      logExportReceipt.dailyMintable,
-      logExportReceipt.burnSequence,
-      logExportReceipt.dailyAuctionStartTime
-    ],
-    merkelProof: merkleProof,
-    root: '0x' + tree.getRoot().toString('hex'),
-    extraData: logExportReceipt.extraData,
-    supplyOnAllChains: logExportReceipt.supplyOnAllChains,
-    destinationChain: logExportReceipt.destinationChain
-  }
-}
-
 before(async () => {
-  await initContracts()
+  const response = await util.initContracts()
+  eth = response.ethChain
+  ethBuyer1 = response.ethBuyer
+  etc = response.etcChain
+  etcBuyer1 = response.etcBuyer
 })
 
 describe('cross chain testing', () => {
@@ -200,13 +79,11 @@ describe('cross chain testing', () => {
       })
       let metBalance = eth.contracts.metToken.balanceOf(ethBuyer1)
       assert(metBalance > 0, 'Exporter has no MET token balance')
+
       let fee = Math.floor(metBalance.div(2))
       let amount = metBalance.sub(fee)
-      assert(
-        metBalance,
-        amount.add(fee),
-        'Total of amount and fee should be equal to metBalance'
-      )
+      assert(metBalance, amount.add(fee), 'Total of amount and fee should be equal to metBalance')
+
       let extraData = 'D'
       let totalSupplybefore = await eth.contracts.metToken.totalSupply()
       let tx = await eth.contracts.metToken.export(
@@ -223,22 +100,13 @@ describe('cross chain testing', () => {
         reject(new Error('Export function reverted'))
       }
       let totalSupplyAfter = eth.contracts.metToken.totalSupply()
-      assert(
-        totalSupplybefore.sub(totalSupplyAfter),
-        amount.add(fee),
-        'Export from ETH failed'
-      )
-      let importDataObj = await prepareImportData(eth, receipt)
-      let expectedTotalSupply = etc.contracts.metToken
-        .totalSupply()
-        .add(amount)
-        .add(fee)
-      let expectedBalanceOfRecepient = etc.contracts.metToken
-        .balanceOf(etcBuyer1)
-        .add(amount)
-      let balanceOfValidatorBefore = etc.contracts.metToken.balanceOf(
-        etc.configuration.address
-      )
+      assert(totalSupplybefore.sub(totalSupplyAfter), amount.add(fee), 'Export from ETH failed')
+
+      let importDataObj = await util.prepareImportData(eth, receipt)
+      let expectedTotalSupply = etc.contracts.metToken.totalSupply().add(amount).add(fee)
+
+      let expectedBalanceOfRecepient = etc.contracts.metToken.balanceOf(etcBuyer1).add(amount)
+      let balanceOfValidatorBefore = etc.contracts.metToken.balanceOf(etc.configuration.address)
       tx = await etc.contracts.metToken.importMET(
         etc.web3.fromAscii('ETH'),
         importDataObj.destinationChain,
@@ -254,26 +122,19 @@ describe('cross chain testing', () => {
       if (receipt.status === '0x0') {
         reject(new Error('importMET function reverted'))
       }
-      let filter = etc.contracts.tokenPorter
-        .LogImport()
-        .watch((err, response) => {
-          if (err) {
-            console.log('export error', err)
-          } else {
-            if (importDataObj.burnHashes[1] === response.args.currentHash) {
-              filter.stopWatching()
-              validateMinting(
-                'etc',
-                expectedTotalSupply,
-                expectedBalanceOfRecepient,
-                fee,
-                balanceOfValidatorBefore,
-                etc.configuration.address
-              )
-              resolve()
-            }
+      // wait for minting to happen
+      let filter = etc.contracts.tokenPorter.LogImport().watch((err, response) => {
+        if (err) {
+          console.log('export error', err)
+        } else {
+          if (importDataObj.burnHashes[1] === response.args.currentHash) {
+            filter.stopWatching()
+            validateMinting(etc, etcBuyer1, expectedTotalSupply, expectedBalanceOfRecepient,
+              fee, balanceOfValidatorBefore)
+            resolve()
           }
-        })
+        }
+      })
     })
   })
 
@@ -307,7 +168,7 @@ describe('cross chain testing', () => {
         amount + fee,
         'Export from ETH failed'
       )
-      let importDataObj = await prepareImportData(etc, receipt)
+      let importDataObj = await util.prepareImportData(etc, receipt)
       let expectedTotalSupply = eth.contracts.metToken
         .totalSupply()
         .add(amount)
@@ -342,12 +203,12 @@ describe('cross chain testing', () => {
             if (importDataObj.burnHashes[1] === response.args.currentHash) {
               filter.stopWatching()
               validateMinting(
-                'eth',
+                eth,
+                ethBuyer1,
                 expectedTotalSupply,
                 expectedBalanceOfRecepient,
                 fee,
-                balanceOfValidatorBefore,
-                eth.configuration.address
+                balanceOfValidatorBefore
               )
               resolve()
             }
