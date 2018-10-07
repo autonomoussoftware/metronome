@@ -98,8 +98,12 @@ DATADIR=/tmp/parity/local/eth
 GASARGS="--reseal-min-period 0 --min-gas-price 0 --gasprice 0" 
 RPCAPI="--rpcapi=web3,eth,personal,rpc,net,parity "
 OWNER_ADDRESS=0x0 #Todo- for live network enter owner's actual address here 
-ETH_TEST_BOOTNODE="enode://a90b36105811c87207b3a9bef260c2bff02355b0f8c1bfbc1e8341ee332fc803bc0f62cbec61fcc443228580a7f2ec3eeab3b57a649203f6ae6955e54ee9dfac@35.202.109.171:30303"
-ETC_TEST_BOOTNODE="enode://5c604378ba83b38a4d8a47e45305d4c5b3a6841172fe2b55e062bde6fdd8b7a6f44f01ef5cc8e4c3a5d40ce78d2040e33b4f9697d23f9c20a1914e24278477d3@35.184.26.97:30303"
+#Bloq test nodes
+#ETH_TEST_BOOTNODE="enode://a90b36105811c87207b3a9bef260c2bff02355b0f8c1bfbc1e8341ee332fc803bc0f62cbec61fcc443228580a7f2ec3eeab3b57a649203f6ae6955e54ee9dfac@35.202.109.171:30303"
+#ETC_TEST_BOOTNODE="enode://5c604378ba83b38a4d8a47e45305d4c5b3a6841172fe2b55e062bde6fdd8b7a6f44f01ef5cc8e4c3a5d40ce78d2040e33b4f9697d23f9c20a1914e24278477d3@35.184.26.97:30303"
+#NA test nodes
+ETH_TEST_BOOTNODE="enode://fa2ffb624f7ade1f432e0a37249b201817bffd597913b7bcde2db93618d7604f68c74fa51e3700e2888a295a80591d03d5d013180866a50c3758cade3b2e92e9@35.227.101.52:33333"
+ETC_TEST_BOOTNODE="enode://b4035a5527d17d588d576c4cfcb3c39d7e308fc4c2fc5720813e21770decd17de3a93602ac4b36422964b479cabb82dfb1dc6c5cfedd4061954dfdbfbc309a6a@35.227.101.52:30303"
 ETH_TEST_PARITYSPEC="parity-spec.json"
 ETC_TEST_PARITYSPEC="parity-spec-etc.json"
 VALIDATORS="[]"
@@ -327,8 +331,8 @@ echo -e "contracts/monolithic.sol:AutonomousConverter\n$TMP_DIR/AutonomousConver
 echo -e "contracts/monolithic.sol:SmartToken\n$TMP_DIR/SmartToken.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
 echo -e "contracts/monolithic.sol:METToken\n$TMP_DIR/METToken.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
 echo -e "contracts/monolithic.sol:TokenPorter\n$TMP_DIR/TokenPorter.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
-echo -e "contracts/monolithic.sol:Validator\n$TMP_DIR/Valiator.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
-cat $TMP_DIR/Proceeds.js $TMP_DIR/Auctions.js $TMP_DIR/AutonomousConverter.js $TMP_DIR/SmartToken.js $TMP_DIR/METToken.js $TMP_DIR/TokenPorter.js $TMP_DIR/Valiator.js > $CHAIN_DIR/metronome.js
+echo -e "contracts/monolithic.sol:Validator\n$TMP_DIR/Validator.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
+cat $TMP_DIR/Proceeds.js $TMP_DIR/Auctions.js $TMP_DIR/AutonomousConverter.js $TMP_DIR/SmartToken.js $TMP_DIR/METToken.js $TMP_DIR/TokenPorter.js $TMP_DIR/Validator.js > $CHAIN_DIR/metronome.js
 rm -r $TMP_DIR
 
 #Reading founder list
