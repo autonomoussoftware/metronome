@@ -53,6 +53,7 @@ function configureChain (chain, destChain) {
   var destTokanAddress = destChain.contracts.metToken.address
   chain.contracts.tokenPorter.addDestinationChain(destChain.name, destTokanAddress, {from: owner})
   chain.contracts.validator.addValidator(chain.web3.eth.accounts[0], {from: owner})
+  chain.contracts.tokenPorter.setExportFeePerTenThousand(1, {from: owner})
 }
 
 // Prepare import data using export receipt
