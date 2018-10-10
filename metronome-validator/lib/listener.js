@@ -43,6 +43,19 @@ class Listener {
 
   async watchImportEvent () {
     logger.info('Started watching import request event on chain %s', this.chainName)
+    // Read pending import from chain and then watch for upcoming events
+    this.readPendingImports()
+
+    this.tokenPorter.LogImportRequest().watch((error, response) => {
+      if (error) {
+        logger.error('Error occurred while watching for import request %s', error)
+      } else {
+        this.processEventData(response)
+      }
+    })
+  }
+
+  async readPendingImports () {
     var block = await this.queue.get(this.blockKey)
     if (block && block > '0') {
       this.tokenPorter.LogImportRequest({}, { fromBlock: parseInt(block, 10), toBlock: 'latest' })
@@ -57,26 +70,17 @@ class Listener {
           }
         })
     }
-
-    this.tokenPorter.LogImportRequest().watch((error, response) => {
-      if (error) {
-        logger.error('Error occurred while watching for import request %s', error)
-      } else {
-        this.processEventData(response)
-      }
-    })
   }
 
   async processEventData (response) {
     response.failedAttempts = 0
     logger.debug('Pushing import request in redis queue %s', JSON.stringify(response))
-    this.queue.push(this.valiationQ, JSON.stringify(response))
+    this.queue.push(this.valiationQ, response)
     var block = await this.queue.get(this.blockKey)
     logger.debug('Redis: Last processed block for chain %s is %s', this.chainName, block)
     logger.debug('OnChain: current processing block for chain %s is %s', this.chainName, response.blockNumber)
     if (!block || block < response.blockNumber) {
-      this.queue.pop(this.blockKey)
-      this.queue.push(this.blockKey, JSON.stringify(response.blockNumber))
+      this.queue.set(this.blockKey, 0, response.blockNumber)
     }
   }
 }

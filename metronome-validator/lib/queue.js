@@ -37,14 +37,15 @@ class Queue {
   // TODO: how do we want to deal with exception while push and pop
   // Push value at the end of the queue
   push (key, value) {
+    const stringValue = JSON.stringify(value)
     return this.client
-      .rpushAsync(key, value)
+      .rpushAsync(key, stringValue)
       .then(response => {
-        logger.debug('Pushed data with value as %s and key as %s', value, key)
+        logger.debug('Pushed new value in %s queue, value = %s', key, stringValue)
         return response
       })
       .catch(error => {
-        logger.error('Error while pushing value %s in queue, %s', value, error)
+        logger.error('Error while pushing value in %s queue, %s', key, error)
       })
   }
 
@@ -53,11 +54,12 @@ class Queue {
     return this.client
       .lpopAsync(key)
       .then(response => {
-        logger.debug('Poped value for key %s is %s', key, response)
-        return response
+        const outcome = JSON.parse(response)
+        logger.debug('Poped value from %s queue is %s', key, response)
+        return outcome
       })
       .catch(error => {
-        logger.error('Error while poping value for key %s, error is %s', key, error)
+        logger.error('Error while poping value from %s queue, %s', key, error)
       })
   }
 
@@ -67,23 +69,25 @@ class Queue {
     return this.client
       .lrangeAsync(key, 0, 0)
       .then(response => {
-        if (response.length > 0 && this.isValueValid(response)) {
-          logger.debug('Retrieved value for key %s from queue is %s', key, response)
-          return response
-        } else {
-          if (response && response.length > 0) {
-            logger.debug(
-              'Retrieved value for key %s from queue is %s . Its not valid value hence removing from queue',
-              key,
-              response
-            )
-            this.pop(key)
-          }
-          return null
-        }
+        const outcome = JSON.parse(response)
+        logger.debug('Retrieved value from %s queue is %s', key, response)
+        return outcome
       })
       .catch(error => {
-        logger.error('Error while retrieving value from queue, %s', error)
+        logger.error('Error while retrieving value from %s queue, %s', key, error)
+      })
+  }
+
+  set (key, index, value) {
+    const stringValue = JSON.stringify(value)
+    return this.client
+      .lsetAsync(key, index, stringValue)
+      .then(response => {
+        logger.debug('Updated %s queue at index %s with new value as %s', key, index, value)
+        return response
+      })
+      .catch(error => {
+        logger.error('Error while updating %s queue, %s', key, error)
       })
   }
 
@@ -91,25 +95,12 @@ class Queue {
     return this.client
       .llenAsync(key)
       .then(response => {
-        logger.debug('Length of queue for key %s is %s', key, response)
+        logger.debug('Length of %s queue is %s', key, response)
         return response
       })
       .catch(error => {
-        logger.error('Error while poping value from queue, %s', error)
+        logger.error('Error while retrieving length of %s queue, %s', key, error)
       })
-  }
-
-  isValueValid (value) {
-    try {
-      let obj = JSON.parse(value)
-      if (obj) {
-        return true
-      } else {
-        return false
-      }
-    } catch (e) {
-      return false
-    }
   }
 }
 
