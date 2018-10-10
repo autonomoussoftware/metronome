@@ -10,6 +10,17 @@ what you want!
 Note that you must have tmux installed. 
 
 _EOM_
+DEVNET=0
+while [ "$1" != "" ]; do
+  case $1 in
+    --devnet )
+      DEVNET=1
+      ;;
+    * )                     usage
+      exit 1
+  esac
+  shift
+done
 
 read -p "Press enter to continue destroying parity local dev environments"
 
@@ -22,14 +33,25 @@ echo "Killing any old Metronome tmux sessions."
 tmux kill-session -t Metronome
 
 echo "Launching New Session."
+echo "DEVNET=: $DEVNET"
+tmux new-session -d -s Metronome
+if [[ $DEVNET = 1 ]]
+  then
+    tmux send-keys 'echo y|./deploy --devnet' 'C-m'
+  else
+    tmux send-keys 'echo y|./deploy' 'C-m'
+fi
 
-tmux new-session -d -s Metronome 
-tmux send-keys 'echo y|./deploy' 'C-m'
 tmux rename-window 'MET ETH'
 tmux send-keys 'geth --exec 'eth.blockNumber' attach http://127.0.0.1:8545 --preload js/eth/metronome.js,js/eth/const.js,js/common.js,js/eth/launchMetronome.js; touch js/eth/launched' 'C-m' 
 
-tmux new-window 
-tmux send-keys 'echo y|./deploy --chain etc' 'C-m'
+tmux new-window
+if [[ $DEVNET = 1 ]]
+  then
+    tmux send-keys 'echo y|./deploy --chain etc --devnet' 'C-m'
+  else
+    tmux send-keys 'echo y|./deploy --chain etc' 'C-m'
+fi
 tmux rename-window 'MET ETC'
 tmux send-keys 'geth --exec 'eth.blockNumber' attach http://127.0.0.1:8555 --preload js/etc/metronome.js,js/etc/const.js,js/common.js,js/etc/launchMetronome.js; touch js/etc/launched' 'C-m' 
 

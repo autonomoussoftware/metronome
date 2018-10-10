@@ -57,6 +57,8 @@ hash = TokenPorter.initTokenPorter(METToken.address, Auctions.address, {from: ET
 waitForTx(hash)
 hash = TokenPorter.setValidator(Validator.address, {from: ETHER_ADDR})
 waitForTx(hash)
+hash = TokenPorter.setExportFeePerTenThousand(100, {from: ETHER_ADDR})
+waitForTx(hash)
 console.log('TokenPorter published at ' + TokenPorter.address)
 
 var newOwner = OWNER_ADDRESS

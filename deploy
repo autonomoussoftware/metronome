@@ -85,6 +85,7 @@ DEST="Parity DevChain Local ETH"
 LIVE=0
 PASS=""
 TEST=0
+DEVNET=0
 LOCAL=1
 TIMESCALE=1
 CHAIN="eth"
@@ -99,11 +100,11 @@ GASARGS="--reseal-min-period 0 --min-gas-price 0 --gasprice 0"
 RPCAPI="--rpcapi=web3,eth,personal,rpc,net,parity "
 OWNER_ADDRESS=0x0 #Todo- for live network enter owner's actual address here 
 #Bloq test nodes
-#ETH_TEST_BOOTNODE="enode://a90b36105811c87207b3a9bef260c2bff02355b0f8c1bfbc1e8341ee332fc803bc0f62cbec61fcc443228580a7f2ec3eeab3b57a649203f6ae6955e54ee9dfac@35.202.109.171:30303"
-#ETC_TEST_BOOTNODE="enode://5c604378ba83b38a4d8a47e45305d4c5b3a6841172fe2b55e062bde6fdd8b7a6f44f01ef5cc8e4c3a5d40ce78d2040e33b4f9697d23f9c20a1914e24278477d3@35.184.26.97:30303"
+ETH_TEST_BOOTNODE="enode://a90b36105811c87207b3a9bef260c2bff02355b0f8c1bfbc1e8341ee332fc803bc0f62cbec61fcc443228580a7f2ec3eeab3b57a649203f6ae6955e54ee9dfac@35.202.109.171:30303"
+ETC_TEST_BOOTNODE="enode://5c604378ba83b38a4d8a47e45305d4c5b3a6841172fe2b55e062bde6fdd8b7a6f44f01ef5cc8e4c3a5d40ce78d2040e33b4f9697d23f9c20a1914e24278477d3@35.184.26.97:30303"
 #NA test nodes
-ETH_TEST_BOOTNODE="enode://fa2ffb624f7ade1f432e0a37249b201817bffd597913b7bcde2db93618d7604f68c74fa51e3700e2888a295a80591d03d5d013180866a50c3758cade3b2e92e9@35.227.101.52:33333"
-ETC_TEST_BOOTNODE="enode://b4035a5527d17d588d576c4cfcb3c39d7e308fc4c2fc5720813e21770decd17de3a93602ac4b36422964b479cabb82dfb1dc6c5cfedd4061954dfdbfbc309a6a@35.227.101.52:30303"
+#ETH_TEST_BOOTNODE="enode://fa2ffb624f7ade1f432e0a37249b201817bffd597913b7bcde2db93618d7604f68c74fa51e3700e2888a295a80591d03d5d013180866a50c3758cade3b2e92e9@35.227.101.52:33333"
+#ETC_TEST_BOOTNODE="enode://b4035a5527d17d588d576c4cfcb3c39d7e308fc4c2fc5720813e21770decd17de3a93602ac4b36422964b479cabb82dfb1dc6c5cfedd4061954dfdbfbc309a6a@35.227.101.52:30303"
 ETH_TEST_PARITYSPEC="parity-spec.json"
 ETC_TEST_PARITYSPEC="parity-spec-etc.json"
 VALIDATORS="[]"
@@ -122,6 +123,12 @@ while [ "$1" != "" ]; do
       LIVE=0
       TEST=1
       LOCAL=0
+      ;;
+    --devnet )
+      LIVE=0
+      TEST=0
+      LOCAL=1
+      DEVNET=1
       ;;
     -h | --help )           usage
       exit
@@ -187,6 +194,11 @@ then
      DEST="New Alchemy ETH Testnet"
      CHAINARG="--chain $ETH_TEST_PARITYSPEC"
      BOOTNODES="--bootnodes $ETH_TEST_BOOTNODE"
+  elif [[ $DEVNET = 1 ]]
+  then
+     DATADIR=./parity/devnet/eth
+     DEST="New Alchemy ETH devnet"
+     BOOTNODES="--bootnodes enode://fa2ffb624f7ade1f432e0a37249b201817bffd597913b7bcde2db93618d7604f68c74fa51e3700e2888a295a80591d03d5d013180866a50c3758cade3b2e92e9@35.227.101.52:33333"
   else
     DATADIR=/tmp/parity/local/eth
     DEST="Parity DevChain Local ETH"
@@ -207,6 +219,11 @@ then
      DEST="New Alchemy ETC Testnet"
      CHAINARG="--chain $ETC_TEST_PARITYSPEC"
      BOOTNODES="--bootnodes $ETC_TEST_BOOTNODE"
+  elif [[ $DEVNET = 1 ]]
+  then
+     DATADIR=./parity/devnet/etc
+     DEST="New Alchemy ETC devnet"
+     BOOTNODES="--bootnodes enode://b4035a5527d17d588d576c4cfcb3c39d7e308fc4c2fc5720813e21770decd17de3a93602ac4b36422964b479cabb82dfb1dc6c5cfedd4061954dfdbfbc309a6a@35.227.101.52:30303"
     else
      DATADIR=/tmp/parity/local/etc
      DEST="New Alchemy ETC Local"
@@ -278,7 +295,7 @@ fi
 sleep 5
 
 
-if [[ $LOCAL = 1 ]]
+if [[ $LOCAL = 1 ]] && [[ $DEVNET = 0 ]]
 then
   rm -rf $DATADIR
   mkdir -p $DATADIR
@@ -314,6 +331,7 @@ then
     OWNER_ADDRESS=${OWNER_ADDRESS//\"/}
     echo "Metronome owner for dev chain $OWNER_ADDRESS" 
     curl -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"eth_sendTransaction","params":[{"from":"'$LOCAL_ETH'", "to":"'$OWNER_ADDRESS'", "value":"0x1BC16D674EC80000"}],"id":1}' $PARITY_URL
+    curl -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"personal_unlockAccount","params":["'$OWNER_ADDRESS'", "'$PASS'","0x3000"],"id":1}' $PARITY_URL
 fi
 
 sleep 5

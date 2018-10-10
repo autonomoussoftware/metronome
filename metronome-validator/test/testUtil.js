@@ -48,12 +48,14 @@ function setupAccount (web3) {
 
 // Configure chain: Add destination chain and add validators
 function configureChain (chain, destChain) {
-  let owner = chain.contracts.tokenPorter.owner()
-  chain.web3.personal.unlockAccount(owner, 'newOwner')
-  var destTokanAddress = destChain.contracts.metToken.address
-  chain.contracts.tokenPorter.addDestinationChain(destChain.name, destTokanAddress, {from: owner})
-  chain.contracts.validator.addValidator(chain.web3.eth.accounts[0], {from: owner})
-  chain.contracts.tokenPorter.setExportFeePerTenThousand(1, {from: owner})
+  let destinationChain = chain.contracts.tokenPorter.destinationChains(destChain.name)
+  console.log('destinationChain=', destinationChain)
+  if (destinationChain === '0x0000000000000000000000000000000000000000') {
+    let owner = chain.contracts.tokenPorter.owner()
+    var destTokanAddress = destChain.contracts.metToken.address
+    chain.contracts.tokenPorter.addDestinationChain(destChain.name, destTokanAddress, {from: owner})
+  }
+  
 }
 
 // Prepare import data using export receipt

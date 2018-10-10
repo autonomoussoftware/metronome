@@ -55,6 +55,8 @@ hash = TokenPorter.initTokenPorter(METToken.address, Auctions.address, {from: ET
 waitForTx(hash)
 hash = TokenPorter.setValidator(Validator.address, {from: ETHER_ADDR})
 waitForTx(hash)
+hash = TokenPorter.setExportFeePerTenThousand(100, {from: ETHER_ADDR})
+waitForTx(hash)
 
 console.log('TokenPorter published at ' + TokenPorter.address)
 
@@ -67,7 +69,7 @@ for (var i = 0; i < FOUNDERS.length; i++) {
   waitForTx(hash)
 }
 console.log('\nConfiguring and minting MET in Auctions')
-hash = Auctions.mintInitialSupply(FOUNDERS, METToken.address, Proceeds.address, AutonomousConverter.address, {from: ETHER_ADDR, gas: 5000000})
+hash = Auctions.mintInitialSupply(FOUNDERS, METToken.address, Proceeds.address, AutonomousConverter.address, {from: ETHER_ADDR, gas: 4700000})
 waitForTx(hash)
 console.log('owner of auction', Auctions.owner())
 console.log('Minted', Auctions.minted())
