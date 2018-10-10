@@ -1,5 +1,0 @@
-1) create a config file where eth and etc account address and password are stored by the admin who is running validators.
-2) move metronome.js of eth and etc into abi folder. 
-3) create validator class
-4) create a parser to parse metronome.js file and create objects of contracts. assign to validator
-5) create a event listener 
