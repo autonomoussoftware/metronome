@@ -1,0 +1,152 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1561\cocoasubrtf100
+{\fonttbl\f0\froman\fcharset0 Times-Roman;\f1\froman\fcharset0 Times-Bold;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;\red255\green255\blue255;\red49\green49\blue49;
+\red27\green31\blue34;\red27\green29\blue31;\red26\green26\blue26;\red0\green0\blue0;\red255\green255\blue255;
+\red251\green2\blue7;}
+{\*\expandedcolortbl;;\cssrgb\c0\c0\c0;\cssrgb\c100000\c100000\c100000;\cssrgb\c25098\c25098\c25098;
+\cssrgb\c14118\c16078\c18039;\cssrgb\c14118\c15294\c16078;\cssrgb\c13333\c13333\c13333;\csgray\c0;\csgray\c100000;
+\cssrgb\c100000\c14913\c0;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww26940\viewh8400\viewkind0
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f0\fs28 \cf2 \cb3 \CocoaLigature0 How to setup metronome on new computer\
+\
+\pard\pardeftab720\sl280\partightenfactor0
+\cf2 \expnd0\expndtw0\kerning0
+\CocoaLigature1 Install git\
+\pard\pardeftab720\sl380\partightenfactor0
+\cf2 sudo apt-get update\
+sudo apt-get upgrade\
+sudo apt-get install git\
+\pard\pardeftab720\sl280\partightenfactor0
+\cf2 \
+\
+sudo apt-get -y install cmake\
+\
+Install solc 0.4.21\
+https://solidity.readthedocs.io/en/v0.4.21/installing-solidity.html#building-from-source\
+\
+Download source from \
+https://github.com/ethereum/solidity/releases/download/v0.4.21/solidity_0.4.21.tar.gz\
+\
+Unzip files\
+\
+./scripts/install_deps.sh\
+\
+Run \
+./scripts/build.sh\
+\
+Install parity . 1.10.x\
+sudo wget https://releases.parity.io/v1.10.9/x86_64-unknown-linux-gnu/parity_1.10.9_ubuntu_amd64.deb\
+\pard\pardeftab720\sl300\partightenfactor0
+\AppleTypeServices\AppleTypeServicesF65539 \cf2 sudo dpkg -i parity_1.10.9_ubuntu_amd64.deb\AppleTypeServices \
+\pard\pardeftab720\sl280\partightenfactor0
+\cf2 \
+\pard\pardeftab720\sl300\partightenfactor0
+\cf2 sudo apt-get install jq\
+\
+Install geth\
+\
+\pard\pardeftab720\sl380\partightenfactor0
+\cf2 sudo apt-get install software-properties-common\
+sudo add-apt-repository -y ppa:ethereum/ethereum  ( Error thrown for me skipping this steps still work for me )\
+sudo apt-get update\
+sudo apt-get install ethereum\
+\
+\
+\
+\pard\pardeftab720\sl440\partightenfactor0
+\cf2 sudo apt \'96get install lsof\
+\
+Dependencies\
+\
+Node\
+Nodes\
+sudo apt \'96get install lsof\
+Parity\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf2 Install redis\
+https://www.digitalocean.com/community/tutorials/how-to-install-and-configure-redis-on-ubuntu-16-04\
+\pard\pardeftab720\sl300\partightenfactor0
+\AppleTypeServices\AppleTypeServicesF65539 \cf2 \
+\pard\pardeftab720\sl300\partightenfactor0
+
+\f1\b\fs36 \AppleTypeServices\AppleTypeServicesF65539 \cf2 Setting private chain on cloud of NA
+\f0\b0\fs28 \AppleTypeServices\AppleTypeServicesF65539 \
+NA cloud login \
+ssh patidarmanoj@35.227.188.228\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\AppleTypeServices \cf2 \kerning1\expnd0\expndtw0 \CocoaLigature0 parity --geth --rpcapi=web3,eth,personal,rpc,net,parity  --jsonrpc-port=8545 --ws-port=8546 --port=33333 --datadir=./parity/testnet/eth --tracing off  --pruning archive --chain dev --reseal-min-period 0 --min-gas-price 0 --gasprice 0\
+\
+parity --geth --rpcapi=web3,eth,personal,rpc,net,parity  --jsonrpc-port=8555 --ws-port=8556 --port=30303 --datadir=./parity/testnet/etc --tracing off  --pruning archive --chain dev --reseal-min-period 0 --min-gas-price 0 --gasprice 0\
+\
+ETH Public node URL on NA cloud ETH\
+Public node URL: enode://79f20d042527d0fcf79302dbb8d3a9bca537ebe44a1a4c98a096b32ec5ae725aa3cd560ddd459bc549038bec8fc0eae2c66b7fa5e775b5e56ce25a836fad5dff@3\AppleTypeServices\AppleTypeServicesF65539 \expnd0\expndtw0\kerning0
+\CocoaLigature1 5.227.188.228\AppleTypeServices \kerning1\expnd0\expndtw0 \CocoaLigature0 :33333\
+\AppleTypeServices\AppleTypeServicesF65539 \expnd0\expndtw0\kerning0
+\CocoaLigature1 \
+\pard\pardeftab720\sl300\partightenfactor0
+\cf2 ETC public node URL on NA cloud . \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\AppleTypeServices \cf2 \kerning1\expnd0\expndtw0 \CocoaLigature0 Public node URL: enode://d3d3d32673514718fe733e267d7604fc0f733f1db2eda18687ab8e438967618f93b8131f7b81f4ec0f82e884e5c3bebff90e6b01a739d801fad495a80436381f@3\AppleTypeServices\AppleTypeServicesF65539 \expnd0\expndtw0\kerning0
+\CocoaLigature1 5.227.188.228\AppleTypeServices \kerning1\expnd0\expndtw0 \CocoaLigature0 :30303\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf8 \cb9 \
+\pard\pardeftab720\sl300\partightenfactor0
+\AppleTypeServices\AppleTypeServicesF65539 \cf2 \cb3 \expnd0\expndtw0\kerning0
+\CocoaLigature1 \
+\pard\pardeftab720\sl300\partightenfactor0
+
+\f1\b\fs36 \AppleTypeServices\AppleTypeServicesF65539 \cf2 Setting up local nodes and connect with cloud node\
+\pard\pardeftab720\sl300\partightenfactor0
+
+\f0\b0\fs28 \AppleTypeServices\AppleTypeServicesF65539 \cf2 \
+\pard\pardeftab720\sl300\partightenfactor0
+
+\f1\b \AppleTypeServices\AppleTypeServicesF65539 \cf2 \cb3 Connect local node of ETH with  \cf10 NA\cf2  cloud machine
+\f0\b0 \AppleTypeServices\AppleTypeServicesF65539 \cb3 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\pardirnatural\partightenfactor0
+\AppleTypeServices \cf2 \cb3 \kerning1\expnd0\expndtw0 \CocoaLigature0  parity --geth --rpcapi=admin,web3,eth,personal,rpc,net,parity  --jsonrpc-port=8545 --ws-port=8546 --port=33333 --datadir=/tmp/parity/local/eth --tracing off  --pruning archive --chain dev  --reseal-min-period 0 --min-gas-price 0 --gasprice 0 --bootnodes enode://79f20d042527d0fcf79302dbb8d3a9bca537ebe44a1a4c98a096b32ec5ae725aa3cd560ddd459bc549038bec8fc0eae2c66b7fa5e775b5e56ce25a836fad5dff@3\AppleTypeServices\AppleTypeServicesF65539 \expnd0\expndtw0\kerning0
+\CocoaLigature1 5.227.188.228\AppleTypeServices \kerning1\expnd0\expndtw0 \CocoaLigature0 :33333\AppleTypeServices\AppleTypeServicesF65539 \expnd0\expndtw0\kerning0
+\CocoaLigature1 \
+\pard\pardeftab720\sl300\partightenfactor0
+\cf2 \cb3 \
+\pard\pardeftab720\sl300\partightenfactor0
+
+\f1\b \AppleTypeServices\AppleTypeServicesF65539 \cf2 \cb3 Connect local node of ETC with  \cf10 NA\cf2  cloud machine
+\f0\b0 \AppleTypeServices\AppleTypeServicesF65539 \cb3 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\pardirnatural\partightenfactor0
+\AppleTypeServices \cf2 \cb3 \kerning1\expnd0\expndtw0 \CocoaLigature0 parity --geth --rpcapi=web3,eth,personal,rpc,net,parity  --jsonrpc-port=8555 --ws-port=8556 --port=30303 --datadir=/tmp/parity/local/etc --tracing off  --pruning archive --chain dev  --reseal-min-period 0 --min-gas-price 0 --gasprice 0 --bootnodes  enode://d3d3d32673514718fe733e267d7604fc0f733f1db2eda18687ab8e438967618f93b8131f7b81f4ec0f82e884e5c3bebff90e6b01a739d801fad495a80436381f@3\AppleTypeServices\AppleTypeServicesF65539 \expnd0\expndtw0\kerning0
+\CocoaLigature1 5.227.188.228\AppleTypeServices \kerning1\expnd0\expndtw0 \CocoaLigature0 :30303\AppleTypeServices\AppleTypeServicesF65539 \expnd0\expndtw0\kerning0
+\CocoaLigature1   \
+\pard\pardeftab720\sl300\partightenfactor0
+\cf2 \cb3 \
+\
+\pard\pardeftab720\sl300\partightenfactor0
+
+\f1\b \AppleTypeServices\AppleTypeServicesF65539 \cf2 \cb3 Connect local node of ETH with  \cf10 personal\cf2  cloud machine
+\f0\b0 \AppleTypeServices\AppleTypeServicesF65539 \cb3 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\pardirnatural\partightenfactor0
+\AppleTypeServices \cf2 \cb3 \kerning1\expnd0\expndtw0 \CocoaLigature0  parity --geth --rpcapi=web3,eth,personal,rpc,net,parity  --jsonrpc-port=8545 --ws-port=8546 --port=33333 --datadir=/tmp/parity/local/eth --tracing off  --pruning archive --chain dev  --reseal-min-period 0 --min-gas-price 0 --gasprice 0 --bootnodes enode://fa2ffb624f7ade1f432e0a37249b201817bffd597913b7bcde2db93618d7604f68c74fa51e3700e2888a295a80591d03d5d013180866a50c3758cade3b2e92e9@35.227.101.52:33333\AppleTypeServices\AppleTypeServicesF65539 \expnd0\expndtw0\kerning0
+\CocoaLigature1 \
+\pard\pardeftab720\sl300\partightenfactor0
+\cf2 \cb3 \
+\pard\pardeftab720\sl300\partightenfactor0
+
+\f1\b \AppleTypeServices\AppleTypeServicesF65539 \cf2 \cb3 Connect local node of ETC with  \cf10 personal\cf2  cloud machine
+\f0\b0 \AppleTypeServices\AppleTypeServicesF65539 \cb3 \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\pardirnatural\partightenfactor0
+\AppleTypeServices \cf2 \cb3 \kerning1\expnd0\expndtw0 \CocoaLigature0 parity --geth --rpcapi=web3,eth,personal,rpc,net,parity  --jsonrpc-port=8555 --ws-port=8556 --port=30303 --datadir=/tmp/parity/local/etc --tracing off  --pruning archive --chain dev  --reseal-min-period 0 --min-gas-price 0 --gasprice 0 --bootnodes enode://b4035a5527d17d588d576c4cfcb3c39d7e308fc4c2fc5720813e21770decd17de3a93602ac4b36422964b479cabb82dfb1dc6c5cfedd4061954dfdbfbc309a6a@35.227.101.52:30303\AppleTypeServices\AppleTypeServicesF65539 \expnd0\expndtw0\kerning0
+\CocoaLigature1            \
+\pard\pardeftab720\sl300\partightenfactor0
+\cf2 \cb3 \
+\
+\
+\
+}
