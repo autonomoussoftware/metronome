@@ -10,17 +10,6 @@ what you want!
 Note that you must have tmux installed. 
 
 _EOM_
-DEVNET=0
-while [ "$1" != "" ]; do
-  case $1 in
-    --devnet )
-      DEVNET=1
-      ;;
-    * )                     usage
-      exit 1
-  esac
-  shift
-done
 
 read -p "Press enter to continue destroying parity local dev environments"
 
@@ -33,25 +22,13 @@ echo "Killing any old Metronome tmux sessions."
 tmux kill-session -t Metronome
 
 echo "Launching New Session."
-echo "DEVNET=: $DEVNET"
 tmux new-session -d -s Metronome
-if [[ $DEVNET = 1 ]]
-  then
-    tmux send-keys 'echo y|./deploy --devnet' 'C-m'
-  else
-    tmux send-keys 'echo y|./deploy' 'C-m'
-fi
-
+tmux send-keys 'echo y|./deploy' 'C-m'
 tmux rename-window 'MET ETH'
 tmux send-keys 'geth --exec 'eth.blockNumber' attach http://127.0.0.1:8545 --preload js/eth/metronome.js,js/eth/const.js,js/common.js,js/eth/launchMetronome.js; touch js/eth/launched' 'C-m' 
 
 tmux new-window
-if [[ $DEVNET = 1 ]]
-  then
-    tmux send-keys 'echo y|./deploy --chain etc --devnet' 'C-m'
-  else
-    tmux send-keys 'echo y|./deploy --chain etc' 'C-m'
-fi
+tmux send-keys 'echo y|./deploy --chain etc' 'C-m'
 tmux rename-window 'MET ETC'
 tmux send-keys 'geth --exec 'eth.blockNumber' attach http://127.0.0.1:8555 --preload js/etc/metronome.js,js/etc/const.js,js/common.js,js/etc/launchMetronome.js; touch js/etc/launched' 'C-m' 
 
@@ -81,14 +58,14 @@ tmux rename-window 'Redis server'
 tmux send-keys 'redis-server' 'C-m'
 
 tmux new-window 
-tmux send-keys 'cp ./js/etc/metronome.js ./metronome-validator/abi/etc/' 'C-m'
-tmux send-keys 'cp ./js/eth/metronome.js ./metronome-validator/abi/eth/' 'C-m'
-tmux send-keys 'cd metronome-validator' 'C-m'
+tmux send-keys 'cp ./js/etc/metronome.js ../Metronome-validator/abi/etc/' 'C-m'
+tmux send-keys 'cp ./js/eth/metronome.js ../Metronome-validator/abi/eth/' 'C-m'
+tmux send-keys 'cd ../Metronome-validator' 'C-m'
 tmux rename-window 'Off-chain Validator'
 tmux send-keys 'node index.js launch --dev' 'C-m'  # 'metronome-validator launch' is actual command
 
 tmux new-window
-tmux send-keys 'cd metronome-validator' 'C-m'
+tmux send-keys 'cd ../Metronome-validator' 'C-m'
 tmux rename-window 'Test-cases'
 tmux send-keys 'cat welcome.msg' 'C-m'
 tmux send-keys 'npm run testValidator ./test/testExportImport.js' 'C-m'
