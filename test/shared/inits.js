@@ -113,13 +113,13 @@ const Metronome = {
       await validator.addValidator(accounts[1], {from: OWNER})
       await validator.addValidator(accounts[2], {from: OWNER})
       resolve({
-        etcMetToken: metToken,
-        etcAutonomousConverter: autonomousConverter,
-        etcAuctions: auctions,
-        etcProceeds: proceeds,
-        etcSmartToken: smartToken,
-        etcTokenPorter: tokenPorter,
-        etcValidator: validator
+        metToken: metToken,
+        autonomousConverter: autonomousConverter,
+        auctions: auctions,
+        proceeds: proceeds,
+        smartToken: smartToken,
+        tokenPorter: tokenPorter,
+        validator: validator
       })
     })
   }
