@@ -40,7 +40,7 @@ contract('ETC - AutonomousConverter', accounts => {
 
   const OWNER = accounts[0]
 
-  beforeEach(async () => {
+  before(async () => {
     ethContracts = await Metronome.initContracts(accounts, BlockTime.getCurrentBlockTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
     let initialAuctionEndTime = await ethContracts.auctions.initialAuctionEndTime()
     etcContracts = await Metronome.initNonOGContracts(accounts, BlockTime.getCurrentBlockTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE, initialAuctionEndTime)
@@ -58,9 +58,10 @@ contract('ETC - AutonomousConverter', accounts => {
     )
   })
 
-  it('Check proceed forward to AC after 1st auction on ETC chain', () => {
+  it('should verify proceed forward to AC after 1st auction on ETC chain', () => {
     return new Promise(async (resolve, reject) => {
       const exporter = accounts[6]
+      const user = accounts[9]
 
       // Time travel to just a minute before auction end and buy all MET
       await BlockTime.timeTravel(8 * SECS_IN_DAY - SECS_IN_MINUTE)
@@ -82,7 +83,7 @@ contract('ETC - AutonomousConverter', accounts => {
       await BlockTime.mineBlock()
 
       // Purchase all MET in auction on ETC chain
-      await etcContracts.auctions.sendTransaction({from: accounts[9], value: 1e18})
+      await etcContracts.auctions.sendTransaction({from: user, value: 1e18})
       const mintable = await etcContracts.auctions.mintable()
       assert.equal(mintable, 0, 'Mintable should be zero')
 
@@ -90,11 +91,62 @@ contract('ETC - AutonomousConverter', accounts => {
       await BlockTime.timeTravel(1 * SECS_IN_DAY)
       await BlockTime.mineBlock()
       // Purchase MET to trigger auction restart and proceed forward
-      await etcContracts.auctions.sendTransaction({from: accounts[9], value: 1e18})
+      await etcContracts.auctions.sendTransaction({from: user, value: 1e18})
 
       // we expect ether balance of AC more than 1, as we send 1 ether at the time of deploy
       const balanceAC = web3.eth.getBalance(etcContracts.autonomousConverter.address)
       assert.isAbove(balanceAC.toNumber(), 1, 'Ether balance of AC on ETC chain should be higher than 1 ether')
+
+      resolve()
+    })
+  })
+
+  // This test assume that ETC chian is initialized already, which is happening in test 1
+  it('Should verify sell MET transaction in AC', () => {
+    return new Promise(async (resolve, reject) => {
+      // This is one time operation that needs to be done, once chain is active
+      await etcContracts.metToken.enableMETTransfers({from: OWNER})
+
+      const user = accounts[9]
+      let metBalance = await etcContracts.metToken.balanceOf(user)
+      // approve AC to spend user's MET, this is required for selling MET to AC
+      await etcContracts.metToken.approve(etcContracts.autonomousConverter.address, metBalance, {from: user})
+
+      const etherBalanceACBefore = web3.eth.getBalance(etcContracts.autonomousConverter.address)
+      // convert MET to ether via AC
+      await etcContracts.autonomousConverter.convertMetToEth(metBalance, 1, {from: user})
+
+      // User MET balance is expeted to be zero
+      metBalance = await etcContracts.metToken.balanceOf(user)
+      assert.equal(metBalance.valueOf(), 0, 'MET balance of user should be zero, after selling all MET to AC')
+
+      // Ether balance of AC should lower down due to purchase of MET from user
+      const etherBalanceACAfter = web3.eth.getBalance(etcContracts.autonomousConverter.address)
+      assert.isBelow(etherBalanceACAfter.toNumber(), etherBalanceACBefore.toNumber(), 'Ether balance of AC should be less after buying MET')
+
+      resolve()
+    })
+  })
+
+  // This test assume that ETC chian is initialized already, which is happening in test 1
+  it('Should verify buy MET transaction in AC', () => {
+    return new Promise(async (resolve, reject) => {
+      const user = accounts[3]
+      let metBalance = await etcContracts.metToken.balanceOf(user)
+      // User MET balance is expeted to be zero
+      assert.equal(metBalance, 0, 'MET balance of user should be zero')
+
+      const etherBalanceACBefore = web3.eth.getBalance(etcContracts.autonomousConverter.address)
+      // convert MET to ether via AC
+      await etcContracts.autonomousConverter.convertEthToMet(1, {from: user, value: 5e17}) // half ether
+
+      // User MET balance is expeted to be non-zero
+      metBalance = await etcContracts.metToken.balanceOf(user)
+      assert.isAbove(metBalance.toNumber(), 0, 'MET balance of user should not be zero, after buying MET from AC')
+
+      // Ether balance of AC should lower down due to purchase of MET from user
+      const etherBalanceACAfter = web3.eth.getBalance(etcContracts.autonomousConverter.address)
+      assert.isAbove(etherBalanceACAfter.toNumber(), etherBalanceACBefore.toNumber(), 'Ether balance of AC should be higher after selling MET')
 
       resolve()
     })
