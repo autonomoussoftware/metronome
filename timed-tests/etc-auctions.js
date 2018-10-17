@@ -24,8 +24,8 @@
 */
 
 const assert = require('chai').assert
-const TestRPCTime = require('../test/shared/time')
-const METGlobal = require('../test/shared/inits')
+const BlockTime = require('../test/shared/time')
+const Metronome = require('../test/shared/inits')
 const Utils = require('../test/shared/utils')
 
 contract('TokenPorter', accounts => {
@@ -39,8 +39,8 @@ contract('TokenPorter', accounts => {
 
   // Create contracts and initilize them for each test case
   beforeEach(async () => {
-    let genesisTime = TestRPCTime.getCurrentBlockTime()
-    ethContracts = await METGlobal.initContracts(
+    let genesisTime = BlockTime.getCurrentBlockTime()
+    ethContracts = await Metronome.initContracts(
       accounts,
       genesisTime,
       MINIMUM_PRICE,
@@ -59,7 +59,7 @@ contract('TokenPorter', accounts => {
 
     let initialAuctionEndTime = await ethContracts.auctions.initialAuctionEndTime()
     // await initNonOGContracts(accounts, TestRPCTime.getCurrentBlockTime() - 60, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE, initialAuctionEndTime.valueOf())
-    etcContracts = await METGlobal.initNonOGContracts(
+    etcContracts = await Metronome.initNonOGContracts(
       accounts,
       genesisTime.valueOf(),
       MINIMUM_PRICE,
@@ -95,8 +95,8 @@ contract('TokenPorter', accounts => {
       const exporter = accounts[7]
       const amount = 80e18
       // Time travel to just a minute before auction end and buy all MET
-      await TestRPCTime.timeTravel(8 * SECS_IN_DAY - SECS_IN_MINUTE)
-      await TestRPCTime.mineBlock()
+      await BlockTime.timeTravel(8 * SECS_IN_DAY - SECS_IN_MINUTE)
+      await BlockTime.mineBlock()
       await ethContracts.auctions.sendTransaction({
         from: exporter,
         value: amount
@@ -132,8 +132,8 @@ contract('TokenPorter', accounts => {
 
   it('Verify that current  genesis time is same in two chains', () => {
     return new Promise(async (resolve, reject) => {
-      await TestRPCTime.timeTravel(8 * SECS_IN_DAY - SECS_IN_MINUTE)
-      await TestRPCTime.mineBlock()
+      await BlockTime.timeTravel(8 * SECS_IN_DAY - SECS_IN_MINUTE)
+      await BlockTime.mineBlock()
       let etcGenesisTime = await etcContracts.auctions.genesisTime()
       let ethGenesisTime = await ethContracts.auctions.genesisTime()
       assert.equal(
@@ -160,8 +160,8 @@ contract('TokenPorter', accounts => {
       const exporter = accounts[4]
       let amount = 80e18
       // Time travel to just a minute before auction end and buy all MET
-      await TestRPCTime.timeTravel(8 * SECS_IN_DAY - SECS_IN_MINUTE)
-      await TestRPCTime.mineBlock()
+      await BlockTime.timeTravel(8 * SECS_IN_DAY - SECS_IN_MINUTE)
+      await BlockTime.mineBlock()
       await ethContracts.auctions.sendTransaction({
         from: exporter,
         value: amount
@@ -220,8 +220,8 @@ contract('TokenPorter', accounts => {
         1e18,
         'Last purchase price after first import is wrong'
       )
-      await TestRPCTime.timeTravel(await Utils.secondsToNextMidnight())
-      await TestRPCTime.mineBlock()
+      await BlockTime.timeTravel(await Utils.secondsToNextMidnight())
+      await BlockTime.mineBlock()
       currentMintable = await etcContracts.auctions.currentMintable()
       assert.equal(
         currentMintable.valueOf(),
@@ -259,8 +259,8 @@ contract('TokenPorter', accounts => {
         1435e18,
         'Current mintable is wrong'
       )
-      await TestRPCTime.timeTravel(SECS_IN_DAY)
-      await TestRPCTime.mineBlock()
+      await BlockTime.timeTravel(SECS_IN_DAY)
+      await BlockTime.mineBlock()
       currentMintable = await etcContracts.auctions.currentMintable()
       assert.equal(
         currentMintable.valueOf(),
