@@ -31,7 +31,7 @@ const Utils = require('../test/shared/utils')
 contract('TokenPorter', accounts => {
   const OWNER = accounts[0]
   const MINIMUM_PRICE = 33 * 10 ** 11 // minimum wei per token
-  const STARTING_PRICE = 2 // 2ETH per MET
+  var STARTING_PRICE = 2 // 2ETH per MET
   const TIME_SCALE = 1
   const SECS_IN_DAY = 86400
   const SECS_IN_MINUTE = 60
@@ -39,14 +39,16 @@ contract('TokenPorter', accounts => {
 
   // Create contracts and initilize them for each test case
   beforeEach(async () => {
+    let genesisTime = TestRPCTime.getCurrentBlockTime()
     ethContracts = await METGlobal.initContracts(
       accounts,
-      TestRPCTime.getCurrentBlockTime(),
+      genesisTime,
       MINIMUM_PRICE,
       STARTING_PRICE,
       TIME_SCALE
     )
     let miniumExportFee = 100
+    genesisTime = await ethContracts.auctions.genesisTime()
     await ethContracts.tokenPorter.setMinimumExportFee(miniumExportFee, {
       from: OWNER
     })
@@ -59,7 +61,7 @@ contract('TokenPorter', accounts => {
     // await initNonOGContracts(accounts, TestRPCTime.getCurrentBlockTime() - 60, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE, initialAuctionEndTime.valueOf())
     etcContracts = await METGlobal.initNonOGContracts(
       accounts,
-      TestRPCTime.getCurrentBlockTime(),
+      genesisTime.valueOf(),
       MINIMUM_PRICE,
       STARTING_PRICE / 2,
       TIME_SCALE,
@@ -128,91 +130,144 @@ contract('TokenPorter', accounts => {
     })
   })
 
-  // it('Test Auction in ETC after import.', () => {
-  //   return new Promise(async (resolve, reject) => {
-  //     const exportFee = 1e16
-  //     const amountToExport = 1e17
+  it('Verify that current  genesis time is same in two chains', () => {
+    return new Promise(async (resolve, reject) => {
+      await TestRPCTime.timeTravel(8 * SECS_IN_DAY - SECS_IN_MINUTE)
+      await TestRPCTime.mineBlock()
+      let etcGenesisTime = await etcContracts.auctions.genesisTime()
+      let ethGenesisTime = await ethContracts.auctions.genesisTime()
+      assert.equal(
+        etcGenesisTime.valueOf(),
+        ethGenesisTime.valueOf(),
+        'Genesis time is wrong in two chains'
+      )
+      let etcCurrentTick = await etcContracts.auctions.currentTick()
+      let ethCurrentTick = await ethContracts.auctions.currentTick()
+      assert.equal(
+        ethCurrentTick.valueOf(),
+        etcCurrentTick.valueOf(),
+        'Current tick is wrong in chains before import'
+      )
+      resolve()
+    })
+  })
 
-  //     // Time travel to just a minute before initial auction end
-  //     await TestRPCTime.timeTravel(7 * SECS_IN_DAY - SECS_IN_MINUTE)
-  //     await TestRPCTime.mineBlock()
+  it('Confirm auction is working as expected before and after first import', () => {
+    return new Promise(async (resolve, reject) => {
+      let fee = 3e24
+      const amountToExport = 2.00144e24
+      // get some balance for export
+      const exporter = accounts[4]
+      let amount = 80e18
+      // Time travel to just a minute before auction end and buy all MET
+      await TestRPCTime.timeTravel(8 * SECS_IN_DAY - SECS_IN_MINUTE)
+      await TestRPCTime.mineBlock()
+      await ethContracts.auctions.sendTransaction({
+        from: exporter,
+        value: amount
+      })
+      var balanceOfBuyer = await ethContracts.metToken.balanceOf(exporter)
+      assert.isAbove(
+        balanceOfBuyer.toNumber(),
+        amountToExport,
+        'Balance of buyer after purchase is not correct'
+      )
+      let currentMintable = await etcContracts.auctions.currentMintable()
+      assert.equal(
+        currentMintable.valueOf(),
+        0,
+        'current mintable before first import is wrong'
+      )
+      let lastPurchasePrice = await etcContracts.auctions.lastPurchasePrice()
+      let lastPurchaseTick = await etcContracts.auctions.lastPurchaseTick()
+      assert.equal(
+        lastPurchaseTick.valueOf(),
+        0,
+        'Last purchase tick before first import is wrong'
+      )
+      assert.equal(
+        lastPurchasePrice.valueOf(),
+        1e18,
+        'Last purchase price before first import in etc is wrong'
+      )
+      await Utils.importExport(
+        'ETH',
+        ethContracts,
+        etcContracts,
+        amountToExport,
+        fee,
+        exporter,
+        accounts[8],
+        OWNER,
+        accounts[1]
+      )
+      currentMintable = await etcContracts.auctions.currentMintable()
+      assert.equal(
+        currentMintable.valueOf(),
+        0,
+        'current mintable after first import is wrong'
+      )
+      lastPurchasePrice = await etcContracts.auctions.lastPurchasePrice()
+      lastPurchaseTick = await etcContracts.auctions.lastPurchaseTick()
+      let currentTick = await etcContracts.auctions.currentTick()
+      assert.equal(
+        lastPurchaseTick.valueOf(),
+        currentTick.valueOf(),
+        'Last purchase tick after first import is wrong'
+      )
+      assert.equal(
+        lastPurchasePrice.valueOf(),
+        1e18,
+        'Last purchase price after first import is wrong'
+      )
+      await TestRPCTime.timeTravel(await Utils.secondsToNextMidnight())
+      await TestRPCTime.mineBlock()
+      currentMintable = await etcContracts.auctions.currentMintable()
+      assert.equal(
+        currentMintable.valueOf(),
+        1440e18,
+        'current mintable is wrong after first auction starts'
+      )
+      let currentAuction = await etcContracts.auctions.currentAuction()
+      assert.equal(
+        currentAuction.valueOf(),
+        2,
+        'currentAuction is wrong'
+      )
 
-  //     // get some balance for export
-  //     const exporter = accounts[7]
-  //     const amount = 20e18
-  //     await ethContracts.auctions.sendTransaction({
-  //       from: exporter,
-  //       value: amount
-  //     })
-  //     let balance = await ethContracts.metToken.balanceOf(exporter)
-  //     assert.isAbove(
-  //       balance.toNumber(),
-  //       amountToExport + exportFee,
-  //       'Balance of buyer after purchase is not correct'
-  //     )
-  //     await Utils.importExport(
-  //       'ETH',
-  //       ethContracts,
-  //       etcContracts,
-  //       amountToExport,
-  //       exportFee,
-  //       exporter,
-  //       accounts[9],
-  //       OWNER,
-  //       accounts[1]
-  //     )
-  //     // After minting
-
-  //     await TestRPCTime.timeTravel(1 * SECS_IN_DAY)
-  //     await TestRPCTime.mineBlock()
-  //     const amountUsedForPurchase = 1e18
-
-  //     const expectedTokenPurchase = 552863677660940280
-  //     let expectedWeiPerToken = 1808764150017608980
-  //     // const tokensInNextAuction = 8e24 + 3 * 2880e18
-  //     // perform actual transaction
-  //     const mtTokenBalanceBefore = await etcContracts.metToken.balanceOf(
-  //       OWNER
-  //     )
-
-  //     await etcContracts.auctions.sendTransaction({
-  //       from: OWNER,
-  //       value: amountUsedForPurchase
-  //     })
-
-  //     let lastPurchasePrice = await etcContracts.auctions.lastPurchasePrice()
-  //     assert.equal(
-  //       lastPurchasePrice.valueOf(),
-  //       expectedWeiPerToken,
-  //       'last Purchase price is not correct'
-  //     )
-
-  //     const mtTokenBalanceAfter = await etcContracts.metToken.balanceOf(OWNER)
-  //     assert.equal(
-  //       mtTokenBalanceAfter.sub(mtTokenBalanceBefore).valueOf(),
-  //       expectedTokenPurchase,
-  //       'Total purchased/minted tokens are not correct'
-  //     )
-
-  //     await TestRPCTime.timeTravel(SECS_IN_DAY)
-  //     await TestRPCTime.mineBlock()
-  //     // const expectedNextAuctionPrice = 20736727076
-
-  //     await etcContracts.auctions.sendTransaction({
-  //       from: OWNER,
-  //       value: amountUsedForPurchase
-  //     })
-
-  //     expectedWeiPerToken = 1875392426219
-
-  //     lastPurchasePrice = await etcContracts.auctions.lastPurchasePrice()
-  //     assert.closeTo(
-  //       lastPurchasePrice.toNumber(),
-  //       expectedWeiPerToken,
-  //       200,
-  //       'Expected purchase price is wrong'
-  //     )
-  //     resolve()
-  //   })
-  // })
+      let currentPrice = await etcContracts.auctions.currentPrice()
+      assert.equal(
+        currentPrice.valueOf(),
+        2e18,
+        'current price is wrong after first auction starts'
+      )
+      amount = 10e18
+      let balanceBefore = await etcContracts.metToken.balanceOf(exporter)
+      await etcContracts.auctions.sendTransaction({
+        from: exporter,
+        value: amount
+      })
+      let balanceAfter = await etcContracts.metToken.balanceOf(exporter)
+      assert.equal(
+        balanceAfter.sub(balanceBefore),
+        5e18,
+        'Met balance of buyer is wrong'
+      )
+      currentMintable = await etcContracts.auctions.currentMintable()
+      assert.equal(
+        currentMintable.valueOf(),
+        1435e18,
+        'Current mintable is wrong'
+      )
+      await TestRPCTime.timeTravel(SECS_IN_DAY)
+      await TestRPCTime.mineBlock()
+      currentMintable = await etcContracts.auctions.currentMintable()
+      assert.equal(
+        currentMintable.valueOf(),
+        1435e18 + 1440e18,
+        'Current mintable is wrong'
+      )
+      resolve()
+    })
+  })
 })
