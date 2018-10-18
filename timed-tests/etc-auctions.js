@@ -28,7 +28,7 @@ const BlockTime = require('../test/shared/time')
 const Metronome = require('../test/shared/inits')
 const Utils = require('../test/shared/utils')
 
-contract('TokenPorter', accounts => {
+contract('ETC - Auction', accounts => {
   const OWNER = accounts[0]
   const MINIMUM_PRICE = 33 * 10 ** 11 // minimum wei per token
   var STARTING_PRICE = 2 // 2ETH per MET
@@ -47,15 +47,7 @@ contract('TokenPorter', accounts => {
       STARTING_PRICE,
       TIME_SCALE
     )
-    let miniumExportFee = 100
     genesisTime = await ethContracts.auctions.genesisTime()
-    await ethContracts.tokenPorter.setMinimumExportFee(miniumExportFee, {
-      from: OWNER
-    })
-    let fee = 10
-    await ethContracts.tokenPorter.setExportFeePerTenThousand(fee, {
-      from: OWNER
-    })
 
     let initialAuctionEndTime = await ethContracts.auctions.initialAuctionEndTime()
     // await initNonOGContracts(accounts, TestRPCTime.getCurrentBlockTime() - 60, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE, initialAuctionEndTime.valueOf())
@@ -67,24 +59,8 @@ contract('TokenPorter', accounts => {
       TIME_SCALE,
       initialAuctionEndTime.valueOf()
     )
-    await etcContracts.tokenPorter.setMinimumExportFee(miniumExportFee, {
-      from: OWNER
-    })
-    await etcContracts.tokenPorter.setExportFeePerTenThousand(fee, {
-      from: OWNER
-    })
-    await ethContracts.tokenPorter.addDestinationChain(
-      web3.fromAscii('ETC'),
-      etcContracts.metToken.address,
-      {
-        from: OWNER
-      }
-    )
-    await etcContracts.tokenPorter.addDestinationChain(
-      web3.fromAscii('ETH'),
-      ethContracts.metToken.address,
-      { from: OWNER }
-    )
+
+    await Metronome.configureImportExport(accounts, ethContracts, etcContracts)
   })
 
   it('Init ETC - Move half MET to other chain and verify mintable', () => {

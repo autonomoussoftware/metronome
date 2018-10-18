@@ -30,7 +30,6 @@ const exportUtil = require('../test/shared/utils')
 
 contract('ETC - AutonomousConverter', accounts => {
   const SECS_IN_DAY = 86400
-  const SECS_IN_MINUTE = 60
 
   const MINIMUM_PRICE = 1000
   const STARTING_PRICE = 1
@@ -44,18 +43,8 @@ contract('ETC - AutonomousConverter', accounts => {
     ethContracts = await Metronome.initContracts(accounts, BlockTime.getCurrentBlockTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
     let initialAuctionEndTime = await ethContracts.auctions.initialAuctionEndTime()
     etcContracts = await Metronome.initNonOGContracts(accounts, BlockTime.getCurrentBlockTime(), MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE, initialAuctionEndTime)
-    await ethContracts.tokenPorter.addDestinationChain(
-      web3.fromAscii('ETC'),
-      etcContracts.metToken.address,
-      {
-        from: OWNER
-      }
-    )
-    await etcContracts.tokenPorter.addDestinationChain(
-      web3.fromAscii('ETH'),
-      ethContracts.metToken.address,
-      { from: OWNER }
-    )
+    await Metronome.configureImportExport(accounts, ethContracts, etcContracts)
+    await Metronome.activateETC(accounts, ethContracts, etcContracts)
   })
 
   it('should verify proceed forward to AC after 1st auction on ETC chain', () => {
@@ -63,16 +52,8 @@ contract('ETC - AutonomousConverter', accounts => {
       const exporter = accounts[6]
       const user = accounts[9]
 
-      // Time travel to just a minute before auction end and buy all MET
-      await BlockTime.timeTravel(8 * SECS_IN_DAY - SECS_IN_MINUTE)
-      await BlockTime.mineBlock()
-
       // Purchase MET on ETH chain for export
       await ethContracts.auctions.sendTransaction({from: exporter, value: 1e18})
-
-      // Export 1 MET to AC on ETC chain
-      await exportUtil.importExport('ETH', ethContracts, etcContracts, 1e18, 1e18,
-        exporter, etcContracts.autonomousConverter.address, accounts[0], accounts[1])
 
       // EXport some MET to an account on ETC chain
       await exportUtil.importExport('ETH', ethContracts, etcContracts, 997e18, 1e18,

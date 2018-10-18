@@ -56,7 +56,9 @@ async function prepareImportData (tokenPorter, tx) {
     ],
     merkelProof: merkleProof,
     root: '0x' + tree.getRoot().toString('hex'),
-    extraData: ''
+    extraData: logExportReceipt.extraData,
+    supplyOnAllChains: logExportReceipt.supplyOnAllChains,
+    destinationChain: logExportReceipt.destinationChain
   }
 }
 
@@ -104,21 +106,17 @@ async function importExport (
     { from: exporter }
   )
 
-  // retrieve data from export receipt, it will be used for import in mock ETC
-  const decoder = ethjsABI.logDecoder(sourceContracts.tokenPorter.abi)
-  const logExportReceipt = decoder(tx.receipt.logs)[0]
-
   let importDataObj = await prepareImportData(sourceContracts.tokenPorter, tx)
   let balanceBeforeImport = await destContracts.metToken.balanceOf(
     importDataObj.addresses[1]
   )
   await destContracts.metToken.importMET(
     web3.fromAscii(sourceChain),
-    logExportReceipt.destinationChain,
+    importDataObj.destinationChain,
     importDataObj.addresses,
-    logExportReceipt.extraData,
+    importDataObj.extraData,
     importDataObj.burnHashes,
-    logExportReceipt.supplyOnAllChains,
+    importDataObj.supplyOnAllChains,
     importDataObj.importData,
     importDataObj.root
   )
@@ -135,7 +133,7 @@ async function importExport (
     parseInt(importDataObj.importData[1]),
     parseInt(importDataObj.importData[2]),
     importDataObj.merkelProof,
-    logExportReceipt.extraData,
+    importDataObj.extraData,
     signature,
     totalSupplyInSourceChain,
     { from: validator1 }
@@ -148,7 +146,7 @@ async function importExport (
     parseInt(importDataObj.importData[1]),
     parseInt(importDataObj.importData[2]),
     importDataObj.merkelProof,
-    logExportReceipt.extraData,
+    importDataObj.extraData,
     signature,
     totalSupplyInSourceChain,
     { from: validator2 }
