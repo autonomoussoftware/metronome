@@ -243,6 +243,19 @@ contract('ETC - Auction', accounts => {
         1435e18 + 1440e18,
         'Current mintable is wrong'
       )
+      let globalMETSupply = await etcContracts.auctions.globalMetSupply()
+      currentAuction = await etcContracts.auctions.currentAuction()
+      assert.equal(
+        globalMETSupply.valueOf(),
+        currentAuction.mul(2880e18).add(10e24).valueOf(),
+        'Global met supply in etc is wrong'
+      )
+      globalMETSupply = await ethContracts.auctions.globalMetSupply()
+      assert.equal(
+        globalMETSupply.valueOf(),
+        (currentAuction.mul(2880e18).add(10e24)).valueOf(),
+        'Global met supply in etc is wrong'
+      )
       resolve()
     })
   })
