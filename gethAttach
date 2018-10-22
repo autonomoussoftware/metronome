@@ -114,9 +114,9 @@ then
   elif [[ $DEVNET = 1 ]]
   then
      DATADIR=./parity/localnet/eth
-     CHAINARG="--chain devnet.json"
      DEST="New Alchemy ETH devnet"
-     BOOTNODES="--bootnodes enode://fa2ffb624f7ade1f432e0a37249b201817bffd597913b7bcde2db93618d7604f68c74fa51e3700e2888a295a80591d03d5d013180866a50c3758cade3b2e92e9@35.227.101.52:33333"
+     CHAINARG="--chain devnet.json"
+     BOOTNODES="--bootnodes enode://cd9e6cdf5eca772edc5d1eed8d50178e8539efafba641a812e0bdd4e002dd67cad1d40dc28916b8bb81355b8ea77c35732c9c4ddd887105fa6f0d24f17dafd25@35.227.101.52:33333"
   else
     DATADIR=/tmp/parity/local/eth
     DEST="Parity DevChain Local ETH"
@@ -125,7 +125,7 @@ elif [[ "$CHAIN" = "etc" ]]
 then
   RPC=8555
   WS=8556
-  PORT=30303
+  PORT=30301
   if [[ $LIVE = 1 ]]
   then
     DEST="Etc Live Net"
