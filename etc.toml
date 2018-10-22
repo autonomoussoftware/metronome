@@ -1,0 +1,12 @@
+[parity]
+chain = "devnet.json"
+base_path = "./parity/localnet/etc"
+[network]
+port = 30301
+[rpc]
+port = 8555
+apis = ["web3", "eth", "net", "personal", "parity", "parity_set", "traces", "rpc", "parity_accounts"]
+[websockets]
+port = 8556
+[ipc]
+disable = true
