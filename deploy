@@ -97,7 +97,7 @@ CHAINARG="--chain dev"
 BOOTNODES=""
 DATADIR=/tmp/parity/local/eth
 GASARGS="--reseal-min-period 0 --min-gas-price 0 --gasprice 0" 
-RPCAPI="--rpcapi=web3,eth,personal,rpc,net,parity "
+RPCAPI="--rpcapi=web3,eth,personal,rpc,net,parity,parity_accounts "
 OWNER_ADDRESS=0x0 #Todo- for live network enter owner's actual address here 
 #Bloq test nodes
 ETH_TEST_BOOTNODE="enode://a90b36105811c87207b3a9bef260c2bff02355b0f8c1bfbc1e8341ee332fc803bc0f62cbec61fcc443228580a7f2ec3eeab3b57a649203f6ae6955e54ee9dfac@35.202.109.171:30303"
@@ -130,16 +130,16 @@ while [ "$1" != "" ]; do
       LOCAL=1
       DEVNET=1
       ;;
-    -h | --help )           usage
+    -h | --help ) usage
       exit
       ;;
-    -s | --supply )         shift
+    -s | --supply ) shift
       SUPPLY=$1
       ;;
-    -p | --price )         shift
+    -p | --price ) shift
       PRICE=$1
       ;;
-    -a | --auction )  shift
+    -a | --auction ) shift
       AUCTION=$1
       ;;
     -v | --validators ) shift
@@ -153,17 +153,17 @@ while [ "$1" != "" ]; do
         exit 1
       fi
       ;; 
-    -P | --pass )     shift
+    -P | --pass ) shift
       PASS=$1
       ;;
-    -O | --owner )    shift
+    -O | --owner ) shift
       OWNER_ADDRESS=$1
       ;;  
-    -c | --chain )    shift
+    -c | --chain ) shift
       CHAIN=$1
       CHAIN_DIR=js/$CHAIN
       ;;
-    -t | --timescale )  shift
+    -t | --timescale ) shift
       TIMESCALE=$1
       ;;
     -i | --interactive )
@@ -172,7 +172,7 @@ while [ "$1" != "" ]; do
     --seed )
       SEED=,$CHAIN_DIR/testStart.js
       ;;
-    * )                     usage
+    * ) usage
       exit 1
   esac
   shift
@@ -309,7 +309,7 @@ then
   rm $NODES_CACHE
 fi
 
-echo "Loading Parity: $PARITY"
+echo "Loading Parity..."
 eval $PARITY &
 
 if [ $LIVE = 1 ] || [ $TEST = 1 ]
@@ -319,21 +319,27 @@ else
   sleep 1
 fi
 
-echo "Authorizing.."
-curl -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"personal_unlockAccount","params":["'$LOCAL_ETH'", "'$PASS'","0x3000"],"id":1}' $PARITY_URL
+#set account for devnet
+if [[ $DEVNET = 1 ]]; then
+  #create deployer account with default passphrase 
+  curl -s -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"parity_newAccountFromPhrase","params":["node0", ""],"id":0}' $PARITY_URL >/dev/null
+  LOCAL_ETH=0x00bd138abd70e2f00903268f3db08f2d25677c9e
+fi
+
+echo "Authorizing deployer account ..."
+curl -s -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"personal_unlockAccount","params":["'$LOCAL_ETH'", "'$PASS'","0x3000"],"id":1}' $PARITY_URL >/dev/null
 
 if [[ $LOCAL = 1 ]] && [[ $OWNER_ADDRESS = 0x0 ]]
 then 
     sleep 5
-    echo "creating new account for the owner"
+    echo "Creating new account for the owner"
     PASS='newOwner'
-    response=$(curl -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"personal_newAccount","params":["'$PASS'"],"id":1}' $PARITY_URL)
-    echo "$response"
+    response=$(curl -s -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"personal_newAccount","params":["'$PASS'"],"id":1}' $PARITY_URL)
     OWNER_ADDRESS=`echo "$response" | jq .result`
     OWNER_ADDRESS=${OWNER_ADDRESS//\"/}
     echo "Metronome owner for dev chain $OWNER_ADDRESS" 
-    curl -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"eth_sendTransaction","params":[{"from":"'$LOCAL_ETH'", "to":"'$OWNER_ADDRESS'", "value":"0x1BC16D674EC80000"}],"id":1}' $PARITY_URL
-    curl -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"personal_unlockAccount","params":["'$OWNER_ADDRESS'", "'$PASS'","0x3000"],"id":1}' $PARITY_URL
+    curl -s -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"eth_sendTransaction","params":[{"from":"'$LOCAL_ETH'", "to":"'$OWNER_ADDRESS'", "value":"0x1BC16D674EC80000"}],"id":1}' $PARITY_URL >/dev/null
+    curl -s -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"personal_unlockAccount","params":["'$OWNER_ADDRESS'", "'$PASS'","0x3000"],"id":1}' $PARITY_URL >/dev/null
 fi
 
 sleep 5
