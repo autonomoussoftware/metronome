@@ -322,8 +322,8 @@ fi
 #set account for devnet
 if [[ $DEVNET = 1 ]]; then
   #create deployer account with default passphrase 
-  curl -s -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"parity_newAccountFromPhrase","params":["node0", ""],"id":0}' $PARITY_URL >/dev/null
-  LOCAL_ETH=0x00bd138abd70e2f00903268f3db08f2d25677c9e
+  curl -s -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"parity_newAccountFromPhrase","params":["user", ""],"id":0}' $PARITY_URL >/dev/null
+  LOCAL_ETH=0x004ec07d2329997267Ec62b4166639513386F32E
 fi
 
 echo "Authorizing deployer account ..."
