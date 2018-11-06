@@ -47,6 +47,7 @@ DEST="Parity DevChain Local ETH"
 LIVE=0
 TEST=0
 LOCAL=1
+DEVNET=0
 CHAIN="eth"
 CHAIN_DIR=js/$CHAIN
 RPC=8545
@@ -58,11 +59,8 @@ DATADIR=/tmp/parity/local/eth
 GASARGS="--reseal-min-period 0 --min-gas-price 0 --gasprice 0" 
 RPCAPI="--rpcapi=web3,eth,personal,rpc,net,parity --ws-apis=web3,eth,personal,rpc,net,parity "
 #Bloq test nodes
-#ETH_TEST_BOOTNODE="enode://a90b36105811c87207b3a9bef260c2bff02355b0f8c1bfbc1e8341ee332fc803bc0f62cbec61fcc443228580a7f2ec3eeab3b57a649203f6ae6955e54ee9dfac@35.202.109.171:30303"
-#ETC_TEST_BOOTNODE="enode://5c604378ba83b38a4d8a47e45305d4c5b3a6841172fe2b55e062bde6fdd8b7a6f44f01ef5cc8e4c3a5d40ce78d2040e33b4f9697d23f9c20a1914e24278477d3@35.184.26.97:30303"
-#NA test nodes
-ETH_TEST_BOOTNODE="enode://fa2ffb624f7ade1f432e0a37249b201817bffd597913b7bcde2db93618d7604f68c74fa51e3700e2888a295a80591d03d5d013180866a50c3758cade3b2e92e9@35.227.101.52:33333"
-ETC_TEST_BOOTNODE="enode://b4035a5527d17d588d576c4cfcb3c39d7e308fc4c2fc5720813e21770decd17de3a93602ac4b36422964b479cabb82dfb1dc6c5cfedd4061954dfdbfbc309a6a@35.227.101.52:30303"
+ETH_TEST_BOOTNODE="enode://a90b36105811c87207b3a9bef260c2bff02355b0f8c1bfbc1e8341ee332fc803bc0f62cbec61fcc443228580a7f2ec3eeab3b57a649203f6ae6955e54ee9dfac@35.202.109.171:30303"
+ETC_TEST_BOOTNODE="enode://5c604378ba83b38a4d8a47e45305d4c5b3a6841172fe2b55e062bde6fdd8b7a6f44f01ef5cc8e4c3a5d40ce78d2040e33b4f9697d23f9c20a1914e24278477d3@35.184.26.97:30303"
 ETH_TEST_PARITYSPEC="parity-spec.json"
 ETC_TEST_PARITYSPEC="parity-spec-etc.json"
 
@@ -77,6 +75,12 @@ while [ "$1" != "" ]; do
       LIVE=0
       TEST=1
       LOCAL=0
+      ;;
+    --devnet )
+      LIVE=0
+      TEST=0
+      LOCAL=1
+      DEVNET=1
       ;;
     -h | --help )           usage
       exit
@@ -107,16 +111,21 @@ then
      #CHAINARG="--chain $ETH_TEST_PARITYSPEC"
      CHAINARG="--chain dev"
      BOOTNODES="--bootnodes $ETH_TEST_BOOTNODE"
+  elif [[ $DEVNET = 1 ]]
+  then
+     DATADIR=./parity/localnet/eth
+     DEST="New Alchemy ETH devnet"
+     CHAINARG="--chain devnet.json"
+     BOOTNODES="--bootnodes enode://cfc563d0c1ba5aa9a471babfcb876001501ab63ba6e2539054beea91deacbb279a6ba6fab17fb7b020251bf489bc5f3e9d5041c7b541513cb093a4c34c15db0a@35.227.101.52:33333"
   else
     DATADIR=/tmp/parity/local/eth
     DEST="Parity DevChain Local ETH"
-    BOOTNODES="--bootnodes $ETH_TEST_BOOTNODE"
   fi
 elif [[ "$CHAIN" = "etc" ]]
 then
   RPC=8555
   WS=8556
-  PORT=30305
+  PORT=30301
   if [[ $LIVE = 1 ]]
   then
     DEST="Etc Live Net"
@@ -128,10 +137,15 @@ then
      #CHAINARG="--chain $ETC_TEST_PARITYSPEC"
      CHAINARG="--chain dev"
      BOOTNODES="--bootnodes $ETC_TEST_BOOTNODE"
+  elif [[ $DEVNET = 1 ]]
+  then
+     DATADIR=./parity/localnet/etc
+     DEST="New Alchemy ETH devnet"
+     CHAINARG="--chain devnet.json"
+     BOOTNODES="--bootnodes enode://a28ade8c720013e3ceeb9e65c5fba6cb3a007f62f808a5e9f9aa988b651f2394558b68ffbea8c876829f784237fa98dee7cb8094f121980c47dc6a9d9ddbc3d4@35.227.101.52:30301"
     else
      DATADIR=/tmp/parity/local/etc
      DEST="New Alchemy ETC Local"
-     BOOTNODES="--bootnodes $ETC_TEST_BOOTNODE"
   fi
 fi
 

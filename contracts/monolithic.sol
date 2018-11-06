@@ -2025,7 +2025,7 @@ contract Validator is Owned {
 
     mapping (bytes32 => bool) public hashClaimed;
 
-    uint public threshold = 1;
+    uint public threshold = 2;
 
     event LogAttestation(bytes32 indexed hash, bool isValid);
 

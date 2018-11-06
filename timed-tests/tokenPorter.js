@@ -24,19 +24,9 @@
 */
 
 const assert = require('chai').assert
-const ethjsABI = require('ethjs-abi')
 const TestRPCTime = require('../test/shared/time')
 const METGlobal = require('../test/shared/inits')
-const MerkleTreeJs = require('merkletreejs')
-const crypto = require('crypto')
-
-function sha256 (data) {
-  // returns Buffer
-  return crypto
-    .createHash('sha256')
-    .update(data)
-    .digest()
-}
+const Utils = require('../test/shared/utils')
 
 contract('TokenPorter', accounts => {
   const OWNER = accounts[0]
@@ -45,109 +35,82 @@ contract('TokenPorter', accounts => {
   const TIME_SCALE = 1
   const SECS_IN_DAY = 86400
   const SECS_IN_MINUTE = 60
-  const MILLISECS_IN_A_SEC = 1000
-  // var autonomousConverter, auctions, proceeds, metToken, smartToken, tokenPorter
-  // var etcMetToken, etcAutonomousConverter, etcAuctions, etcProceeds, etcSmartToken, etcTokenPorter, etcValidator
-  async function prepareImportData (tokenPorter, tx) {
-    const decoder = ethjsABI.logDecoder(tokenPorter.abi)
-    const logExportReceipt = decoder(tx.receipt.logs)[0]
-    var burnHashes = []
-    var i = 0
-    if (logExportReceipt.burnSequence > 16) {
-      i = logExportReceipt.burnSequence - 15
-    }
-    while (i <= logExportReceipt.burnSequence) {
-      burnHashes.push(await tokenPorter.exportedBurns(i))
-      i++
-    }
-    const leaves = burnHashes.map(x => Buffer.from(x.slice(2), 'hex'))
-
-    const tree = new MerkleTreeJs(leaves, sha256)
-    var buffer = tree.getProof(leaves[leaves.length - 1])
-    let merkleProof = []
-    for (let i = 0; i < buffer.length; i++) {
-      merkleProof.push('0x' + buffer[i].data.toString('hex'))
-    }
-    return {
-      addresses: [
-        logExportReceipt.destinationMetronomeAddr,
-        logExportReceipt.destinationRecipientAddr
-      ],
-      burnHashes: [
-        logExportReceipt.prevBurnHash,
-        logExportReceipt.currentBurnHash
-      ],
-      importData: [
-        logExportReceipt.blockTimestamp,
-        logExportReceipt.amountToBurn,
-        logExportReceipt.fee,
-        logExportReceipt.currentTick,
-        logExportReceipt.genesisTime,
-        logExportReceipt.dailyMintable,
-        logExportReceipt.burnSequence,
-        logExportReceipt.dailyAuctionStartTime
-      ],
-      merkelProof: merkleProof,
-      root: '0x' + tree.getRoot().toString('hex'),
-      extraData: ''
-    }
-  }
-
-  function roundToNextMidnight (t) {
-    // round to prev midnight, then add a day
-    const nextMidnight = t - (t % SECS_IN_DAY) + SECS_IN_DAY
-    assert(
-      new Date(nextMidnight * MILLISECS_IN_A_SEC)
-        .toUTCString()
-        .indexOf('00:00:00') >= 0,
-      'timestamp is not midnight'
-    )
-    return nextMidnight
-  }
-
-  async function secondsToNextMidnight () {
-    const currentTime = await TestRPCTime.getCurrentBlockTime()
-    const nextMidnight = roundToNextMidnight(currentTime)
-    return nextMidnight - currentTime
-  }
-
   // Create contracts and initilize them for each test case
-  beforeEach(async () => {})
 
   describe('export ETH to Mock ETC', () => {
-    const destChain = web3.fromAscii('ETC')
-    const destChainETH = web3.fromAscii('ETH')
-    let destMetAddr
+    var exportFee, amountToExport, ethContracts, etcContracts
     const METTokenETCInitialSupply = 0
+
+    beforeEach(async () => {
+      ethContracts = await METGlobal.initContracts(
+        accounts,
+        TestRPCTime.getCurrentBlockTime(),
+        MINIMUM_PRICE,
+        STARTING_PRICE,
+        TIME_SCALE
+      )
+      let initialAuctionEndTime = await ethContracts.auctions.initialAuctionEndTime()
+      etcContracts = await METGlobal.initNonOGContracts(
+        accounts,
+        TestRPCTime.getCurrentBlockTime(),
+        MINIMUM_PRICE,
+        STARTING_PRICE / 2,
+        TIME_SCALE,
+        initialAuctionEndTime.valueOf()
+      )
+      let miniumExportFee = 100
+      await ethContracts.tokenPorter.setMinimumExportFee(miniumExportFee, {
+        from: OWNER
+      })
+      let fee = 10
+      await ethContracts.tokenPorter.setExportFeePerTenThousand(fee, {
+        from: OWNER
+      })
+      await etcContracts.tokenPorter.setMinimumExportFee(miniumExportFee, {
+        from: OWNER
+      })
+      await etcContracts.tokenPorter.setExportFeePerTenThousand(fee, {
+        from: OWNER
+      })
+      await ethContracts.tokenPorter.addDestinationChain(
+        web3.fromAscii('ETC'),
+        etcContracts.metToken.address,
+        {
+          from: OWNER
+        }
+      )
+      await etcContracts.tokenPorter.addDestinationChain(
+        web3.fromAscii('ETH'),
+        ethContracts.metToken.address,
+        { from: OWNER }
+      )
+    })
 
     it('set export fee correctly', () => {
       return new Promise(async (resolve, reject) => {
-        const { tokenPorter } = await METGlobal.initContracts(
-          accounts,
-          TestRPCTime.getCurrentBlockTime(),
-          MINIMUM_PRICE,
-          STARTING_PRICE,
-          TIME_SCALE
-        )
         let miniumExportFee = 100
-        await tokenPorter.setMinimumExportFee(miniumExportFee, { from: OWNER })
+        await ethContracts.tokenPorter.setMinimumExportFee(miniumExportFee, {
+          from: OWNER
+        })
         assert.equal(
-          (await tokenPorter.minimumExportFee()).valueOf(),
+          (await ethContracts.tokenPorter.minimumExportFee()).valueOf(),
           miniumExportFee,
           'miniumExportFee is not set correctly'
         )
 
         let exportFee = 10
-        await tokenPorter.setExportFeePerTenThousand(exportFee, { from: OWNER })
+        await ethContracts.tokenPorter.setExportFeePerTenThousand(exportFee, {
+          from: OWNER
+        })
         assert.equal(
-          (await tokenPorter.exportFee()).valueOf(),
+          (await ethContracts.tokenPorter.exportFee()).valueOf(),
           exportFee,
           'exportFeeInPercent is not set correctly'
         )
         let thrown = false
         miniumExportFee = 0
         try {
-          await tokenPorter.setMinimumExportFee(miniumExportFee, {
+          await ethContracts.tokenPorter.setMinimumExportFee(miniumExportFee, {
             from: OWNER
           })
         } catch (error) {
@@ -162,18 +125,11 @@ contract('TokenPorter', accounts => {
 
     it('set export fee correctly- Non owner user should not be able to set export fee', () => {
       return new Promise(async (resolve, reject) => {
-        const { tokenPorter } = await METGlobal.initContracts(
-          accounts,
-          TestRPCTime.getCurrentBlockTime(),
-          MINIMUM_PRICE,
-          STARTING_PRICE,
-          TIME_SCALE
-        )
         let thrown = false
         let miniumExportFee = 100
         let exportFee = 10
         try {
-          await tokenPorter.setMinimumExportFee(miniumExportFee, {
+          await ethContracts.tokenPorter.setMinimumExportFee(miniumExportFee, {
             from: accounts[1]
           })
         } catch (error) {
@@ -185,7 +141,7 @@ contract('TokenPorter', accounts => {
         )
         thrown = false
         try {
-          await tokenPorter.setExportFeePerTenThousand(exportFee, {
+          await ethContracts.tokenPorter.setExportFeePerTenThousand(exportFee, {
             from: accounts[1]
           })
         } catch (error) {
@@ -198,165 +154,76 @@ contract('TokenPorter', accounts => {
 
     it('Basic export test . ETH to ETC', () => {
       return new Promise(async (resolve, reject) => {
-        const exportFee = 1e16
-        const amountToExport = 1e17 - exportFee
-        const {
-          auctions,
-          metToken,
-          tokenPorter
-        } = await METGlobal.initContracts(
-          accounts,
-          TestRPCTime.getCurrentBlockTime(),
-          MINIMUM_PRICE,
-          STARTING_PRICE,
-          TIME_SCALE
-        )
-
-        let initialAuctionEndTime = await auctions.initialAuctionEndTime()
-        // await initNonOGContracts(accounts, TestRPCTime.getCurrentBlockTime() - 60, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE, initialAuctionEndTime.valueOf())
-        const {
-          etcAuctions,
-          etcMetToken,
-          etcTokenPorter,
-          etcValidator
-        } = await METGlobal.initNonOGContracts(
-          accounts,
-          TestRPCTime.getCurrentBlockTime(),
-          MINIMUM_PRICE,
-          STARTING_PRICE / 2,
-          TIME_SCALE,
-          initialAuctionEndTime.valueOf()
-        )
         // Time travel to just a minute before initial auction end
         await TestRPCTime.timeTravel(7 * SECS_IN_DAY - SECS_IN_MINUTE)
         await TestRPCTime.mineBlock()
-
+        exportFee = 1e16
+        amountToExport = 1e17 - exportFee
         // get some balance for export
-        const buyer = accounts[7]
+        const exporter = accounts[7]
         const amount = 1e18
-        await auctions.sendTransaction({ from: buyer, value: amount })
+        await ethContracts.auctions.sendTransaction({
+          from: exporter,
+          value: amount
+        })
 
-        var balanceOfBuyer = await metToken.balanceOf(buyer)
+        var balance = await ethContracts.metToken.balanceOf(exporter)
         assert.isAbove(
-          balanceOfBuyer.toNumber(),
-          amountToExport,
+          balance.toNumber(),
+          amountToExport + exportFee,
           'Balance of buyer after purchase is not correct'
         )
-
-        const SECS_TO_NEXT_MIDNIGHT = await secondsToNextMidnight()
-        await TestRPCTime.timeTravel(SECS_TO_NEXT_MIDNIGHT)
-        await TestRPCTime.mineBlock()
-        await auctions.sendTransaction({ from: buyer, value: amount })
-        // await initETCMockContracts(await auctions.genesisTime())
-        destMetAddr = etcMetToken.address
-        await tokenPorter.addDestinationChain(destChain, destMetAddr, {
-          from: OWNER
-        })
-        await etcTokenPorter.addDestinationChain(
-          destChainETH,
-          metToken.address,
-          { from: OWNER }
-        )
-        // export all tokens
-        const expectedExtraData = 'extra data'
-        let tx = await metToken.export(
-          destChain,
-          destMetAddr,
-          buyer,
-          amountToExport,
-          exportFee,
-          web3.fromAscii(expectedExtraData),
-          { from: buyer }
-        )
-
-        // retrieve data from export receipt, it will be used for import in mock ETC
-        const decoder = ethjsABI.logDecoder(tokenPorter.abi)
-        const logExportReceipt = decoder(tx.receipt.logs)[0]
-
-        let importDataObj = await prepareImportData(tokenPorter, tx)
-        await TestRPCTime.timeTravel(20 * SECS_IN_DAY)
-        await TestRPCTime.mineBlock()
-        await etcMetToken.importMET(
-          web3.fromAscii('ETH'),
-          logExportReceipt.destinationChain,
-          importDataObj.addresses,
-          logExportReceipt.extraData,
-          importDataObj.burnHashes,
-          logExportReceipt.supplyOnAllChains,
-          importDataObj.importData,
-          importDataObj.root
-        )
-
-        await TestRPCTime.timeTravel(10)
-        await TestRPCTime.mineBlock()
-
         // Before Minting
-        var totalSupply = await etcMetToken.totalSupply()
+        var totalSupply = await etcContracts.metToken.totalSupply()
 
         assert.equal(totalSupply.valueOf(), 0, 'Total supply in ETC is not 0')
 
-        let signature = web3.eth.sign(OWNER, importDataObj.burnHashes[1])
-        let totalSupplyInSourceChain = (await metToken.totalSupply()).toNumber()
-        await etcValidator.attestHash(
-          importDataObj.burnHashes[1],
-          web3.fromAscii('ETH'),
-          importDataObj.addresses[1],
-          parseInt(importDataObj.importData[1]),
-          parseInt(importDataObj.importData[2]),
-          importDataObj.merkelProof,
-          logExportReceipt.extraData,
-          signature,
-          totalSupplyInSourceChain,
-          { from: OWNER }
+        await Utils.importExport(
+          'ETH',
+          ethContracts,
+          etcContracts,
+          amountToExport,
+          exportFee,
+          exporter,
+          accounts[8],
+          OWNER,
+          accounts[1]
         )
-        signature = web3.eth.sign(accounts[1], importDataObj.burnHashes[1])
-        await etcValidator.attestHash(
-          importDataObj.burnHashes[1],
-          web3.fromAscii('ETH'),
-          importDataObj.addresses[1],
-          parseInt(importDataObj.importData[1]),
-          parseInt(importDataObj.importData[2]),
-          importDataObj.merkelProof,
-          logExportReceipt.extraData,
-          signature,
-          totalSupplyInSourceChain,
-          { from: accounts[1] }
-        )
+
         // After minting
-        let globalSupplyETH = await auctions.globalMetSupply()
-        let globalSupplyETC = await etcAuctions.globalMetSupply()
+        let globalSupplyETH = await ethContracts.auctions.globalMetSupply()
+        let globalSupplyETC = await etcContracts.auctions.globalMetSupply()
         assert.equal(
           globalSupplyETC.toNumber(),
           globalSupplyETH.toNumber(),
           'Global supply in two chain is not correct'
         )
-        let balanceAfterImport = await etcMetToken.balanceOf(
-          importDataObj.addresses[1]
+        let balanceAfterImport = await etcContracts.metToken.balanceOf(
+          accounts[8]
         )
 
         assert.equal(balanceAfterImport.valueOf(), amountToExport)
-        let currentAuctionETC = await etcAuctions.currentAuction()
-        assert.equal(
-          currentAuctionETC.valueOf(),
-          21,
-          'Current Auction in ETC wrong'
-        )
-
-        totalSupply = await etcMetToken.totalSupply()
+        totalSupply = await etcContracts.metToken.totalSupply()
         assert.equal(
           totalSupply.sub(METTokenETCInitialSupply).valueOf(),
           amountToExport + exportFee,
           'Total supply after import is not correct'
         )
-        globalSupplyETH = await auctions.globalMetSupply()
-        globalSupplyETC = await etcAuctions.globalMetSupply()
+        globalSupplyETH = await ethContracts.auctions.globalMetSupply()
+        globalSupplyETC = await etcContracts.auctions.globalMetSupply()
         assert.equal(
           globalSupplyETC.toNumber(),
           globalSupplyETH.toNumber(),
           'Global supply in two chain is not correct'
         )
-        await TestRPCTime.timeTravel(SECS_IN_MINUTE)
-        await TestRPCTime.mineBlock()
+        let dailyMintableETC = await etcContracts.auctions.dailyMintable()
+        let dailyMintableETH = await ethContracts.auctions.dailyMintable()
+
+        assert.equal(
+          dailyMintableETC.add(dailyMintableETH.toNumber()),
+          2880e18,
+          'Daily mintable is wrong'
+        )
 
         resolve()
       })
@@ -364,115 +231,35 @@ contract('TokenPorter', accounts => {
 
     it('Should be able to update validator and wrong validtor should not be able to do validation', () => {
       return new Promise(async (resolve, reject) => {
-        const exportFee = 1e16
-        const amountToExport = 1e17 - exportFee
-
-        // await initContracts(accounts, TestRPCTime.getCurrentBlockTime() - 60, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
-        const {
-          auctions,
-          metToken,
-          tokenPorter
-        } = await METGlobal.initContracts(
-          accounts,
-          TestRPCTime.getCurrentBlockTime(),
-          MINIMUM_PRICE,
-          STARTING_PRICE,
-          TIME_SCALE
-        )
-
-        let initialAuctionEndTime = await auctions.initialAuctionEndTime()
-        // await initNonOGContracts(accounts, TestRPCTime.getCurrentBlockTime() - 60, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE, initialAuctionEndTime.valueOf())
-        const {
-          etcMetToken,
-          etcTokenPorter,
-          etcValidator
-        } = await METGlobal.initNonOGContracts(
-          accounts,
-          TestRPCTime.getCurrentBlockTime(),
-          MINIMUM_PRICE,
-          STARTING_PRICE / 2,
-          TIME_SCALE,
-          initialAuctionEndTime.valueOf()
-        )
-
-        // Time travel to just a minute before initial auction end
+        // get some balance for export
+        const exporter = accounts[7]
+        const amount = 1e18
         await TestRPCTime.timeTravel(7 * SECS_IN_DAY - SECS_IN_MINUTE)
         await TestRPCTime.mineBlock()
-
-        // get some balance for export
-        const buyer = accounts[7]
-        const amount = 1e18
-        await auctions.sendTransaction({ from: buyer, value: amount })
-
-        var balanceOfBuyer = await metToken.balanceOf(buyer)
+        await ethContracts.auctions.sendTransaction({
+          from: exporter,
+          value: amount
+        })
+        exportFee = 1e16
+        amountToExport = 1e17 - exportFee
+        var balance = await ethContracts.metToken.balanceOf(exporter)
         assert.isAbove(
-          balanceOfBuyer.toNumber(),
-          amountToExport,
+          balance.toNumber(),
+          amountToExport + exportFee,
           'Balance of buyer after purchase is not correct'
         )
-
-        const SECS_TO_NEXT_MIDNIGHT = await secondsToNextMidnight()
-        await TestRPCTime.timeTravel(SECS_TO_NEXT_MIDNIGHT)
-        await TestRPCTime.mineBlock()
-        await auctions.sendTransaction({ from: buyer, value: amount })
-        // await initETCMockContracts(await auctions.genesisTime())
-        destMetAddr = etcMetToken.address
-        await tokenPorter.addDestinationChain(destChain, destMetAddr, {
-          from: OWNER
-        })
-        await etcTokenPorter.addDestinationChain(
-          destChainETH,
-          metToken.address,
-          { from: OWNER }
-        )
-        // export all tokens
-        const expectedExtraData = 'extra data'
-        const tx = await metToken.export(
-          destChain,
-          destMetAddr,
-          buyer,
-          amountToExport,
-          exportFee,
-          web3.fromAscii(expectedExtraData),
-          { from: buyer }
-        )
-
-        // retrieve data from export receipt, it will be used for import in mock ETC
-        const decoder = ethjsABI.logDecoder(tokenPorter.abi)
-        const logExportReceipt = decoder(tx.receipt.logs)[0]
-
-        let importDataObj = await prepareImportData(tokenPorter, tx)
-
-        await TestRPCTime.timeTravel(20 * SECS_IN_DAY)
-        await TestRPCTime.mineBlock()
-
-        await etcMetToken.importMET(
-          web3.fromAscii('ETH'),
-          logExportReceipt.destinationChain,
-          importDataObj.addresses,
-          logExportReceipt.extraData,
-          importDataObj.burnHashes,
-          logExportReceipt.supplyOnAllChains,
-          importDataObj.importData,
-          importDataObj.root
-        )
-
         let thrown = false
-        let signature
-        let totalSupplyInSourceChain = (await metToken.totalSupply()).toNumber()
         try {
-          signature = web3.eth.sign(accounts[5], importDataObj.burnHashes[1])
-          await etcValidator.attestHash(
-            importDataObj.burnHashes[1],
-            web3.fromAscii('ETH'),
-            importDataObj.addresses[1],
-            parseInt(importDataObj.importData[1]),
-            parseInt(importDataObj.importData[2]),
-            importDataObj.merkelProof,
-            importDataObj.extraData,
-            signature,
-            totalSupplyInSourceChain,
-            { from: accounts[5] }
+          await Utils.importExport(
+            'ETH',
+            ethContracts,
+            etcContracts,
+            amountToExport,
+            exportFee,
+            exporter,
+            accounts[8],
+            accounts[5],
+            accounts[1]
           )
         } catch (e) {
           thrown = true
@@ -480,18 +267,16 @@ contract('TokenPorter', accounts => {
         assert(thrown, 'Wrong validator should not be able to validate hash')
         thrown = false
         try {
-          signature = web3.eth.sign(OWNER, importDataObj.burnHashes[1])
-          await etcValidator.attestHash(
-            importDataObj.burnHashes[1],
-            web3.fromAscii('ETH'),
-            importDataObj.addresses[1],
-            parseInt(importDataObj.importData[1]),
-            parseInt(importDataObj.importData[2]),
-            importDataObj.merkelProof,
-            importDataObj.extraData,
-            signature,
-            totalSupplyInSourceChain,
-            { from: OWNER }
+          await Utils.importExport(
+            'ETH',
+            ethContracts,
+            etcContracts,
+            amountToExport,
+            exportFee,
+            exporter,
+            accounts[8],
+            OWNER,
+            accounts[1]
           )
         } catch (e) {
           thrown = true
@@ -501,514 +286,79 @@ contract('TokenPorter', accounts => {
       })
     })
 
-    it('Export and import test: Should verify daily mintable is correct in two chain . ETH to ETC', () => {
-      return new Promise(async (resolve, reject) => {
-        const exportFee = 1e16
-        const amountToExport = 6e17 - exportFee
-        // Auction started 8 days ago (7 days initial auction and rounding to midnight)
-        const startTime = TestRPCTime.getCurrentBlockTime() - 8 * SECS_IN_DAY
-
-        const {
-          auctions,
-          metToken,
-          tokenPorter
-        } = await METGlobal.initContracts(
-          accounts,
-          startTime,
-          MINIMUM_PRICE,
-          STARTING_PRICE,
-          TIME_SCALE
-        )
-        let initialAuctionEndTime = await auctions.initialAuctionEndTime()
-        const {
-          etcAuctions,
-          etcMetToken,
-          etcValidator
-        } = await METGlobal.initNonOGContracts(
-          accounts,
-          startTime,
-          MINIMUM_PRICE / 2,
-          STARTING_PRICE,
-          TIME_SCALE,
-          initialAuctionEndTime.valueOf()
-        )
-
-        // get some balance for export
-        const buyer = accounts[7]
-        const amount = 1e18
-        await auctions.sendTransaction({ from: buyer, value: amount })
-
-        var balanceOfBuyer = await metToken.balanceOf(buyer)
-        assert.isAbove(
-          balanceOfBuyer.toNumber(),
-          amountToExport,
-          'Balance of buyer after purchase is not correct'
-        )
-
-        // await initETCMockContracts(await auctions.genesisTime())
-        destMetAddr = etcMetToken.address
-        await tokenPorter.addDestinationChain(destChain, destMetAddr, {
-          from: OWNER
-        })
-        // export all tokens
-        const expectedExtraData = 'extra data'
-        let tx = await metToken.export(
-          destChain,
-          destMetAddr,
-          buyer,
-          amountToExport,
-          exportFee,
-          web3.fromAscii(expectedExtraData),
-          { from: buyer }
-        )
-
-        // retrieve data from export receipt, it will be used for import in mock ETC
-        let decoder = ethjsABI.logDecoder(tokenPorter.abi)
-        let logExportReceipt = decoder(tx.receipt.logs)[0]
-
-        let importDataObj = await prepareImportData(tokenPorter, tx)
-        // TODO: 9 days between export and import is affecting total daily mintable. i.e. total will be less than 2880
-        // await TestRPCTime.timeTravel(9 * SECS_IN_DAY)
-        // await TestRPCTime.mineBlock()
-        await etcMetToken.importMET(
-          web3.fromAscii('ETH'),
-          logExportReceipt.destinationChain,
-          importDataObj.addresses,
-          logExportReceipt.extraData,
-          importDataObj.burnHashes,
-          logExportReceipt.supplyOnAllChains,
-          importDataObj.importData,
-          importDataObj.root
-        )
-
-        // Before minting
-        var totalSupply = await etcMetToken.totalSupply()
-        assert(
-          totalSupply,
-          0,
-          'Total supply in ETC before import is not correct'
-        )
-        let globalSupplyETH = await auctions.globalMetSupply()
-        let globalSupplyETC = await etcAuctions.globalMetSupply()
-
-        assert.equal(
-          globalSupplyETC.toNumber(),
-          globalSupplyETC.toNumber(),
-          'Global supply in ETC is not correct'
-        )
-
-        // After import 1
-        let totalSupplyInSourceChain = (await metToken.totalSupply()).toNumber()
-        let signature = web3.eth.sign(OWNER, importDataObj.burnHashes[1])
-        await etcValidator.attestHash(
-          importDataObj.burnHashes[1],
-          web3.fromAscii('ETH'),
-          importDataObj.addresses[1],
-          parseInt(importDataObj.importData[1]),
-          parseInt(importDataObj.importData[2]),
-          importDataObj.merkelProof,
-          importDataObj.extraData,
-          signature,
-          totalSupplyInSourceChain,
-          { from: OWNER }
-        )
-        signature = web3.eth.sign(accounts[1], importDataObj.burnHashes[1])
-        await etcValidator.attestHash(
-          importDataObj.burnHashes[1],
-          web3.fromAscii('ETH'),
-          importDataObj.addresses[1],
-          parseInt(importDataObj.importData[1]),
-          parseInt(importDataObj.importData[2]),
-          importDataObj.merkelProof,
-          importDataObj.extraData,
-          signature,
-          totalSupplyInSourceChain,
-          { from: accounts[1] }
-        )
-
-        globalSupplyETH = await auctions.globalMetSupply()
-        globalSupplyETC = await etcAuctions.globalMetSupply()
-        assert.equal(
-          globalSupplyETC.toNumber(),
-          globalSupplyETH.toNumber(),
-          'Global supply in two chain is not correct'
-        )
-
-        let metBalanceOfBuyerInETC = await etcMetToken.balanceOf(
-          importDataObj.addresses[1]
-        )
-        assert(
-          metBalanceOfBuyerInETC,
-          amountToExport,
-          'Imported amount is not correct'
-        )
-        totalSupply = await etcMetToken.totalSupply()
-        assert.equal(
-          totalSupply.sub(METTokenETCInitialSupply).valueOf(),
-          amountToExport + exportFee,
-          'Total supply in ETC is wrong'
-        )
-
-        await TestRPCTime.timeTravel(SECS_IN_MINUTE)
-        await TestRPCTime.mineBlock()
-        tx = await metToken.export(
-          destChain,
-          destMetAddr,
-          buyer,
-          amountToExport,
-          exportFee,
-          web3.fromAscii(expectedExtraData),
-          { from: buyer }
-        )
-        decoder = ethjsABI.logDecoder(tokenPorter.abi)
-        logExportReceipt = decoder(tx.receipt.logs)[0]
-
-        importDataObj = await prepareImportData(tokenPorter, tx)
-        await etcMetToken.importMET(
-          web3.fromAscii('ETH'),
-          logExportReceipt.destinationChain,
-          importDataObj.addresses,
-          logExportReceipt.extraData,
-          importDataObj.burnHashes,
-          logExportReceipt.supplyOnAllChains,
-          importDataObj.importData,
-          importDataObj.root
-        )
-
-        // Before minting
-        totalSupply = await etcMetToken.totalSupply()
-        assert.equal(
-          totalSupply.sub(METTokenETCInitialSupply).valueOf(),
-          amountToExport + exportFee,
-          'Total supply is wrong in ETC'
-        )
-        globalSupplyETH = await auctions.globalMetSupply()
-        globalSupplyETC = await etcAuctions.globalMetSupply()
-        assert.equal(
-          globalSupplyETC.toNumber(),
-          globalSupplyETH.toNumber(),
-          'Global supply in two chain is not correct'
-        )
-
-        // After minting
-        totalSupplyInSourceChain = (await metToken.totalSupply()).toNumber()
-        signature = web3.eth.sign(OWNER, importDataObj.burnHashes[1])
-        await etcValidator.attestHash(
-          importDataObj.burnHashes[1],
-          web3.fromAscii('ETH'),
-          importDataObj.addresses[1],
-          parseInt(importDataObj.importData[1]),
-          parseInt(importDataObj.importData[2]),
-          importDataObj.merkelProof,
-          importDataObj.extraData,
-          signature,
-          totalSupplyInSourceChain,
-          { from: OWNER }
-        )
-        signature = web3.eth.sign(accounts[1], importDataObj.burnHashes[1])
-        await etcValidator.attestHash(
-          importDataObj.burnHashes[1],
-          web3.fromAscii('ETH'),
-          importDataObj.addresses[1],
-          parseInt(importDataObj.importData[1]),
-          parseInt(importDataObj.importData[2]),
-          importDataObj.merkelProof,
-          importDataObj.extraData,
-          signature,
-          totalSupplyInSourceChain,
-          { from: accounts[1] }
-        )
-        let balanceAfterImport = await etcMetToken.balanceOf(
-          importDataObj.addresses[1]
-        )
-        assert.equal(balanceAfterImport.valueOf(), amountToExport * 2)
-        totalSupply = await etcMetToken.totalSupply()
-        let expectedTotalSupply = 2 * (amountToExport + exportFee)
-        assert.closeTo(
-          totalSupply.toNumber(),
-          expectedTotalSupply,
-          3,
-          'Total supply after import is not correct'
-        )
-        globalSupplyETH = await auctions.globalMetSupply()
-        globalSupplyETC = await etcAuctions.globalMetSupply()
-        assert.equal(
-          globalSupplyETC.toNumber(),
-          globalSupplyETH.toNumber(),
-          'Global supply in two chain is not correct'
-        )
-
-        await auctions.sendTransaction({ from: accounts[8], value: 1e5 })
-
-        try {
-          await etcMetToken.enableMETTransfers({ from: OWNER })
-        } catch (e) {}
-        try {
-          await TestRPCTime.timeTravel(1 * SECS_IN_DAY)
-          await TestRPCTime.mineBlock()
-          await etcAuctions.sendTransaction({ from: accounts[0], value: 1e18 })
-
-          totalSupply = await etcMetToken.totalSupply()
-        } catch (e) {
-          assert(false, 'Error thrown during buy in auction')
-        }
-        totalSupply = await etcMetToken.totalSupply()
-        let dailyMintableETC = await etcAuctions.dailyMintable()
-        let dailyMintableETH = await auctions.dailyMintable()
-
-        assert.equal(
-          dailyMintableETC.toNumber() + dailyMintableETH.toNumber(),
-          2880e18,
-          'Daily mintable is wrong'
-        )
-
-        resolve()
-      })
-    })
-
     it('Basic export test . ETC to ETH', () => {
       return new Promise(async (resolve, reject) => {
         let exportFee = 1e16
         let amountToExport = 1e17
 
-        const {
-          auctions,
-          metToken,
-          tokenPorter,
-          validator
-        } = await METGlobal.initContracts(
-          accounts,
-          TestRPCTime.getCurrentBlockTime() - 60,
-          MINIMUM_PRICE,
-          STARTING_PRICE,
-          TIME_SCALE
-        )
-        let initialAuctionEndTime = await auctions.initialAuctionEndTime()
-        const {
-          etcAuctions,
-          etcMetToken,
-          etcTokenPorter,
-          etcValidator
-        } = await METGlobal.initNonOGContracts(
-          accounts,
-          TestRPCTime.getCurrentBlockTime() - 60,
-          MINIMUM_PRICE,
-          STARTING_PRICE / 2,
-          TIME_SCALE,
-          initialAuctionEndTime.valueOf()
-        )
         // Time travel to just a minute before initial auction end
         await TestRPCTime.timeTravel(7 * SECS_IN_DAY - SECS_IN_MINUTE)
         await TestRPCTime.mineBlock()
 
         // get some balance for export
-        const buyer = accounts[7]
+        const exporter = accounts[4]
         const amount = 1e18
-        await auctions.sendTransaction({ from: buyer, value: amount })
+        await ethContracts.auctions.sendTransaction({
+          from: exporter,
+          value: amount
+        })
 
-        var balanceOfBuyer = await metToken.balanceOf(buyer)
+        var balance = await ethContracts.metToken.balanceOf(exporter)
         assert.isAbove(
-          balanceOfBuyer.toNumber(),
-          amountToExport,
+          balance.toNumber(),
+          amountToExport + exportFee,
           'Balance of buyer after purchase is not correct'
         )
-
-        const SECS_TO_NEXT_MIDNIGHT = await secondsToNextMidnight()
-        await TestRPCTime.timeTravel(SECS_TO_NEXT_MIDNIGHT)
-        await TestRPCTime.mineBlock()
-        await auctions.sendTransaction({ from: buyer, value: amount })
-        // await initETCMockContracts(await auctions.genesisTime())
-        destMetAddr = etcMetToken.address
-        await tokenPorter.addDestinationChain(destChain, destMetAddr, {
-          from: OWNER
-        })
-        await etcTokenPorter.addDestinationChain(
-          destChainETH,
-          metToken.address,
-          { from: OWNER }
-        )
-
-        // export all tokens
-        const expectedExtraData = 'extra data'
-        let tx = await metToken.export(
-          destChain,
-          destMetAddr,
-          buyer,
+        await Utils.importExport(
+          'ETH',
+          ethContracts,
+          etcContracts,
           amountToExport,
           exportFee,
-          web3.fromAscii(expectedExtraData),
-          { from: buyer }
+          exporter,
+          accounts[9],
+          OWNER,
+          accounts[1]
         )
-
-        // retrieve data from export receipt, it will be used for import in mock ETC
-        let decoder = ethjsABI.logDecoder(tokenPorter.abi)
-        let logExportReceipt = decoder(tx.receipt.logs)[0]
-
-        let importDataObj = await prepareImportData(tokenPorter, tx)
-
-        await TestRPCTime.timeTravel(20 * SECS_IN_DAY)
-        await TestRPCTime.mineBlock()
-
-        // Before Import call
-        var totalSupply = await etcMetToken.totalSupply()
-        assert.equal(totalSupply.valueOf(), 0, 'Total supply in ETC is not 0')
-        let imported = await etcMetToken.importMET.call(
-          web3.fromAscii('ETH'),
-          logExportReceipt.destinationChain,
-          importDataObj.addresses,
-          logExportReceipt.extraData,
-          importDataObj.burnHashes,
-          logExportReceipt.supplyOnAllChains,
-          importDataObj.importData,
-          importDataObj.root
-        )
-
-        tx = await etcMetToken.importMET(
-          web3.fromAscii('ETH'),
-          logExportReceipt.destinationChain,
-          importDataObj.addresses,
-          logExportReceipt.extraData,
-          importDataObj.burnHashes,
-          logExportReceipt.supplyOnAllChains,
-          importDataObj.importData,
-          importDataObj.root
-        )
-        assert(imported, 'Import in ETC failed')
-        let logImportReceipt = decoder(tx.receipt.logs)[0]
-        assert.equal(
-          logImportReceipt.currentBurnHash,
-          logExportReceipt.currentBurnHash,
-          'Hash in import log not correct'
-        )
-
-        // validation and minting
-        let signature = web3.eth.sign(OWNER, importDataObj.burnHashes[1])
-        let totalSupplyInSourceChain = (await metToken.totalSupply()).toNumber()
-        await etcValidator.attestHash(
-          importDataObj.burnHashes[1],
-          web3.fromAscii('ETH'),
-          importDataObj.addresses[1],
-          parseInt(importDataObj.importData[1]),
-          parseInt(importDataObj.importData[2]),
-          importDataObj.merkelProof,
-          importDataObj.extraData,
-          signature,
-          totalSupplyInSourceChain,
-          { from: OWNER }
-        )
-        signature = web3.eth.sign(accounts[1], importDataObj.burnHashes[1])
-        await etcValidator.attestHash(
-          importDataObj.burnHashes[1],
-          web3.fromAscii('ETH'),
-          importDataObj.addresses[1],
-          parseInt(importDataObj.importData[1]),
-          parseInt(importDataObj.importData[2]),
-          importDataObj.merkelProof,
-          importDataObj.extraData,
-          signature,
-          totalSupplyInSourceChain,
-          { from: accounts[1] }
-        )
-        // After minting
-        let globalSupplyETH = await auctions.globalMetSupply()
-        let globalSupplyETC = await etcAuctions.globalMetSupply()
-        assert.equal(
-          globalSupplyETC.toNumber(),
-          globalSupplyETH.toNumber(),
-          'Global supply in two chain is not correct'
-        )
-        let balanceAfterImport = await etcMetToken.balanceOf(
-          importDataObj.addresses[1]
+        let balanceAfterImport = await etcContracts.metToken.balanceOf(
+          accounts[9]
         )
         assert.equal(balanceAfterImport.valueOf(), amountToExport)
-
+        exportFee = 1e16
+        amountToExport = 1e16
         await TestRPCTime.timeTravel(SECS_IN_MINUTE)
         await TestRPCTime.mineBlock()
+        let totalSuppllyETCBefore = await etcContracts.metToken.totalSupply()
+        let totalSuppllyETHBefore = await ethContracts.metToken.totalSupply()
         // export to ETH from ETC
-        exportFee = 1e15
-        amountToExport = 1e16
-        let totalSuppllyBefore = (await etcMetToken.totalSupply()).toNumber()
-        tx = await etcMetToken.export(
-          destChainETH,
-          metToken.address,
-          buyer,
+        balance = await etcContracts.metToken.balanceOf(accounts[9])
+        assert.isAbove(
+          balance.toNumber(),
+          amountToExport + exportFee,
+          'Balance of buyer after purchase is not correct'
+        )
+        await Utils.importExport(
+          'ETC',
+          etcContracts,
+          ethContracts,
           amountToExport,
           exportFee,
-          web3.fromAscii(expectedExtraData),
-          { from: buyer }
+          accounts[9],
+          accounts[3],
+          OWNER,
+          accounts[1]
         )
-        let totalSupplyETCAfter = (await etcMetToken.totalSupply()).toNumber()
+        let totalSuppllyETCAfter = await etcContracts.metToken.totalSupply()
+        let totalSuppllyETHAfter = await ethContracts.metToken.totalSupply()
         assert.equal(
-          totalSuppllyBefore - totalSupplyETCAfter,
+          totalSuppllyETCBefore.sub(totalSuppllyETCAfter).valueOf(),
           amountToExport + exportFee,
-          'total supply after export is wrong'
+          'total supply of ETC after export is wrong'
         )
-        decoder = ethjsABI.logDecoder(etcTokenPorter.abi)
-        logExportReceipt = decoder(tx.receipt.logs)[0]
-        importDataObj = await prepareImportData(etcTokenPorter, tx)
-        // Import
-        imported = await metToken.importMET.call(
-          web3.fromAscii('ETC'),
-          logExportReceipt.destinationChain,
-          importDataObj.addresses,
-          logExportReceipt.extraData,
-          importDataObj.burnHashes,
-          logExportReceipt.supplyOnAllChains,
-          importDataObj.importData,
-          importDataObj.root
-        )
-
-        let totalSupplyETHBefore = await metToken.totalSupply()
-        tx = await metToken.importMET(
-          web3.fromAscii('ETC'),
-          logExportReceipt.destinationChain,
-          importDataObj.addresses,
-          logExportReceipt.extraData,
-          importDataObj.burnHashes,
-          logExportReceipt.supplyOnAllChains,
-          importDataObj.importData,
-          importDataObj.root
-        )
-        assert(imported, 'Import in ETH failed')
-        logImportReceipt = decoder(tx.receipt.logs)[0]
         assert.equal(
-          logImportReceipt.currentBurnHash,
-          logExportReceipt.currentBurnHash,
-          'Hash in import log not correct'
-        )
-        // validation and minting
-        totalSupplyInSourceChain = (await etcMetToken.totalSupply()).toNumber()
-        signature = web3.eth.sign(OWNER, importDataObj.burnHashes[1])
-        await validator.attestHash(
-          importDataObj.burnHashes[1],
-          web3.fromAscii('ETC'),
-          importDataObj.addresses[1],
-          parseInt(importDataObj.importData[1]),
-          parseInt(importDataObj.importData[2]),
-          importDataObj.merkelProof,
-          importDataObj.extraData,
-          signature,
-          totalSupplyInSourceChain,
-          { from: OWNER }
-        )
-        signature = web3.eth.sign(accounts[1], importDataObj.burnHashes[1])
-        await validator.attestHash(
-          importDataObj.burnHashes[1],
-          web3.fromAscii('ETC'),
-          importDataObj.addresses[1],
-          parseInt(importDataObj.importData[1]),
-          parseInt(importDataObj.importData[2]),
-          importDataObj.merkelProof,
-          importDataObj.extraData,
-          signature,
-          totalSupplyInSourceChain,
-          { from: accounts[1] }
-        )
-        // After minting
-        let totalSupplyETHAfter = await metToken.totalSupply()
-        assert(
-          totalSupplyETHAfter.sub(totalSupplyETHBefore).valueOf(),
-          amountToExport + exportFee
+          totalSuppllyETHAfter.sub(totalSuppllyETHBefore).valueOf(),
+          amountToExport + exportFee,
+          'total supply of ETH after import is wrong'
         )
         resolve()
       })
@@ -1019,136 +369,56 @@ contract('TokenPorter', accounts => {
         const exportFee = 1e16
         const amountToExport = 1e17
 
-        const {
-          auctions,
-          metToken,
-          tokenPorter
-        } = await METGlobal.initContracts(
-          accounts,
-          TestRPCTime.getCurrentBlockTime() - 60,
-          MINIMUM_PRICE,
-          STARTING_PRICE,
-          TIME_SCALE
-        )
-        let initialAuctionEndTime = await auctions.initialAuctionEndTime()
-        const {
-          etcAutonomousConverter,
-          etcMetToken,
-          etcSmartToken,
-          etcValidator
-        } = await METGlobal.initNonOGContracts(
-          accounts,
-          TestRPCTime.getCurrentBlockTime() - 60,
-          MINIMUM_PRICE,
-          STARTING_PRICE / 2,
-          TIME_SCALE,
-          initialAuctionEndTime.valueOf()
-        )
         // Time travel to just a minute before initial auction end
         await TestRPCTime.timeTravel(7 * SECS_IN_DAY - SECS_IN_MINUTE)
         await TestRPCTime.mineBlock()
 
         // get some balance for export
-        const buyer = accounts[7]
+        const exporter = accounts[7]
         const amount = 1e18
-        await auctions.sendTransaction({ from: buyer, value: amount })
-
-        const SECS_TO_NEXT_MIDNIGHT = await secondsToNextMidnight()
-        await TestRPCTime.timeTravel(SECS_TO_NEXT_MIDNIGHT)
-        await TestRPCTime.mineBlock()
-        await auctions.sendTransaction({ from: buyer, value: amount })
-        destMetAddr = etcMetToken.address
-        await tokenPorter.addDestinationChain(destChain, destMetAddr, {
-          from: OWNER
+        await ethContracts.auctions.sendTransaction({
+          from: exporter,
+          value: amount
         })
-        // export all tokens
-        const expectedExtraData = 'extra data'
-        const tx = await metToken.export(
-          destChain,
-          destMetAddr,
-          buyer,
+        await Utils.importExport(
+          'ETH',
+          ethContracts,
+          etcContracts,
           amountToExport,
           exportFee,
-          web3.fromAscii(expectedExtraData),
-          { from: buyer }
+          exporter,
+          accounts[9],
+          OWNER,
+          accounts[1]
         )
-
-        // retrieve data from export receipt, it will be used for import in mock ETC
-        const decoder = ethjsABI.logDecoder(tokenPorter.abi)
-        const logExportReceipt = decoder(tx.receipt.logs)[0]
-
-        let importDataObj = await prepareImportData(tokenPorter, tx)
-
-        await TestRPCTime.timeTravel(20 * SECS_IN_DAY)
-        await TestRPCTime.mineBlock()
-        await etcMetToken.importMET(
-          web3.fromAscii('ETH'),
-          logExportReceipt.destinationChain,
-          importDataObj.addresses,
-          logExportReceipt.extraData,
-          importDataObj.burnHashes,
-          logExportReceipt.supplyOnAllChains,
-          importDataObj.importData,
-          importDataObj.root
-        )
-        // Before minting
-        var totalSupply = await etcMetToken.totalSupply()
-        assert.equal(totalSupply.valueOf(), 0, 'Total supply in ETC is not 0')
-
-        // validation and minting
-        let signature = web3.eth.sign(OWNER, importDataObj.burnHashes[1])
-        let totalSupplyInSourceChain = (await metToken.totalSupply()).toNumber()
-        await etcValidator.attestHash(
-          importDataObj.burnHashes[1],
-          web3.fromAscii('ETH'),
-          importDataObj.addresses[1],
-          parseInt(importDataObj.importData[1]),
-          parseInt(importDataObj.importData[2]),
-          importDataObj.merkelProof,
-          importDataObj.extraData,
-          signature,
-          totalSupplyInSourceChain,
-          { from: OWNER }
-        )
-        signature = web3.eth.sign(accounts[1], importDataObj.burnHashes[1])
-        await etcValidator.attestHash(
-          importDataObj.burnHashes[1],
-          web3.fromAscii('ETH'),
-          importDataObj.addresses[1],
-          parseInt(importDataObj.importData[1]),
-          parseInt(importDataObj.importData[2]),
-          importDataObj.merkelProof,
-          importDataObj.extraData,
-          signature,
-          totalSupplyInSourceChain,
-          { from: accounts[1] }
-        )
-        await TestRPCTime.timeTravel(SECS_IN_MINUTE)
+        await TestRPCTime.timeTravel(SECS_IN_DAY)
         await TestRPCTime.mineBlock()
         const WEI_SENT = 1e18
         const MIN_MET_RETURN = 1
-        let metBalanceOfImporter = await etcMetToken.balanceOf(
-          importDataObj.addresses[1]
+        let metBalanceOfImporter = await etcContracts.metToken.balanceOf(
+          accounts[9]
         )
-        await etcMetToken.enableMETTransfers()
-        await etcMetToken.approve(
-          importDataObj.addresses[1],
+        await etcContracts.metToken.enableMETTransfers()
+        await etcContracts.metToken.approve(
+          accounts[9],
           metBalanceOfImporter.toNumber(),
-          { from: importDataObj.addresses[1] }
+          { from: accounts[9] }
         )
-        await etcMetToken.transferFrom(
-          importDataObj.addresses[1],
-          etcAutonomousConverter.address,
+        await etcContracts.metToken.transferFrom(
+          accounts[9],
+          etcContracts.autonomousConverter.address,
           metBalanceOfImporter.toNumber(),
-          { from: importDataObj.addresses[1] }
+          { from: accounts[9] }
         )
-        const reserveSupply = await etcAutonomousConverter.getMetBalance({
-          from: OWNER
-        })
+        const reserveSupply = await etcContracts.autonomousConverter.getMetBalance(
+          {
+            from: OWNER
+          }
+        )
         const ethBalanceOfACBefore = await web3.eth.getBalance(
-          etcAutonomousConverter.address
+          etcContracts.autonomousConverter.address
         )
-        const prediction = await etcAutonomousConverter.getMetForEthResult(
+        const prediction = await etcContracts.autonomousConverter.getMetForEthResult(
           WEI_SENT,
           { from: OWNER }
         )
@@ -1161,27 +431,34 @@ contract('TokenPorter', accounts => {
           'Prediction is larger than reserve supply'
         )
 
-        const metBalanceOfACBefore = await etcMetToken.balanceOf(
-          etcAutonomousConverter.address
+        const metBalanceOfACBefore = await etcContracts.metToken.balanceOf(
+          etcContracts.autonomousConverter.address
         )
-        const mtTokenBalanceOfOwnerBefore = await etcMetToken.balanceOf(OWNER)
+        const mtTokenBalanceOfOwnerBefore = await etcContracts.metToken.balanceOf(
+          OWNER
+        )
 
-        const txChange = await etcAutonomousConverter.convertEthToMet(
+        const txChange = await etcContracts.autonomousConverter.convertEthToMet(
           MIN_MET_RETURN,
           { from: OWNER, value: WEI_SENT }
         )
         assert(txChange, 'ETH to MET transaction failed')
 
         const ethBalanceOfACAfter = await web3.eth.getBalance(
-          etcAutonomousConverter.address
+          etcContracts.autonomousConverter.address
         )
-        const metBalanceOfACAfter = await etcMetToken.balanceOf(
-          etcAutonomousConverter.address
+        const metBalanceOfACAfter = await etcContracts.metToken.balanceOf(
+          etcContracts.autonomousConverter.address
         )
-        const mtTokenBalanceOfOwnerAfter = await etcMetToken.balanceOf(OWNER)
-        const smartTokenAfterBalance = await etcSmartToken.balanceOf(OWNER, {
-          from: etcAutonomousConverter.address
-        })
+        const mtTokenBalanceOfOwnerAfter = await etcContracts.metToken.balanceOf(
+          OWNER
+        )
+        const smartTokenAfterBalance = await etcContracts.smartToken.balanceOf(
+          OWNER,
+          {
+            from: etcContracts.autonomousConverter.address
+          }
+        )
 
         assert.equal(
           mtTokenBalanceOfOwnerAfter.toNumber() -
@@ -1214,315 +491,60 @@ contract('TokenPorter', accounts => {
       })
     })
 
-    it('Test Auction in ETC after import.', () => {
-      return new Promise(async (resolve, reject) => {
-        const exportFee = 1e16
-        const amountToExport = 3e23 - exportFee
-
-        const {
-          auctions,
-          metToken,
-          tokenPorter
-        } = await METGlobal.initContracts(
-          accounts,
-          TestRPCTime.getCurrentBlockTime() - 60,
-          MINIMUM_PRICE,
-          STARTING_PRICE,
-          TIME_SCALE
-        )
-        let initialAuctionEndTime = await auctions.initialAuctionEndTime()
-        const {
-          etcAuctions,
-          etcMetToken,
-          etcValidator
-        } = await METGlobal.initNonOGContracts(
-          accounts,
-          TestRPCTime.getCurrentBlockTime() - 60,
-          MINIMUM_PRICE,
-          STARTING_PRICE / 2,
-          TIME_SCALE,
-          initialAuctionEndTime.valueOf()
-        )
-        // Time travel to just a minute before initial auction end
-        await TestRPCTime.timeTravel(7 * SECS_IN_DAY - SECS_IN_MINUTE)
-        await TestRPCTime.mineBlock()
-
-        // get some balance for export
-        const buyer = accounts[7]
-        const amount = 1e18
-        await auctions.sendTransaction({ from: buyer, value: amount })
-
-        let SECS_TO_NEXT_MIDNIGHT = await secondsToNextMidnight()
-        await TestRPCTime.timeTravel(
-          SECS_TO_NEXT_MIDNIGHT + SECS_IN_DAY * 8 + 10 * SECS_IN_MINUTE
-        )
-        await TestRPCTime.mineBlock()
-        await auctions.sendTransaction({ from: buyer, value: amount })
-        destMetAddr = etcMetToken.address
-        await tokenPorter.addDestinationChain(destChain, destMetAddr, {
-          from: OWNER
-        })
-        // export all tokens
-        const expectedExtraData = 'extra data'
-        let tx = await metToken.export(
-          destChain,
-          destMetAddr,
-          buyer,
-          amountToExport,
-          exportFee,
-          web3.fromAscii(expectedExtraData),
-          { from: buyer }
-        )
-
-        // retrieve data from export receipt, it will be used for import in mock ETC
-        let decoder = ethjsABI.logDecoder(tokenPorter.abi)
-        const logExportReceipt = decoder(tx.receipt.logs)[0]
-
-        let importDataObj = await prepareImportData(tokenPorter, tx)
-        await etcMetToken.importMET(
-          web3.fromAscii('ETH'),
-          logExportReceipt.destinationChain,
-          importDataObj.addresses,
-          logExportReceipt.extraData,
-          importDataObj.burnHashes,
-          logExportReceipt.supplyOnAllChains,
-          importDataObj.importData,
-          importDataObj.root
-        )
-        // Before minting
-        var totalSupply = await etcMetToken.totalSupply()
-        assert.equal(totalSupply.valueOf(), 0, 'Total supply in ETC is not 0')
-
-        // validation and minting
-        let signature = web3.eth.sign(OWNER, importDataObj.burnHashes[1])
-        let totalSupplyInSourceChain = (await metToken.totalSupply()).toNumber()
-        await etcValidator.attestHash(
-          importDataObj.burnHashes[1],
-          web3.fromAscii('ETH'),
-          importDataObj.addresses[1],
-          parseInt(importDataObj.importData[1]),
-          parseInt(importDataObj.importData[2]),
-          importDataObj.merkelProof,
-          importDataObj.extraData,
-          signature,
-          totalSupplyInSourceChain,
-          { from: OWNER }
-        )
-        signature = web3.eth.sign(accounts[1], importDataObj.burnHashes[1])
-        await etcValidator.attestHash(
-          importDataObj.burnHashes[1],
-          web3.fromAscii('ETH'),
-          importDataObj.addresses[1],
-          parseInt(importDataObj.importData[1]),
-          parseInt(importDataObj.importData[2]),
-          importDataObj.merkelProof,
-          importDataObj.extraData,
-          signature,
-          totalSupplyInSourceChain,
-          { from: accounts[1] }
-        )
-        // After minting
-
-        await TestRPCTime.timeTravel(1 * SECS_IN_DAY)
-        await TestRPCTime.mineBlock()
-        const amountUsedForPurchase = 1e18
-
-        const expectedTokenPurchase = 552863677660940280
-        let expectedWeiPerToken = 1808764150017608980
-        // const tokensInNextAuction = 8e24 + 3 * 2880e18
-        // perform actual transaction
-        const mtTokenBalanceBefore = await etcMetToken.balanceOf(OWNER)
-
-        tx = await etcAuctions.sendTransaction({
-          from: OWNER,
-          value: amountUsedForPurchase
-        })
-
-        let lastPurchasePrice = await etcAuctions.lastPurchasePrice()
-        assert.equal(
-          lastPurchasePrice.valueOf(),
-          expectedWeiPerToken,
-          'last Purchase price is not correct'
-        )
-
-        const mtTokenBalanceAfter = await etcMetToken.balanceOf(OWNER)
-        assert.equal(
-          mtTokenBalanceAfter.sub(mtTokenBalanceBefore).valueOf(),
-          expectedTokenPurchase,
-          'Total purchased/minted tokens are not correct'
-        )
-
-        await TestRPCTime.timeTravel(SECS_IN_DAY)
-        await TestRPCTime.mineBlock()
-        // const expectedNextAuctionPrice = 20736727076
-
-        await etcAuctions.sendTransaction({
-          from: OWNER,
-          value: amountUsedForPurchase
-        })
-
-        expectedWeiPerToken = 1875392426219
-
-        lastPurchasePrice = await etcAuctions.lastPurchasePrice()
-        assert.closeTo(
-          lastPurchasePrice.toNumber(),
-          expectedWeiPerToken,
-          200,
-          'Expected purchase price is wrong'
-        )
-
-        resolve()
-      })
-    })
-
     it('Export test with merkle path . ETH to ETC', () => {
       return new Promise(async (resolve, reject) => {
         const exportFee = 1e16
         const amountToExport = 1e17 - exportFee
-        const {
-          auctions,
-          metToken,
-          tokenPorter
-        } = await METGlobal.initContracts(
-          accounts,
-          TestRPCTime.getCurrentBlockTime(),
-          MINIMUM_PRICE,
-          STARTING_PRICE,
-          TIME_SCALE
-        )
-
-        let initialAuctionEndTime = await auctions.initialAuctionEndTime()
-        const {
-          etcAuctions,
-          etcMetToken,
-          etcTokenPorter,
-          etcValidator
-        } = await METGlobal.initNonOGContracts(
-          accounts,
-          TestRPCTime.getCurrentBlockTime(),
-          MINIMUM_PRICE,
-          STARTING_PRICE / 2,
-          TIME_SCALE,
-          initialAuctionEndTime.valueOf()
-        )
         // Time travel to just a minute before initial auction end
         await TestRPCTime.timeTravel(7 * SECS_IN_DAY - SECS_IN_MINUTE)
         await TestRPCTime.mineBlock()
 
         // get some balance for export
-        const buyer = accounts[7]
+        const exporter = accounts[7]
         const amount = 1e18
-        await auctions.sendTransaction({ from: buyer, value: amount })
+        await ethContracts.auctions.sendTransaction({
+          from: exporter,
+          value: amount
+        })
 
-        var balanceOfBuyer = await metToken.balanceOf(buyer)
+        var balance = await ethContracts.metToken.balanceOf(exporter)
         assert.isAbove(
-          balanceOfBuyer.toNumber(),
+          balance.toNumber(),
           amountToExport,
           'Balance of buyer after purchase is not correct'
         )
-
-        const SECS_TO_NEXT_MIDNIGHT = await secondsToNextMidnight()
-        await TestRPCTime.timeTravel(SECS_TO_NEXT_MIDNIGHT)
-        await TestRPCTime.mineBlock()
-        await auctions.sendTransaction({ from: buyer, value: amount })
-        // await initETCMockContracts(await auctions.genesisTime())
-        destMetAddr = etcMetToken.address
-        await tokenPorter.addDestinationChain(destChain, destMetAddr, {
-          from: OWNER
-        })
-        await etcTokenPorter.addDestinationChain(
-          destChainETH,
-          metToken.address,
-          { from: OWNER }
-        )
-        // export all tokens
-        const expectedExtraData = 'extra data'
-        var tx
+        var totalSupplyBefore = await etcContracts.metToken.totalSupply()
         for (let i = 0; i < 8; i++) {
-          tx = await metToken.export(
-            destChain,
-            destMetAddr,
-            buyer,
+          await Utils.importExport(
+            'ETH',
+            ethContracts,
+            etcContracts,
             amountToExport,
             exportFee,
-            web3.fromAscii(expectedExtraData),
-            { from: buyer }
+            exporter,
+            accounts[9],
+            OWNER,
+            accounts[1]
           )
         }
-        // retrieve data from export receipt, it will be used for import in mock ETC
-        let decoder = ethjsABI.logDecoder(tokenPorter.abi)
-        let logExportReceipt = decoder(tx.receipt.logs)[0]
-
-        let importDataObj = await prepareImportData(tokenPorter, tx)
-
-        // let verified = await etcValidator.verifyProof(importDataObj.root, importDataObj.burnHashes[1], importDataObj.merkelProof)
-        await TestRPCTime.timeTravel(20 * SECS_IN_DAY)
-        await TestRPCTime.mineBlock()
-        tx = await etcMetToken.importMET(
-          web3.fromAscii('ETH'),
-          logExportReceipt.destinationChain,
-          importDataObj.addresses,
-          logExportReceipt.extraData,
-          importDataObj.burnHashes,
-          logExportReceipt.supplyOnAllChains,
-          importDataObj.importData,
-          importDataObj.root
-        )
-
-        await TestRPCTime.timeTravel(10)
-        await TestRPCTime.mineBlock()
-        // Before Minting
-        var totalSupply = await etcMetToken.totalSupply()
-        assert.equal(totalSupply.valueOf(), 0, 'Total supply in ETC is not 0')
-        let signature = web3.eth.sign(OWNER, importDataObj.burnHashes[1])
-        let totalSupplyInSourceChain = (await metToken.totalSupply()).toNumber()
-        await etcValidator.attestHash(
-          importDataObj.burnHashes[1],
-          web3.fromAscii('ETH'),
-          importDataObj.addresses[1],
-          parseInt(importDataObj.importData[1]),
-          parseInt(importDataObj.importData[2]),
-          importDataObj.merkelProof,
-          importDataObj.extraData,
-          signature,
-          totalSupplyInSourceChain,
-          { from: OWNER }
+        var totalSupplyAfter = await etcContracts.metToken.totalSupply()
+        assert.equal(
+          totalSupplyAfter.sub(totalSupplyBefore).valueOf(),
+          (amountToExport + exportFee) * 8
         )
         // After minting
-        let globalSupplyETH = await auctions.globalMetSupply()
-        let globalSupplyETC = await etcAuctions.globalMetSupply()
+        let globalSupplyETH = await ethContracts.auctions.globalMetSupply()
+        let globalSupplyETC = await etcContracts.auctions.globalMetSupply()
         assert.equal(
           globalSupplyETC.toNumber(),
           globalSupplyETH.toNumber(),
           'Global supply in two chain is not correct'
         )
-        let balanceAfterImport = await etcMetToken.balanceOf(
-          importDataObj.addresses[1]
+        let balanceAfterImport = await etcContracts.metToken.balanceOf(
+          accounts[9]
         )
 
-        assert.equal(balanceAfterImport.valueOf(), amountToExport)
-        let currentAuctionETC = await etcAuctions.currentAuction()
-        assert.equal(
-          currentAuctionETC.valueOf(),
-          21,
-          'Current Auction in ETC wrong'
-        )
-
-        totalSupply = await etcMetToken.totalSupply()
-        assert.equal(
-          totalSupply.sub(METTokenETCInitialSupply).valueOf(),
-          amountToExport + exportFee,
-          'Total supply after import is not correct'
-        )
-        globalSupplyETH = await auctions.globalMetSupply()
-        globalSupplyETC = await etcAuctions.globalMetSupply()
-        assert.equal(
-          globalSupplyETC.toNumber(),
-          globalSupplyETH.toNumber(),
-          'Global supply in two chain is not correct'
-        )
-        await TestRPCTime.timeTravel(SECS_IN_MINUTE)
-        await TestRPCTime.mineBlock()
+        assert.equal(balanceAfterImport.valueOf(), amountToExport * 8)
 
         resolve()
       })
