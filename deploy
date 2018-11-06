@@ -97,7 +97,7 @@ CHAINARG="--chain dev"
 BOOTNODES=""
 DATADIR=/tmp/parity/local/eth
 GASARGS="--reseal-min-period 0 --min-gas-price 0 --gasprice 0" 
-RPCAPI="--rpcapi=web3,eth,personal,rpc,net,parity,parity_accounts "
+RPCAPI="--rpcapi=web3,eth,personal,rpc,net,parity,parity_accounts,pubsub --ws-apis=web3,eth,personal,rpc,net,parity,parity_accounts,pubsub"
 OWNER_ADDRESS=0x0 #Todo- for live network enter owner's actual address here 
 #Bloq test nodes
 ETH_TEST_BOOTNODE="enode://a90b36105811c87207b3a9bef260c2bff02355b0f8c1bfbc1e8341ee332fc803bc0f62cbec61fcc443228580a7f2ec3eeab3b57a649203f6ae6955e54ee9dfac@35.202.109.171:30303"
@@ -234,7 +234,7 @@ fi
 
 if [[ $LIVE = 0 ]]; then
 #  PARITY="parity --geth --fat-db on --jsonrpc-port=$RPC --ws-port=$WS --port=$PORT --datadir=$DATADIR --tracing on  --pruning archive $CHAINARG $BOOTNODES $GASARGS > log/parity.$CHAIN.log 2>log/parity.$CHAIN.err.log"
-  PARITY="parity --geth $RPCAPI --jsonrpc-port=$RPC --ws-port=$WS --port=$PORT --datadir=$DATADIR --tracing off  --pruning archive $CHAINARG $BOOTNODES $GASARGS > log/parity.$CHAIN.log 2>log/parity.$CHAIN.err.log"
+  PARITY="parity --geth --jsonrpc-apis all --jsonrpc-hosts all --jsonrpc-interface all --jsonrpc-cors all --ws-interface all --ws-origins all --ws-hosts all --rpccorsdomain '*' $RPCAPI --jsonrpc-port=$RPC --ws-port=$WS --port=$PORT --datadir=$DATADIR --tracing off  --pruning archive $CHAINARG $BOOTNODES $GASARGS > log/parity.$CHAIN.log 2>log/parity.$CHAIN.err.log"
 else
   PARITY="parity --geth $RPCAPI $CHAINARG > log/parity.$CHAIN.log 2>log/parity.$CHAIN.err.log"
 fi
