@@ -199,7 +199,7 @@ then
      DATADIR=./parity/localnet/eth
      DEST="New Alchemy ETH devnet"
      CHAINARG="--chain devnet.json"
-     BOOTNODES="--bootnodes enode://cd9e6cdf5eca772edc5d1eed8d50178e8539efafba641a812e0bdd4e002dd67cad1d40dc28916b8bb81355b8ea77c35732c9c4ddd887105fa6f0d24f17dafd25@35.227.101.52:33333"
+     BOOTNODES="--bootnodes enode://cfc563d0c1ba5aa9a471babfcb876001501ab63ba6e2539054beea91deacbb279a6ba6fab17fb7b020251bf489bc5f3e9d5041c7b541513cb093a4c34c15db0a@35.227.101.52:33333"
   else
     DATADIR=/tmp/parity/local/eth
     DEST="Parity DevChain Local ETH"
@@ -225,7 +225,7 @@ then
      DATADIR=./parity/localnet/etc
      DEST="New Alchemy ETH devnet"
      CHAINARG="--chain devnet.json"
-     BOOTNODES="--bootnodes enode://c453a8167e5e3d2f67e2db7a44a8d514b1713f0e0fad43c698755a6e033902af47db5b74904a1f39d63139844b0e0a0b6a6f688c77daf2fc718b67c13260efe4@35.227.101.52:30301"
+     BOOTNODES="--bootnodes enode://a28ade8c720013e3ceeb9e65c5fba6cb3a007f62f808a5e9f9aa988b651f2394558b68ffbea8c876829f784237fa98dee7cb8094f121980c47dc6a9d9ddbc3d4@35.227.101.52:30301"
     else
      DATADIR=/tmp/parity/local/etc
      DEST="New Alchemy ETC Local"
@@ -323,7 +323,9 @@ fi
 if [[ $DEVNET = 1 ]]; then
   #create deployer account with default passphrase 
   curl -s -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"parity_newAccountFromPhrase","params":["user", ""],"id":0}' $PARITY_URL >/dev/null
-  LOCAL_ETH=0x004ec07d2329997267Ec62b4166639513386F32E
+  #LOCAL_ETH=0x004ec07d2329997267Ec62b4166639513386F32E
+  LOCAL_ETH=$ETHER_ADDR
+  echo "asdbds $LOCAL_ETH"
 fi
 
 echo "Authorizing deployer account ..."
