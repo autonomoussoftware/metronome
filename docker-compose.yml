@@ -1,0 +1,8 @@
+version: '3'
+services:
+  metronome:
+    build: .
+    container_name: metronome
+    volumes: 
+      - .:/usr/src
+    restart: always

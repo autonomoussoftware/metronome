@@ -323,8 +323,8 @@ fi
 if [[ $DEVNET = 1 ]]; then
   #create deployer account with default passphrase 
   curl -s -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"parity_newAccountFromPhrase","params":["user", ""],"id":0}' $PARITY_URL >/dev/null
-  #LOCAL_ETH=0x004ec07d2329997267Ec62b4166639513386F32E
-  LOCAL_ETH=$ETHER_ADDR
+  LOCAL_ETH=0x004ec07d2329997267Ec62b4166639513386F32E
+  #LOCAL_ETH=$ETHER_ADDR
   echo "asdbds $LOCAL_ETH"
 fi
 
