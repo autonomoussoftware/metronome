@@ -2,19 +2,12 @@ FROM patidarmanoj/solc0.4.21
 
 WORKDIR /usr/src
 
-COPY . .
+COPY ./Dockerfile .
 
 RUN apt-get update
+RUN apt install -y redis-server
+RUN apt-get install -y tmux
 RUN apt-get -y install wget
-
-RUN apt-get -y install make
-
-RUN wget http://download.redis.io/redis-stable.tar.gz
-RUN tar xvzf redis-stable.tar.gz
-WORKDIR /usr/src/redis-stable
-
-RUN make
-WORKDIR /usr/src
 
 RUN apt-get update
 RUN apt-get -y install sudo
