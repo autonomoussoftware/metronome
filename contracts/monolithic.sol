@@ -821,20 +821,20 @@ contract AutonomousConverter is Formula, Owned {
     }
 
     /// @notice send ETH and get MET
-    /// @param _mintReturn execute conversion only if return is equal or more than _mintReturn
+    /// @param _minReturn execute conversion only if return is equal or more than _mintReturn
     /// @return returnedMet MET retured after conversion
-    function convertEthToMet(uint _mintReturn) public payable returns (uint returnedMet) {
-        returnedMet = convert(WhichToken.Eth, _mintReturn, msg.value);
+    function convertEthToMet(uint _minReturn) public payable returns (uint returnedMet) {
+        returnedMet = convert(WhichToken.Eth, _minReturn, msg.value);
         emit ConvertEthToMet(msg.sender, msg.value, returnedMet);
     }
 
     /// @notice send MET and get ETH
     /// @dev Caller will be required to approve the AutonomousConverter to initiate the transfer
     /// @param _amount MET amount
-    /// @param _mintReturn execute conversion only if return is equal or more than _mintReturn
+    /// @param _minReturn execute conversion only if return is equal or more than _mintReturn
     /// @return returnedEth ETh returned after conversion
-    function convertMetToEth(uint _amount, uint _mintReturn) public returns (uint returnedEth) {
-        returnedEth = convert(WhichToken.Met, _mintReturn, _amount);
+    function convertMetToEth(uint _amount, uint _minReturn) public returns (uint returnedEth) {
+        returnedEth = convert(WhichToken.Met, _minReturn, _amount);
         emit ConvertMetToEth(msg.sender, returnedEth, _amount);
     }
 
@@ -869,16 +869,14 @@ contract AutonomousConverter is Formula, Owned {
             require(reserveToken.transferFrom(msg.sender, this, amnt));
         }
 
-        uint mintRet = mint(whichFrom, amnt, 1);
+        uint mintRet = mint(whichFrom, amnt);
         
         return redeem(to, mintRet, _minReturn);
     }
 
-    function mint(WhichToken which, uint _depositAmount, uint _minReturn) internal returns (uint256 amount) {
-        require(_minReturn > 0);
-
+    function mint(WhichToken which, uint _depositAmount) internal returns (uint256 amount) {
         amount = mintingReturn(which, _depositAmount);
-        require(amount >= _minReturn);
+        require(amount > 0);
         require(smartToken.mint(msg.sender, amount));
     }
 
@@ -1095,13 +1093,13 @@ contract Auctions is Pricer, Owned {
     }
 
     /// @notice Auction count at given the timestamp t
-    /// @param t timestamp
+    /// @param _tick timestamp
     /// @return Auction count
-    function whichAuction(uint t) public view returns(uint) {
-        if (whichTick(dailyAuctionStartTime) > t) {
+    function whichAuction(uint _tick) public view returns(uint) {
+        if (whichTick(dailyAuctionStartTime) > _tick) {
             return 0;
         } else {
-            return ((t - whichTick(dailyAuctionStartTime)) / DAY_IN_MINUTES) + 1;
+            return ((_tick - whichTick(dailyAuctionStartTime)) / DAY_IN_MINUTES) + 1;
         }
     }
 
