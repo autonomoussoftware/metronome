@@ -113,10 +113,10 @@ then
      BOOTNODES="--bootnodes $ETH_TEST_BOOTNODE"
   elif [[ $DEVNET = 1 ]]
   then
-     DATADIR=./parity/localnet/eth
+     DATADIR=./parity/devnet/eth
      DEST="New Alchemy ETH devnet"
-     CHAINARG="--chain devnet.json"
-     BOOTNODES="--bootnodes enode://cfc563d0c1ba5aa9a471babfcb876001501ab63ba6e2539054beea91deacbb279a6ba6fab17fb7b020251bf489bc5f3e9d5041c7b541513cb093a4c34c15db0a@35.227.101.52:33333"
+     CHAINARG="--chain devnet-eth.json"
+     BOOTNODES="--bootnodes enode://c84b1142224c2cd8c448ca2c6ff131285b334985af0c57e8d18652265c5a7c80447d6f3f9d393efe4e666b5bcbb1e2266066102453e1a489a23a64d7e2163016@35.229.86.198:33333"
   else
     DATADIR=/tmp/parity/local/eth
     DEST="Parity DevChain Local ETH"
@@ -139,10 +139,10 @@ then
      BOOTNODES="--bootnodes $ETC_TEST_BOOTNODE"
   elif [[ $DEVNET = 1 ]]
   then
-     DATADIR=./parity/localnet/etc
+     DATADIR=./parity/devnet/etc
      DEST="New Alchemy ETH devnet"
-     CHAINARG="--chain devnet.json"
-     BOOTNODES="--bootnodes enode://a28ade8c720013e3ceeb9e65c5fba6cb3a007f62f808a5e9f9aa988b651f2394558b68ffbea8c876829f784237fa98dee7cb8094f121980c47dc6a9d9ddbc3d4@35.227.101.52:30301"
+     CHAINARG="--chain devnet-etc.json"
+     BOOTNODES="--bootnodes enode://e791c02a432914b8109bd99b4f77fd1b19afacc6068882d32737705a01403c6b2a46a8b9372dee990d0de34d3973dbca6f92dda214cb00a6187178eb7537808f@35.229.86.198:30301"
     else
      DATADIR=/tmp/parity/local/etc
      DEST="New Alchemy ETC Local"
