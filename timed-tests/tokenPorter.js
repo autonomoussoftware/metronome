@@ -27,6 +27,7 @@ const assert = require('chai').assert
 const TestRPCTime = require('../test/shared/time')
 const METGlobal = require('../test/shared/inits')
 const Utils = require('../test/shared/utils')
+const ethers = require('ethers')
 
 contract('TokenPorter', accounts => {
   const OWNER = accounts[0]
@@ -225,6 +226,128 @@ contract('TokenPorter', accounts => {
           'Daily mintable is wrong'
         )
 
+        resolve()
+      })
+    })
+
+    it('Daily minting should be correct if any auction missed in one chain.', () => {
+      return new Promise(async (resolve, reject) => {
+        // Time travel to just a minute before initial auction end
+        await TestRPCTime.timeTravel(12 * SECS_IN_DAY - SECS_IN_MINUTE)
+        await TestRPCTime.mineBlock()
+        exportFee = 1e16
+        amountToExport = 1e16
+        // get some balance for export
+        const exporter = accounts[8]
+        const amount = 1e19
+        await ethContracts.auctions.sendTransaction({
+          from: exporter,
+          value: amount
+        })
+
+        var balance = await ethContracts.metToken.balanceOf(exporter)
+        console.log('met balance of exporter', balance)
+        assert.isAbove(
+          balance.toNumber(),
+          amountToExport + exportFee,
+          'Balance of buyer after purchase is not correct'
+        )
+        // Before Minting
+        var totalSupply = await etcContracts.metToken.totalSupply()
+
+        assert.equal(totalSupply.valueOf(), 0, 'Total supply in ETC is not 0')
+
+        await Utils.importExport(
+          'ETH',
+          ethContracts,
+          etcContracts,
+          amountToExport,
+          exportFee,
+          exporter,
+          accounts[8],
+          OWNER,
+          accounts[1]
+        )
+
+        // After minting
+        await TestRPCTime.timeTravel(1 * SECS_IN_DAY - SECS_IN_MINUTE)
+        await TestRPCTime.mineBlock()
+        await ethContracts.auctions.sendTransaction({
+          from: exporter,
+          value: amount
+        })
+        await TestRPCTime.timeTravel(1 * SECS_IN_DAY - SECS_IN_MINUTE)
+        await TestRPCTime.mineBlock()
+        await ethContracts.auctions.sendTransaction({
+          from: exporter,
+          value: amount
+        })
+        await TestRPCTime.timeTravel(1 * SECS_IN_DAY - SECS_IN_MINUTE)
+        await TestRPCTime.mineBlock()
+        await ethContracts.auctions.sendTransaction({
+          from: exporter,
+          value: amount
+        })
+        await TestRPCTime.timeTravel(1 * SECS_IN_DAY - SECS_IN_MINUTE)
+        await TestRPCTime.mineBlock()
+        await ethContracts.auctions.sendTransaction({
+          from: exporter,
+          value: amount
+        })
+        await Utils.importExport(
+          'ETH',
+          ethContracts,
+          etcContracts,
+          1e19,
+          exportFee,
+          exporter,
+          accounts[8],
+          OWNER,
+          accounts[1]
+        )
+        // await ethContracts.auctions.updateMintable()
+        // await ethContracts.auctions.updateMintable()
+        await TestRPCTime.timeTravel(1 * SECS_IN_DAY - SECS_IN_MINUTE)
+        await TestRPCTime.mineBlock()
+        await ethContracts.auctions.sendTransaction({
+          from: exporter,
+          value: amount
+        })
+        await etcContracts.auctions.sendTransaction({
+          from: exporter,
+          value: amount
+        })
+        let etcMintable = await etcContracts.auctions.mintable()
+        let ethMintable = await ethContracts.auctions.mintable()
+        let etcTotalSupply = await etcContracts.metToken.totalSupply()
+        let ethTotalSupply = await ethContracts.metToken.totalSupply()
+        let globalSupply = etcMintable.add(ethMintable.valueOf()).add(etcTotalSupply.valueOf()).add(ethTotalSupply.valueOf())
+        let expectedGlobalSupply = ethers.utils.bigNumberify(web3.toHex(1.0028800e25))
+        globalSupply = ethers.utils.bigNumberify(web3.toHex(globalSupply.valueOf()))
+        assert(expectedGlobalSupply.gte(globalSupply), 'Global supply is wrong')
+        assert(expectedGlobalSupply.sub(globalSupply).lt(ethers.utils.bigNumberify(10)), 'Global supply is wrong')
+
+        await TestRPCTime.timeTravel(1 * SECS_IN_DAY - SECS_IN_MINUTE)
+        await TestRPCTime.mineBlock()
+        await ethContracts.auctions.sendTransaction({
+          from: exporter,
+          value: amount
+        })
+
+        // Some auction missed in etc.
+        await etcContracts.auctions.sendTransaction({
+          from: exporter,
+          value: amount
+        })
+        etcMintable = await etcContracts.auctions.mintable()
+        ethMintable = await ethContracts.auctions.mintable()
+        etcTotalSupply = await etcContracts.metToken.totalSupply()
+        ethTotalSupply = await ethContracts.metToken.totalSupply()
+        globalSupply = etcMintable.add(ethMintable.valueOf()).add(etcTotalSupply.valueOf()).add(ethTotalSupply.valueOf())
+        globalSupply = ethers.utils.bigNumberify(web3.toHex(globalSupply.valueOf()))
+        expectedGlobalSupply = ethers.utils.bigNumberify(web3.toHex(1.003168E25))
+        assert(expectedGlobalSupply.gte(globalSupply), 'Global supply is wrong')
+        assert(expectedGlobalSupply.sub(globalSupply).lte(ethers.utils.bigNumberify(10)), 'Global supply is wrong')
         resolve()
       })
     })

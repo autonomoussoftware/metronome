@@ -1001,10 +1001,8 @@ contract Auctions is Pricer, Owned {
         uint amountForPurchase = msg.value;
         uint excessAmount;
 
-        if (currentAuction() > whichAuction(lastPurchaseTick)) {
-            proceeds.closeAuction();
-            restartAuction();
-        }
+        // start next day auction if currentAuction() > whichAuction(lastPurchaseTick)
+        restartAuction();
 
         if (isInitialAuctionEnded()) {
             require(now >= dailyAuctionStartTime);
@@ -1580,21 +1578,25 @@ contract Auctions is Pricer, Owned {
         return ((whichAuction(_tick)) * 1 days) / timeScale + dailyAuctionStartTime - 1 days;
     }
 
-    /// @notice start the next day's auction
-    function restartAuction() private {
-        uint time;
-        uint price;
-        uint auctionTokens;
-        (time, price, auctionTokens) = nextAuction();
-
+    /// @notice start the next day's auction. Forward proceeding and update mintable.
+    /// This is also called by tokenPorter contract during export/import so that mintable is updated correctly before moving tokens.
+    function restartAuction() public returns (bool) {
         uint thisAuction = currentAuction();
-        if (thisAuction > AUCTION_WHEN_PERCENTAGE_LOGIC_STARTS) {
-            globalSupplyAfterPercentageLogic = globalSupplyAfterPercentageLogic.add(globalDailySupply());
+        if (thisAuction > whichAuction(lastPurchaseTick)) {
+            proceeds.closeAuction();
+            uint time;
+            uint price;
+            uint auctionTokens;
+            (time, price, auctionTokens) = nextAuction();
+            lastPurchasePrice = price;
+            lastPurchaseTick = whichTick(time);
+            mintable = mintable.add(auctionTokens);
+            if (thisAuction > AUCTION_WHEN_PERCENTAGE_LOGIC_STARTS) {
+                globalSupplyAfterPercentageLogic = globalSupplyAfterPercentageLogic.add(globalDailySupply());
+            }
+            return true;
         }
-
-        mintable = mintable.add(auctionTokens);
-        lastPurchasePrice = price;
-        lastPurchaseTick = whichTick(time);
+        return false;
     }
 }
 
@@ -1848,14 +1850,13 @@ contract TokenPorter is ITokenPorter, Owned {
         require(_importData.length == 8);
         require(_addresses.length == 2);
         require(_burnHashes.length == 2);
-
         require(isReceiptValid(_originChain, _destinationChain, _addresses, _extraData, _burnHashes, 
         _supplyOnAllChains, _importData));
-        
         require(_destinationChain == auctions.chain());
         require(_addresses[0] == address(token));
         require(_importData[1] != 0);
-
+        // Update mintable proportionally due for missed auctions
+        auctions.restartAuction();
         // We do not want to change already deployed interface, hence accepting '_proof' 
         // as bytes and converting into bytes32. Here _proof is merkle root.
         merkleRoots[_burnHashes[1]] = bytesToBytes32(_proof);
@@ -1884,7 +1885,8 @@ contract TokenPorter is ITokenPorter, Owned {
         
         require(token.balanceOf(tokenOwner) >= _amount.add(_fee));
         require(_fee >= minimumExportFee && _fee >= (_amount.mul(exportFee).div(10000)));
-
+        // Update mintable proportionally due for missed auctions
+        auctions.restartAuction();
         token.destroy(tokenOwner, _amount.add(_fee));
 
         uint dailyMintable = auctions.dailyMintable();
