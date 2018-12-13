@@ -30,22 +30,20 @@ LICENSE
 usage()
 {
   cat <<- _EOM_
-  deploy: compile and push  metronome to a local parity instance by default,
-  overriding auction launch date, price and supply, if specified.
-
+  deploy: compile and push  TokenPorter and Validator contracts to a local parity instance by default,
+  
   By default, deploy deploys to a local clean ETH "dev chain" instance of parity.
   If -i or --interactive is offerred in local deployment then it will do deploy and launch in one step. 
-  If --test is offered, deploy will connect to test network and deploy there. Note you will need NA testnet ETH. Contact your SA for help.
-  For live and testnet, launch has to be done in second step after deploy and initialization done
+  If --test is offered, deploy will connect to test network and
+  deploy there. Note you will need testnet ETH. Contact your SA for help.
   If --live is offered, deploy will connect to the default parity instance.
 
   If --chain etc is offered, deploy will deploy to ETC. Note that deploy will
   consider ETC to be the "Non OG" chain, and initialize a destination metronome.
 
   usage: deploy [--supply supply of Metronome] [-P | --pass <password> ]
-  [-p | --price <price at start of MET Auction] [--live | --test]
-  [-O | --owner <owner eth address> ] [--auction auction_epoch_seconds] [-t | --timescale Time Mult]
-  [-i | --interactive] [--seed ] [--chain eth|etc ] | [-h]
+  [--live | --test] [-O | --owner <owner eth address> ] 
+  [-i | --interactive] [--chain eth|etc ] | [-h]
   [-v | --validators <list of three validators address>]
 
 _EOM_
@@ -76,17 +74,13 @@ check_system()
 
 check_system
 
-AUCTION=0
-SEED=""
 INTERACTIVE=0
-SUPPLY=10000000
 DEST="Parity DevChain Local ETH"
 LIVE=0
 PASS=""
 TEST=0
 DEVNET=0
 LOCAL=1
-TIMESCALE=1
 CHAIN="eth"
 CHAIN_DIR=js/$CHAIN
 RPC=8545
@@ -101,15 +95,10 @@ OWNER_ADDRESS=0x0 #Todo- for live network enter owner's actual address here
 #Bloq test nodes
 ETH_TEST_BOOTNODE="enode://a90b36105811c87207b3a9bef260c2bff02355b0f8c1bfbc1e8341ee332fc803bc0f62cbec61fcc443228580a7f2ec3eeab3b57a649203f6ae6955e54ee9dfac@35.202.109.171:30303"
 ETC_TEST_BOOTNODE="enode://5c604378ba83b38a4d8a47e45305d4c5b3a6841172fe2b55e062bde6fdd8b7a6f44f01ef5cc8e4c3a5d40ce78d2040e33b4f9697d23f9c20a1914e24278477d3@35.184.26.97:30303"
-#NA test nodes
-#ETH_TEST_BOOTNODE="enode://fa2ffb624f7ade1f432e0a37249b201817bffd597913b7bcde2db93618d7604f68c74fa51e3700e2888a295a80591d03d5d013180866a50c3758cade3b2e92e9@35.227.101.52:33333"
-#ETC_TEST_BOOTNODE="enode://b4035a5527d17d588d576c4cfcb3c39d7e308fc4c2fc5720813e21770decd17de3a93602ac4b36422964b479cabb82dfb1dc6c5cfedd4061954dfdbfbc309a6a@35.227.101.52:30303"
+#Test nodes
 ETH_TEST_PARITYSPEC="parity-spec.json"
 ETC_TEST_PARITYSPEC="parity-spec-etc.json"
 VALIDATORS="[]"
-
-# Price in ETH per MET at start
-PRICE=2
 
 while [ "$1" != "" ]; do
   case $1 in
@@ -132,15 +121,6 @@ while [ "$1" != "" ]; do
     -h | --help ) usage
       exit
       ;;
-    -s | --supply ) shift
-      SUPPLY=$1
-      ;;
-    -p | --price ) shift
-      PRICE=$1
-      ;;
-    -a | --auction ) shift
-      AUCTION=$1
-      ;;
     -v | --validators ) shift
       if [[ "$1" = "0x"* ]] && [[ "$2" = "0x"* ]] && [[ "$3" = "0x"* ]]; then
         VALIDATORS="['$1', '$2', '$3']"
@@ -162,14 +142,8 @@ while [ "$1" != "" ]; do
       CHAIN=$1
       CHAIN_DIR=js/$CHAIN
       ;;
-    -t | --timescale ) shift
-      TIMESCALE=$1
-      ;;
     -i | --interactive )
       INTERACTIVE=1
-      ;;
-    --seed )
-      SEED=,$CHAIN_DIR/testStart.js
       ;;
     * ) usage
       exit 1
@@ -179,14 +153,13 @@ done
 
 if [[ "$CHAIN" = "eth" ]]
 then
-  SUPPLY=10000000
   RPC=8545
   WS=8546
   PORT=33333
   if [[ $LIVE = 1 ]]
   then
-    echo "ETH live net deploy is not allowed."
-    exit 1
+    DEST="Etc Live Net"
+    CHAINARG=""
   elif [[ $TEST = 1 ]]
   then
      DATADIR=./parity/testnet/eth
@@ -205,14 +178,13 @@ then
   fi
 elif [[ "$CHAIN" = "etc" ]]
 then
-  SUPPLY=0
   RPC=8555
   WS=8556
   PORT=30301
   if [[ $LIVE = 1 ]]
   then
-    DEST="Etc Live Net"
-    CHAINARG="--chain classic"
+    echo "ETC live net upgrade is not allowed."
+    exit 1
   elif [[ $TEST = 1 ]]
   then
      DATADIR=./parity/testnet/etc
@@ -232,7 +204,6 @@ then
 fi
 
 if [[ $LIVE = 0 ]]; then
-#  PARITY="parity --geth --fat-db on --jsonrpc-port=$RPC --ws-port=$WS --port=$PORT --datadir=$DATADIR --tracing on  --pruning archive $CHAINARG $BOOTNODES $GASARGS > log/parity.$CHAIN.log 2>log/parity.$CHAIN.err.log"
   PARITY="parity --geth --jsonrpc-apis all --jsonrpc-hosts all --jsonrpc-interface all --jsonrpc-cors all --ws-interface all --ws-origins all --ws-hosts all --rpccorsdomain '*' $RPCAPI --jsonrpc-port=$RPC --ws-port=$WS --port=$PORT --datadir=$DATADIR --tracing off  --pruning archive $CHAINARG $BOOTNODES $GASARGS > log/parity.$CHAIN.log 2>log/parity.$CHAIN.err.log"
 else
   PARITY="parity --geth $RPCAPI $CHAINARG > log/parity.$CHAIN.log 2>log/parity.$CHAIN.err.log"
@@ -243,14 +214,11 @@ PARITY_URL="http://127.0.0.1:$RPC"
 LOCAL_ETH=$ETHER_ADDR
 
 if [[ $LOCAL = 1 ]]; then
-  LOCAL_ETH=0x00a329c0648769a73afac7f9381e08fb43dbea72 
-  if [[ $AUCTION = 0 ]]; then
-    AUCTION=$(expr `date +%s` + 10)
-  fi
+  LOCAL_ETH=0x00a329c0648769a73afac7f9381e08fb43dbea72
 else
   if [[ $PASS = "" ]]
   then
-    echo "Live and Test net deploy requires password. Use -P or --pass."
+    echo "Live and test net deploy requires password. Use -P or --pass."
     exit 1
   fi
   if [[ $OWNER_ADDRESS = 0x0 ]]
@@ -266,16 +234,12 @@ else
 
 fi
 
-echo "About to Deploy Metronome with Supply $SUPPLY to $DEST.."
-if [[ $LOCAL = 1 ]] && [[ $TIMESCALE = 1 ]]
-then
-  echo "Running on local chain but realtime.. Can I suggest -t 1000?"
-fi
+echo "About to Deploy TokenPorter and Validator contracts to $DEST.."
 
 read -p "Press enter to continue"
 
 echo "Cleaning up old deploy stuff..."
-rm $CHAIN_DIR/metronome.js  2>/dev/null
+rm $CHAIN_DIR/metronome-v2.js  2>/dev/null
 
 echo "Turning off Parity..."
 if [[ "$CHAIN" = "etc" ]] 
@@ -296,29 +260,14 @@ fi
 sleep 5
 
 
-if [[ $LOCAL = 1 ]] && [[ $DEVNET = 0 ]]
-then
-  rm -rf $DATADIR
-  mkdir -p $DATADIR
-fi
-
-NODES_CACHE=/tmp/natestnet/chains/GethTranslation/network/nodes.json
-if [ $TEST = 1 ] && [ -f $NODES_CACHE ]
-then
-  rm $NODES_CACHE
-fi
-
 echo "Loading Parity..."
 eval $PARITY &
+
 sleep 5
 
 #set account for devnet
 if [[ $DEVNET = 1 ]]; then
-  #create deployer account with default passphrase 
-  curl -s -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"parity_newAccountFromPhrase","params":["user", ""],"id":0}' $PARITY_URL >/dev/null
   LOCAL_ETH=0x004ec07d2329997267Ec62b4166639513386F32E
-  #LOCAL_ETH=$ETHER_ADDR
-  echo "asdbds $LOCAL_ETH"
 fi
 
 echo "Authorizing deployer account ..."
@@ -344,74 +293,36 @@ echo "Deploying on $DEST.."
 TMP_DIR=$CHAIN_DIR/tmp
 mkdir $TMP_DIR
 
-echo "" > $CHAIN_DIR/metronome.js
-
-echo -e "contracts/monolithic.sol:Proceeds\n$TMP_DIR/Proceeds.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
-echo -e "contracts/monolithic.sol:Auctions\n$TMP_DIR/Auctions.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
-echo -e "contracts/monolithic.sol:AutonomousConverter\n$TMP_DIR/AutonomousConverter.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
-echo -e "contracts/monolithic.sol:SmartToken\n$TMP_DIR/SmartToken.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
-echo -e "contracts/monolithic.sol:METToken\n$TMP_DIR/METToken.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
+echo "" > $CHAIN_DIR/metronome-v2.js
+sleep 5
 echo -e "contracts/monolithic.sol:TokenPorter\n$TMP_DIR/TokenPorter.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
+sleep 5
 echo -e "contracts/monolithic.sol:Validator\n$TMP_DIR/Validator.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
-cat $TMP_DIR/Proceeds.js $TMP_DIR/Auctions.js $TMP_DIR/AutonomousConverter.js $TMP_DIR/SmartToken.js $TMP_DIR/METToken.js $TMP_DIR/TokenPorter.js $TMP_DIR/Validator.js > $CHAIN_DIR/metronome.js
+sleep 5
+cat $TMP_DIR/TokenPorter.js $TMP_DIR/Validator.js > $CHAIN_DIR/metronome-v2.js
 rm -r $TMP_DIR
 
-#Reading founder list
-foundersArray="[]"
-if [[ "$CHAIN" = "eth" ]]
-then
-  input="./foundersList.csv"
-  foundersArray=""
-  while IFS=',' read -r f1 f2
-  do 
-    #echo "$f1 $f2"
-    f2=${f2//[$'\r']}
-    foundersArray="$foundersArray'$f1$f2', "
-  done < <(tail -n "+2" $input)
-
-  foundersArray="[$foundersArray]"
-  foundersArray=${foundersArray/, ]/]}
-fi
-
-foundersArray="var FOUNDERS = $foundersArray"
-#echo $foundersArray
 if [[ $LOCAL = 1 ]]  && [[ $VALIDATORS = "[]" ]]; then
   VALIDATORS="['$OWNER_ADDRESS', '$LOCAL_ETH', '$OWNER_ADDRESS']"
   echo "VALIDATORS $VALIDATORS"
 fi  
 
-cat <<EOF > $CHAIN_DIR/const.js
+cat <<EOF > $CHAIN_DIR/const-v2.js
 // File generated by deploy -- edits will get overwritten!
 
-var PRICE = $PRICE
 var ONE = 1
-var NUMTOKENS = $SUPPLY
-var START = $AUCTION
-var TIMESCALE = $TIMESCALE
-var MINPRICE = 3300000000000
 var ETHER_ADDR = '$LOCAL_ETH'
 var OWNER_ADDRESS = '$OWNER_ADDRESS'
 var OWNER_PASS = '$PASS'
 var VALIDATORS = $VALIDATORS
-$foundersArray
 EOF
 
-PRELOAD="--preload $CHAIN_DIR/metronome.js,$CHAIN_DIR/const.js,js/common.js,$CHAIN_DIR/initMetronome.js"
+PRELOAD="--preload $CHAIN_DIR/metronome.js,$CHAIN_DIR/metronome-v2.js,$CHAIN_DIR/const-v2.js,$CHAIN_DIR/updateContracts.js"
 
-# Local with interactive will deploy, init and launch Metronome.
-if [[ $LOCAL = 1 ]] && [[ $INTERACTIVE = 1 ]]
-then
-  geth attach $PARITY_URL $PRELOAD,$CHAIN_DIR/launchMetronome.js$SEED
-  exit 0
-fi
-
-# For live and test environment, we want to force two step process 1) Deploy and init 2) launch
 if [[ $INTERACTIVE = 1 ]]
   then
   geth attach $PARITY_URL $PRELOAD
 else 
   geth --exec 'eth.blockNumber' attach $PARITY_URL $PRELOAD
 fi
-echo 'To launch metronome, execute launch script using command ./launch --owner <address of new owner of contracts> --pass <password of owners address>, --auction <start time in epoc seconds>'
-
 exit 0
