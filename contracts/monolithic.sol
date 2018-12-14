@@ -1978,7 +1978,6 @@ contract TokenPorter is ITokenPorter, Owned {
         return out;
     }
 
-    //TODO: what to do with fee? should it be part of global supply check?
     /// @notice Check global supply is still valid with current import amount and fee
     function isGlobalSupplyValid(uint amount, uint fee, uint globalSupplyInOtherChains) private view returns (bool) {
         uint amountToImport = amount.add(fee);
