@@ -1409,6 +1409,28 @@ contract Auctions is Pricer, Owned {
             refund = _wei.sub(weiPaying);
         }
     }
+
+    /// @notice start the next day's auction. Forward proceeding and update mintable.
+    /// This is also called by tokenPorter contract during export/import so that mintable 
+    /// is updated correctly before moving tokens.
+    function restartAuction() public returns (bool) {
+        uint thisAuction = currentAuction();
+        if (thisAuction > whichAuction(lastPurchaseTick)) {
+            proceeds.closeAuction();
+            uint time;
+            uint price;
+            uint auctionTokens;
+            (time, price, auctionTokens) = nextAuction();
+            lastPurchasePrice = price;
+            lastPurchaseTick = whichTick(time);
+            mintable = mintable.add(auctionTokens);
+            if (thisAuction > AUCTION_WHEN_PERCENTAGE_LOGIC_STARTS) {
+                globalSupplyAfterPercentageLogic = globalSupplyAfterPercentageLogic.add(globalDailySupply());
+            }
+            return true;
+        }
+        return false;
+    }
     
     /// @notice Return the information about the next auction
     /// @return _startTime Start time of next auction
@@ -1576,27 +1598,6 @@ contract Auctions is Pricer, Owned {
     /// @param _tick Metronome tick
     function auctionStartTime(uint _tick) private view returns (uint) {
         return ((whichAuction(_tick)) * 1 days) / timeScale + dailyAuctionStartTime - 1 days;
-    }
-
-    /// @notice start the next day's auction. Forward proceeding and update mintable.
-    /// This is also called by tokenPorter contract during export/import so that mintable is updated correctly before moving tokens.
-    function restartAuction() public returns (bool) {
-        uint thisAuction = currentAuction();
-        if (thisAuction > whichAuction(lastPurchaseTick)) {
-            proceeds.closeAuction();
-            uint time;
-            uint price;
-            uint auctionTokens;
-            (time, price, auctionTokens) = nextAuction();
-            lastPurchasePrice = price;
-            lastPurchaseTick = whichTick(time);
-            mintable = mintable.add(auctionTokens);
-            if (thisAuction > AUCTION_WHEN_PERCENTAGE_LOGIC_STARTS) {
-                globalSupplyAfterPercentageLogic = globalSupplyAfterPercentageLogic.add(globalDailySupply());
-            }
-            return true;
-        }
-        return false;
     }
 }
 
