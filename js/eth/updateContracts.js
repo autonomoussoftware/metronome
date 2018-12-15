@@ -45,10 +45,10 @@ waitForTx(hash)
 hash = TokenPorter.setValidator(Validator.address, {from: ETHER_ADDR})
 waitForTx(hash)
 // Todo: take this value from input param? 
-hash = TokenPorter.setExportFeePerTenThousand(100, {from: ETHER_ADDR})
+hash = TokenPorter.setExportFeePerTenThousand(200, {from: ETHER_ADDR})
 waitForTx(hash)
 // Todo: take this value from input param? 
-hash = TokenPorter.setMinimumExportFee(1e12, {from: ETHER_ADDR})
+hash = TokenPorter.setMinimumExportFee(2e12, {from: ETHER_ADDR})
 waitForTx(hash)
 
 console.log('TokenPorter published at ' + TokenPorter.address)

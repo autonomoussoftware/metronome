@@ -23,7 +23,7 @@
     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-/* globals ETHER_ADDR, NUMTOKENS, ONE, OWNER_ADDRESS */
+/* globals ETHER_ADDR, OWNER_ADDRESS */
 /* globals eth */
 /* globals Auctions, AutonomousConverter, METToken, Proceeds, SmartToken, TokenPorter, Validator, Validator */
 var hash
@@ -35,8 +35,6 @@ function waitForTx (hash) {
   console.log('tx', hash)
   return receipt
 }
-
-console.log('Initializing with ', ONE, 'and ', NUMTOKENS)
 
 eth.defaultAccount = ETHER_ADDR
 
@@ -70,28 +68,33 @@ var newOwner = OWNER_ADDRESS
 console.log('\nConfiguring Validator')
 // Todo: initValidator will take address of off-chain validators
 hash = Validator.initValidator(METToken.address, Auctions.address, TokenPorter.address, {from: ETHER_ADDR})
+hash = Validator.addValidator(VALIDATORS[0], {from: ETHER_ADDR})
 waitForTx(hash)
-hash = Validator.addValidator(ETHER_ADDR, {from: ETHER_ADDR})
+hash = Validator.addValidator(VALIDATORS[1], {from: ETHER_ADDR})
 waitForTx(hash)
-hash = Validator.addValidator(newOwner, {from: ETHER_ADDR})
+hash = Validator.addValidator(VALIDATORS[2], {from: ETHER_ADDR})
 waitForTx(hash)
 console.log('Validator published at ' + Validator.address)
 
-console.log('\nChanging Ownership')
-hash = eth.sendTransaction({to: newOwner, from: ETHER_ADDR, value: web3.toWei(2, 'ether')}) // Todo: new owner in prod should already have eth.
-waitForTx(hash)
+console.log('\nChanging Ownership of METToken')
 hash = METToken.changeOwnership(newOwner, {from: ETHER_ADDR})
 waitForTx(hash)
+console.log('\nChanging Ownership of AutonomousConverter')
 hash = AutonomousConverter.changeOwnership(newOwner, {from: ETHER_ADDR})
 waitForTx(hash)
+console.log('\nChanging Ownership of Auctions')
 hash = Auctions.changeOwnership(newOwner, {from: ETHER_ADDR})
 waitForTx(hash)
+console.log('\nChanging Ownership of Proceeds')
 hash = Proceeds.changeOwnership(newOwner, {from: ETHER_ADDR})
 waitForTx(hash)
+console.log('\nChanging Ownership of SmartToken')
 hash = SmartToken.changeOwnership(newOwner, {from: ETHER_ADDR})
 waitForTx(hash)
+console.log('\nChanging Ownership of Validator')
 hash = Validator.changeOwnership(newOwner, {from: ETHER_ADDR})
 waitForTx(hash)
+console.log('\nChanging Ownership of TokenPorter')
 hash = TokenPorter.changeOwnership(newOwner, {from: ETHER_ADDR})
 waitForTx(hash)
 console.log('\nOwnership has been transfered to', newOwner)

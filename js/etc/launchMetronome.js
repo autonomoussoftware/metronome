@@ -50,40 +50,49 @@ console.log('\nAccepting ownership of contracts')
 personal.unlockAccount(newOwner, newOwnerPassword)
 
 // Accept ownership of all contracts before launching
+console.log('\nAccepting ownership of METToken')
 hash = METToken.acceptOwnership({from: newOwner})
 waitForTx(hash)
 
+console.log('\nAccepting ownership of AutonomousConverter')
 hash = AutonomousConverter.acceptOwnership({from: newOwner})
 waitForTx(hash)
 
+console.log('\nAccepting ownership of Auctions')
 hash = Auctions.acceptOwnership({from: newOwner})
 waitForTx(hash)
 
+console.log('\nAccepting ownership of Proceeds')
 hash = Proceeds.acceptOwnership({from: newOwner})
 waitForTx(hash)
 
+console.log('\nAccepting ownership of SmartToken')
 hash = SmartToken.acceptOwnership({from: newOwner})
 waitForTx(hash)
 
+console.log('\nAccepting ownership of Validator')
 hash = Validator.acceptOwnership({from: newOwner})
 waitForTx(hash)
 
+console.log('\nAccepting ownership of TokenPorter')
 hash = TokenPorter.acceptOwnership({from: newOwner})
 waitForTx(hash)
 
-console.log('\nLaunching AutonomousConverter Contract')
+console.log('\nInitializing AutonomousConverter Contract')
 hash = AutonomousConverter.init(METToken.address, SmartToken.address, Auctions.address, {from: newOwner, value: web3.toWei(0.1, 'ether')})
 waitForTx(hash)
 
-console.log('\nLaunching Proceeds')
+console.log('\nInitializing Proceeds')
 personal.unlockAccount(newOwner, newOwnerPassword)
 hash = Proceeds.initProceeds(AutonomousConverter.address, Auctions.address, {from: newOwner})
 waitForTx(hash)
 
-console.log('\nLaunching Auctions')
+console.log('\nInitializing Auctions')
 personal.unlockAccount(newOwner, newOwnerPassword)
-var initialAuctionEndTime = START + (7 * 24 * 60 * 60)
-hash = Auctions.skipInitBecauseIAmNotOg(METToken.address, Proceeds.address, START, MINPRICE, PRICE, TIMESCALE, web3.fromAscii('ETC'), initialAuctionEndTime, {from: newOwner})
+MINPRICE = 3300000000000 // Same as current min price in eth chain
+PRICE = 0.02e18. // start price for first daily auction. This may be average start price at eth chain 
+TIMESCALE = 1 //hard coded
+hash = Auctions.skipInitBecauseIAmNotOg(METToken.address, Proceeds.address, START, MINPRICE, PRICE, TIMESCALE, web3.fromAscii('ETC'), ISA_ENDTIME, {from: newOwner})
 waitForTx(hash)
 console.log('Initialized auctions', Auctions.initialized())
 if (!Auctions.initialized()) {

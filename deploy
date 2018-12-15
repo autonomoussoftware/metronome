@@ -316,8 +316,6 @@ if [[ $DEVNET = 1 ]]; then
   #create deployer account with default passphrase 
   curl -s -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"parity_newAccountFromPhrase","params":["user", ""],"id":0}' $PARITY_URL >/dev/null
   LOCAL_ETH=0x004ec07d2329997267Ec62b4166639513386F32E
-  #LOCAL_ETH=$ETHER_ADDR
-  echo "asdbds $LOCAL_ETH"
 fi
 
 echo "Authorizing deployer account ..."
@@ -345,13 +343,21 @@ mkdir $TMP_DIR
 
 echo "" > $CHAIN_DIR/metronome.js
 
+echo "Compiling and deploying Proceeds contract"
 echo -e "contracts/monolithic.sol:Proceeds\n$TMP_DIR/Proceeds.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
+echo "Compiling and deploying Auctions contract"
 echo -e "contracts/monolithic.sol:Auctions\n$TMP_DIR/Auctions.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
+echo "Compiling and deploying AutonomousConverter contract"
 echo -e "contracts/monolithic.sol:AutonomousConverter\n$TMP_DIR/AutonomousConverter.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
+echo "Compiling and deploying SmartToken contract"
 echo -e "contracts/monolithic.sol:SmartToken\n$TMP_DIR/SmartToken.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
+echo "Compiling and deploying METToken contract"
 echo -e "contracts/monolithic.sol:METToken\n$TMP_DIR/METToken.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
+echo "Compiling and deploying TokenPorter contract"
 echo -e "contracts/monolithic.sol:TokenPorter\n$TMP_DIR/TokenPorter.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
+echo "Compiling and deploying Validator contract"
 echo -e "contracts/monolithic.sol:Validator\n$TMP_DIR/Validator.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
+echo "Copying ABI and Addresses"
 cat $TMP_DIR/Proceeds.js $TMP_DIR/Auctions.js $TMP_DIR/AutonomousConverter.js $TMP_DIR/SmartToken.js $TMP_DIR/METToken.js $TMP_DIR/TokenPorter.js $TMP_DIR/Validator.js > $CHAIN_DIR/metronome.js
 rm -r $TMP_DIR
 
@@ -386,7 +392,7 @@ var PRICE = $PRICE
 var ONE = 1
 var NUMTOKENS = $SUPPLY
 var START = $AUCTION
-var TIMESCALE = $TIMESCALE
+var TIMESCALE = 1
 var MINPRICE = 3300000000000
 var ETHER_ADDR = '$LOCAL_ETH'
 var OWNER_ADDRESS = '$OWNER_ADDRESS'
@@ -411,6 +417,6 @@ if [[ $INTERACTIVE = 1 ]]
 else 
   geth --exec 'eth.blockNumber' attach $PARITY_URL $PRELOAD
 fi
-echo 'To launch metronome, execute launch script using command ./launch --owner <address of new owner of contracts> --pass <password of owners address>, --auction <start time in epoc seconds>'
 
+echo 'To launch metronome, execute launch script using command ./launch --chain '$CHAIN' --owner <address of new owner of contracts> --pass <password of owners address>'
 exit 0

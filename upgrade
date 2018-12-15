@@ -158,7 +158,7 @@ then
   PORT=33333
   if [[ $LIVE = 1 ]]
   then
-    DEST="Etc Live Net"
+    DEST="ETH Live Net"
     CHAINARG=""
   elif [[ $TEST = 1 ]]
   then
