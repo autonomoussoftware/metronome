@@ -76,6 +76,28 @@ contract('Validator', accounts => {
     })
   })
 
+  it('Owner should not be able to remove validators if current count is 3', () => {
+    return new Promise(async (resolve, reject) => {
+      await validator.addValidator(accounts[1], {from: OWNER})
+      await validator.addValidator(accounts[2], {from: OWNER})
+      await validator.addValidator(accounts[3], {from: OWNER})
+      var thrown = false
+      try {
+        await validator.removeValidator(accounts[1], {from: OWNER})
+      } catch (e) {
+        thrown = true
+      }
+      assert(thrown, 'Owner shold not be able to remove validator if current count is 3')
+      await validator.addValidator(accounts[4], {from: OWNER})
+      await validator.removeValidator(accounts[2], {from: OWNER})
+      assert.isFalse(await validator.isValidator(accounts[2]), 'validator is not removed correctly')
+      assert.equal(await validator.validators(0), accounts[1], 'Validator is not correct at index 0')
+      assert.equal(await validator.validators(1), accounts[4], 'Validator is not correct at index 1')
+      assert.equal(await validator.validators(2), accounts[3], 'Validator is not correct at index 2')
+      resolve()
+    })
+  })
+
   it('Owner should be able to remove validators and array should shrink', () => {
     return new Promise(async (resolve, reject) => {
       await validator.addValidator(accounts[1], {from: OWNER})
@@ -110,6 +132,54 @@ contract('Validator', accounts => {
       assert.equal(await validator.validators(0), accounts[1], 'Validator is not correct at index 0')
       assert.equal(await validator.validators(1), accounts[4], 'Validator is not correct at index 1')
       assert.equal(await validator.validators(2), accounts[3], 'Validator is not correct at index 2')
+      resolve()
+    })
+  })
+
+  it('Owner should be able to update threshold correctly', () => {
+    return new Promise(async (resolve, reject) => {
+      await validator.addValidator(accounts[1], {from: OWNER})
+      var thrown = false
+      try {
+        await validator.updateThreshold(1)
+      } catch (e) {
+        thrown = true
+      }
+      assert(thrown, 'Owner should not be able to set threshold < 2')
+
+      await validator.addValidator(accounts[2], {from: OWNER})
+      await validator.addValidator(accounts[3], {from: OWNER})
+      await validator.updateThreshold(2)
+      var newThreshold = await validator.threshold()
+      assert.equal(newThreshold.valueOf(), 2, 'Owner should not be able to set threshold < 2')
+
+      await validator.addValidator(accounts[4], {from: OWNER})
+      await validator.addValidator(accounts[5], {from: OWNER})
+      thrown = false
+      try {
+        await validator.updateThreshold(2)
+      } catch (e) {
+        thrown = true
+      }
+      assert(thrown, 'Owner should not be able to set threshold > validator.length/2')
+
+      await validator.updateThreshold(3)
+      newThreshold = await validator.threshold()
+      assert.equal(newThreshold.valueOf(), 3, 'Owner should not be able to set threshold > validator.length/2')
+      await validator.addValidator(accounts[6], {from: OWNER})
+      await validator.addValidator(accounts[7], {from: OWNER})
+      await validator.addValidator(accounts[8], {from: OWNER})
+      thrown = false
+      try {
+        await validator.updateThreshold(4)
+      } catch (e) {
+        thrown = true
+      }
+      assert(thrown, 'Owner should not be able to set threshold > validator.length/2')
+
+      await validator.updateThreshold(5)
+      newThreshold = await validator.threshold()
+      assert.equal(newThreshold.valueOf(), 5, 'Owner should not be able to set threshold > validator.length/2')
       resolve()
     })
   })
