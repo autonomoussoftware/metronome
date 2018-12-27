@@ -1711,10 +1711,6 @@ interface ITokenPorter {
         uint indexed burnSequence, bytes32 indexed currentBurnHash, bytes32 prevBurnHash, uint dailyMintable,
         uint[] supplyOnAllChains, uint genesisTime, uint blockTimestamp, uint dailyAuctionStartTime);
 
-    event ImportReceiptLog(address indexed destinationRecipientAddr, uint amountImported, 
-        uint fee, bytes extraData, uint currentTick, uint indexed importSequence, 
-        bytes32 indexed currentHash, bytes32 prevHash, uint dailyMintable, uint blockTimestamp, address caller);
-
     function export(address tokenOwner, bytes8 _destChain, address _destMetronomeAddr, 
         address _destRecipAddr, uint _amount, uint _fee, bytes _extraData) public returns (bool);
     
@@ -2015,9 +2011,9 @@ contract Validator is Owned {
 
     /// @notice Mapping to store the attestation done by each offchain validator for a hash
     mapping (bytes32 => mapping (address => bool)) public hashAttestations;
+    mapping (bytes32 => mapping (address => bool)) public hashRefutation;
     mapping (bytes32 => uint) public attestationCount;
     mapping (address => bool) public isValidator;
-    mapping (address => uint8) public validatorNum;
     address[] public validators;
     METToken public token;
     TokenPorter public tokenPorter;
@@ -2098,15 +2094,14 @@ contract Validator is Owned {
     /// @param _fee fee for import-export
     /// @param _proof proof
     /// @param _extraData extra information for import
-    /// @param _signature clliptic curve signature
     /// @param _globalSupplyInOtherChains total supply in all other chains except this chain
     function attestHash(bytes32 _burnHash, bytes8 _originChain, address _recipientAddr, 
-        uint _amount, uint _fee, bytes32[] _proof, bytes _extraData, bytes _signature,
+        uint _amount, uint _fee, bytes32[] _proof, bytes _extraData,
         uint _globalSupplyInOtherChains) public {
         require(isValidator[msg.sender]);
-        require(fetchSignerAddress(_burnHash, _signature) == msg.sender);
         require(_burnHash != 0x0);
         require(!hashAttestations[_burnHash][msg.sender]);
+        require(!hashRefutation[_burnHash][msg.sender]);
         require(verifyProof(tokenPorter.merkleRoots(_burnHash), _burnHash, _proof));
         hashAttestations[_burnHash][msg.sender] = true;
         attestationCount[_burnHash]++;
@@ -2121,48 +2116,12 @@ contract Validator is Owned {
 
     /// @notice off chain validator can refute hash, if given export hash is not verified in origin chain.
     /// @param _burnHash Burn hash
-    /// @param _signature clliptic curve signature
-    function refuteHash(bytes32 _burnHash, bytes _signature) public {
+    function refuteHash(bytes32 _burnHash) public {
         require(isValidator[msg.sender]);
         require(!hashAttestations[_burnHash][msg.sender]);
-        require(fetchSignerAddress(_burnHash, _signature) == msg.sender);
-        hashAttestations[_burnHash][msg.sender] = false;
+        require(!hashRefutation[_burnHash][msg.sender]);
+        hashRefutation[_burnHash][msg.sender] = true;
         emit LogAttestation(_burnHash, false);
-    }
-
-    /// @notice Fetch signer's address from clliptic curve signature
-    /// @param _message original message which was signed 
-    /// @param  _signature clliptic curve signature
-    /// @return address of signer
-    function fetchSignerAddress(bytes32 _message, bytes _signature) public pure returns (address) {
-        bytes32 r;
-        bytes32 s;
-        uint8 v;
-        bytes memory prefix = "\x19Ethereum Signed Message:\n32";
-        bytes32 prefixedHash = keccak256(prefix, _message);
-        // Check the signature length
-        if (_signature.length != 65) {
-            return (address(0));
-        }
-
-        // Divide the signature in r, s and v variables
-        // ecrecover takes the signature parameters, and the only way to get them
-        // currently is to use assembly.
-        // solium-disable-next-line security/no-inline-assembly
-        assembly {
-        r := mload(add(_signature, 32))
-        s := mload(add(_signature, 64))
-        v := byte(0, mload(add(_signature, 96)))
-        }
-
-        // Version of signature should be 27 or 28, but 0 and 1 are also possible versions
-        if (v < 27) {
-            v += 27;
-        }
-        if (v != 27 && v != 28) {
-            return (address(0));
-        }
-        return ecrecover(prefixedHash, v, r, s);
     }
 
     /// @notice verify that the given leaf is in merkle root.

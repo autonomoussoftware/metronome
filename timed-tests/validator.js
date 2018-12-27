@@ -69,45 +69,46 @@ contract('Validator', accounts => {
     data = await testSetup()
   })
 
-  it('should vefity that signature parsing is working correctly', () => {
-    return new Promise(async (resolve, reject) => {
-      // Prepare signature using validator address and burn hash
-      const offChainValidator = await etcContracts.validator.validators(0)
-      let signature = web3.eth.sign(offChainValidator, data.burnHashes[1])
-
-      const address = await etcContracts.validator.fetchSignerAddress(data.burnHashes[1], signature)
-      assert(address, offChainValidator, 'Address retrieved from signature should be same validator address')
-
-      resolve()
-    })
-  })
-
   it('should verity that atteshHash is working correctly', () => {
     return new Promise(async (resolve, reject) => {
       let totalSupplyInSourceChain = (await ethContracts.metToken.totalSupply()).toNumber()
 
-      // Prepare signature for validator 1
       const offChainValidator1 = await etcContracts.validator.validators(0)
-      let signature = web3.eth.sign(offChainValidator1, data.burnHashes[1])
 
       // Perform attestation as off-chain validator 1
       await etcContracts.validator.attestHash(
         data.burnHashes[1], web3.fromAscii('ETH'), data.addresses[1], parseInt(data.importData[1]),
-        parseInt(data.importData[2]), data.merkelProof, data.extraData, signature, totalSupplyInSourceChain,
+        parseInt(data.importData[2]), data.merkelProof, data.extraData, totalSupplyInSourceChain,
         { from: offChainValidator1 })
 
       let isAttested = await etcContracts.validator.hashAttestations(data.burnHashes[1], offChainValidator1)
       assert.isTrue(isAttested, 'Attestation outcome should be true')
       assert.isFalse(await etcContracts.validator.hashClaimed(data.burnHashes[1]), 'Hash should not be claimed at this point')
 
-      // Prepare signature for validator 2
+      var thrown = false
+      try {
+        await etcContracts.validator.attestHash(
+          data.burnHashes[1], web3.fromAscii('ETH'), data.addresses[1], parseInt(data.importData[1]),
+          parseInt(data.importData[2]), data.merkelProof, data.extraData, totalSupplyInSourceChain,
+          { from: offChainValidator1 })
+      } catch (e) {
+        thrown = true
+      }
+      assert(thrown, 'Validator should not able to do attesttion more than once')
+      thrown = false
+      try {
+        await etcContracts.validator.refuteHash(data.burnHashes[1], { from: offChainValidator1 })
+      } catch (e) {
+        thrown = true
+      }
+      assert(thrown, 'Validator should not able to do refutation if did attestation already')
+
       const offChainValidator2 = await etcContracts.validator.validators(1)
-      signature = web3.eth.sign(offChainValidator2, data.burnHashes[1])
 
       // Perform attestation as off-chain validator 2
       await etcContracts.validator.attestHash(
         data.burnHashes[1], web3.fromAscii('ETH'), data.addresses[1], parseInt(data.importData[1]),
-        parseInt(data.importData[2]), data.merkelProof, data.extraData, signature, totalSupplyInSourceChain,
+        parseInt(data.importData[2]), data.merkelProof, data.extraData, totalSupplyInSourceChain,
         { from: offChainValidator2 })
 
       isAttested = await etcContracts.validator.hashAttestations(data.burnHashes[1], offChainValidator2)
@@ -121,18 +122,33 @@ contract('Validator', accounts => {
 
   it('should verity that refuteHash is working correctly', () => {
     return new Promise(async (resolve, reject) => {
-      // Prepare signature for validator
       const offChainValidator = await etcContracts.validator.validators(2)
-      let signature = web3.eth.sign(offChainValidator, data.burnHashes[1])
-
       // Perform refutation as off-chain validator 3
-      await etcContracts.validator.refuteHash(data.burnHashes[1], signature, { from: offChainValidator })
+      await etcContracts.validator.refuteHash(data.burnHashes[1], { from: offChainValidator })
 
       let isAttested = await etcContracts.validator.hashAttestations(data.burnHashes[1], offChainValidator)
       assert.isFalse(isAttested, 'Attestation outcome should be false')
 
       // Minting was already done and refutation should not affect it
       assert.isTrue(await etcContracts.validator.hashClaimed(data.burnHashes[1]), 'HashClaimed should return true')
+      let totalSupplyInSourceChain = (await ethContracts.metToken.totalSupply()).toNumber()
+      var thrown = false
+      try {
+        await etcContracts.validator.attestHash(
+          data.burnHashes[1], web3.fromAscii('ETH'), data.addresses[1], parseInt(data.importData[1]),
+          parseInt(data.importData[2]), data.merkelProof, data.extraData, totalSupplyInSourceChain,
+          { from: offChainValidator })
+      } catch (e) {
+        thrown = true
+      }
+      assert(thrown, 'Validator should not able to do attesttion if refutation done')
+      thrown = false
+      try {
+        await etcContracts.validator.refuteHash(data.burnHashes[1], { from: offChainValidator })
+      } catch (e) {
+        thrown = true
+      }
+      assert(thrown, 'Validator should not able to do refutation more than once')
       resolve()
     })
   })

@@ -124,7 +124,7 @@ async function importExport (
   // Before Minting
   var totalSupplyBefore = await destContracts.metToken.totalSupply()
 
-  let signature = web3.eth.sign(validator1, importDataObj.burnHashes[1])
+  // let signature = web3.eth.sign(validator1, importDataObj.burnHashes[1])
   let totalSupplyInSourceChain = (await sourceContracts.metToken.totalSupply()).toNumber()
   await destContracts.validator.attestHash(
     importDataObj.burnHashes[1],
@@ -134,11 +134,10 @@ async function importExport (
     parseInt(importDataObj.importData[2]),
     importDataObj.merkelProof,
     importDataObj.extraData,
-    signature,
     totalSupplyInSourceChain,
     { from: validator1 }
   )
-  signature = web3.eth.sign(validator2, importDataObj.burnHashes[1])
+  // signature = web3.eth.sign(validator2, importDataObj.burnHashes[1])
   await destContracts.validator.attestHash(
     importDataObj.burnHashes[1],
     web3.fromAscii(sourceChain),
@@ -147,7 +146,6 @@ async function importExport (
     parseInt(importDataObj.importData[2]),
     importDataObj.merkelProof,
     importDataObj.extraData,
-    signature,
     totalSupplyInSourceChain,
     { from: validator2 }
   )
