@@ -1,6 +1,7 @@
 const ethjsABI = require('ethjs-abi')
 const MerkleTreeJs = require('merkletreejs')
 const assert = require('chai').assert
+const BN = require('bn.js')
 const crypto = require('crypto')
 const TestRPCTime = require('./time')
 
@@ -15,7 +16,8 @@ function sha256 (data) {
     .digest()
 }
 
-async function prepareImportData (tokenPorter, tx) {
+async function prepareImportData (sourceContracts, tx) {
+  let tokenPorter = sourceContracts.tokenPorter
   const decoder = ethjsABI.logDecoder(tokenPorter.abi)
   const logExportReceipt = decoder(tx.receipt.logs)[0]
   var burnHashes = []
@@ -35,6 +37,8 @@ async function prepareImportData (tokenPorter, tx) {
   for (let i = 0; i < buffer.length; i++) {
     merkleProof.push('0x' + buffer[i].data.toString('hex'))
   }
+  let genesisTime = new BN((await sourceContracts.auctions.genesisTime()).valueOf(), 10)
+  let dailyAuctionStartTime = new BN((await sourceContracts.auctions.dailyAuctionStartTime()).valueOf(), 10)
   return {
     addresses: [
       logExportReceipt.destinationMetronomeAddr,
@@ -49,10 +53,10 @@ async function prepareImportData (tokenPorter, tx) {
       logExportReceipt.amountToBurn,
       logExportReceipt.fee,
       logExportReceipt.currentTick,
-      logExportReceipt.genesisTime,
+      genesisTime,
       logExportReceipt.dailyMintable,
       logExportReceipt.burnSequence,
-      logExportReceipt.dailyAuctionStartTime
+      dailyAuctionStartTime
     ],
     merkelProof: merkleProof,
     root: '0x' + tree.getRoot().toString('hex'),
@@ -105,8 +109,7 @@ async function importExport (
     web3.fromAscii(expectedExtraData),
     { from: exporter }
   )
-
-  let importDataObj = await prepareImportData(sourceContracts.tokenPorter, tx)
+  let importDataObj = await prepareImportData(sourceContracts, tx)
   let balanceBeforeImport = await destContracts.metToken.balanceOf(
     importDataObj.addresses[1]
   )

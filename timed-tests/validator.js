@@ -55,7 +55,7 @@ contract('Validator', accounts => {
         accounts[4], 1000e18, 1e18, web3.fromAscii('Extra data'), {from: accounts[3]})
 
       // Prepare data required for import
-      const data = await exportUtil.prepareImportData(ethContracts.tokenPorter, tx)
+      const data = await exportUtil.prepareImportData(ethContracts, tx)
 
       // Request import
       await etcContracts.metToken.importMET(web3.fromAscii('ETH'), data.destinationChain, data.addresses,
