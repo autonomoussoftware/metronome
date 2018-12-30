@@ -1,7 +1,7 @@
 /*
     The MIT License (MIT)
 
-    Copyright 2017 - 2018, Alchemy Limited, LLC and Smart Contract Solutions.
+    Copyright 2018 - 2019, Autonomous Software.
 
     Permission is hereby granted, free of charge, to any person obtaining
     a copy of this software and associated documentation files (the
