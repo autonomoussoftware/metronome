@@ -62,7 +62,7 @@ tmux send-keys 'cp ./js/etc/metronome.js ../metronome-validator/abi/etc/' 'C-m'
 tmux send-keys 'cp ./js/eth/metronome.js ../metronome-validator/abi/eth/' 'C-m'
 tmux send-keys 'cd ../metronome-validator' 'C-m'
 tmux rename-window 'Off-chain Validator'
-tmux send-keys 'node index.js launch eth etc' 'C-m'  # 'metronome-validator launch' is actual command
+tmux send-keys 'node index.js launch --dev' 'C-m'  # 'metronome-validator launch' is actual command
 
 tmux new-window
 tmux send-keys 'cd ../metronome-validator' 'C-m'
