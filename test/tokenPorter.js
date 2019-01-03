@@ -1,7 +1,7 @@
 /*
  The MIT License (MIT)
 
- Copyright 2017 - 2018, Alchemy Limited, LLC.
+ Copyright 2018 - 2019, Autonomous Software.
 
  Permission is hereby granted, free of charge, to any person obtaining
  a copy of this software and associated documentation files (the
@@ -517,7 +517,7 @@ contract('TokenPorter', accounts => {
         const logExportReceipt = tokenPorterEvents[0]
         assert.equal(
           logExportReceipt._eventName,
-          'ExportReceiptLog',
+          'LogExportReceipt',
           'Log name is wrong'
         )
         const amountToBurn = parseInt(
@@ -611,10 +611,10 @@ contract('TokenPorter', accounts => {
           'First chain is not zero'
         )
 
-        assert.isAbove(
-          logExportReceipt.genesisTime.toNumber(),
-          0,
-          'genesisTime is wrong'
+        assert.equal(
+          logExportReceipt.exporter,
+          buyer,
+          'Exporter address is wrong'
         )
 
         // reconcile balances
@@ -719,7 +719,7 @@ contract('TokenPorter', accounts => {
           const logExportReceipt = tokenPorterEvents[0]
           assert.equal(
             logExportReceipt._eventName,
-            'ExportReceiptLog',
+            'LogExportReceipt',
             'Log name is wrong'
           )
           const amountToBurn = parseInt(
@@ -815,10 +815,10 @@ contract('TokenPorter', accounts => {
             'First chain is not zero'
           )
 
-          assert.isAbove(
-            logExportReceipt.genesisTime.toNumber(),
-            0,
-            'genesisTime is wrong'
+          assert.equal(
+            logExportReceipt.exporter,
+            buyer,
+            'exporter address is wrong'
           )
 
           // reconcile balances

@@ -19,6 +19,7 @@ test/.placeholder
 
 
 js/etc/const\.js
+js/etc/const_launch\.js
 
 js/etc/metronome\.js
 
@@ -26,6 +27,7 @@ js/etc/launched
 
 js/eth/const\.js
 js/eth/const-v2\.js
+js/eth/const_launch\.js
 
 js/eth/metronome\.js
 js/eth/metronome-v2\.js

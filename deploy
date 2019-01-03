@@ -5,7 +5,7 @@
 << LICENSE
 The MIT License (MIT)
 
-Copyright 2017 - 2018, Autonomous Software.
+Copyright 2018 - 2019, Autonomous Software.
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
@@ -91,6 +91,7 @@ CHAIN="eth"
 CHAIN_DIR=js/$CHAIN
 RPC=8545
 WS=8546
+ISA_ENDTIME=0
 PORT=33333
 CHAINARG="--chain dev"
 BOOTNODES=""
@@ -126,6 +127,9 @@ while [ "$1" != "" ]; do
       TEST=0
       LOCAL=1
       DEVNET=1
+      ;;
+    --isa_endtime ) shift
+      ISA_ENDTIME=$1
       ;;
     -h | --help ) usage
       exit
@@ -381,7 +385,18 @@ fi
 foundersArray="var FOUNDERS = $foundersArray"
 #echo $foundersArray
 if [[ $LOCAL = 1 ]]  && [[ $VALIDATORS = "[]" ]]; then
-  VALIDATORS="['$OWNER_ADDRESS', '$LOCAL_ETH', '$OWNER_ADDRESS']"
+  echo "Creating new account for the owner"
+  response=$(curl -s -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"personal_newAccount","params":["'$CHAIN'"],"id":1}' $PARITY_URL)
+  validator1=`echo "$response" | jq .result`
+  validator1=${validator1//\"/}
+  echo "Metronome validator for dev chain $validator1"
+  curl -s -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"eth_sendTransaction","params":[{"from":"'$LOCAL_ETH'", "to":"'$validator1'", "value":"0x1BC16D674EC80000"}],"id":1}' $PARITY_URL >/dev/null
+  response=$(curl -s -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"personal_newAccount","params":["'$CHAIN'"],"id":1}' $PARITY_URL)
+  validator2=`echo "$response" | jq .result`
+  validator2=${validator2//\"/}
+  echo "Metronome validator for dev chain $validator2"
+  curl -s -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"eth_sendTransaction","params":[{"from":"'$LOCAL_ETH'", "to":"'$validator2'", "value":"0x1BC16D674EC80000"}],"id":1}' $PARITY_URL >/dev/null
+  VALIDATORS="['$OWNER_ADDRESS', '$validator1', '$validator2']"
   echo "VALIDATORS $VALIDATORS"
 fi  
 
@@ -398,6 +413,7 @@ var ETHER_ADDR = '$LOCAL_ETH'
 var OWNER_ADDRESS = '$OWNER_ADDRESS'
 var OWNER_PASS = '$PASS'
 var VALIDATORS = $VALIDATORS
+var ISA_ENDTIME = '$ISA_ENDTIME'
 $foundersArray
 EOF
 
