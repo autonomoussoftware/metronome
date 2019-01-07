@@ -45,6 +45,7 @@ usage()
   [--live | --test] [-O | --owner <owner eth address> ] 
   [-i | --interactive] [--chain eth|etc ] | [-h]
   [-v | --validators <list of three validators address>]
+  [-p <parity host>]
 
 _EOM_
 
@@ -83,9 +84,11 @@ DEVNET=0
 LOCAL=1
 CHAIN="eth"
 CHAIN_DIR=js/$CHAIN
+PARITY_HOST=http://127.0.0.1
 RPC=8545
 WS=8546
 PORT=33333
+RESTART_PARITY=1
 CHAINARG="--chain dev"
 BOOTNODES=""
 DATADIR=/tmp/parity/local/eth
@@ -144,6 +147,10 @@ while [ "$1" != "" ]; do
       ;;
     -i | --interactive )
       INTERACTIVE=1
+      ;;
+    -p | --parity-host ) shift
+      PARITY_HOST=$1
+      RESTART_PARITY=0
       ;;
     * ) usage
       exit 1
@@ -209,7 +216,7 @@ else
   PARITY="parity --geth $RPCAPI $CHAINARG > log/parity.$CHAIN.log 2>log/parity.$CHAIN.err.log"
 fi
 
-PARITY_URL="http://127.0.0.1:$RPC"
+PARITY_URL="$PARITY_HOST:$RPC"
 
 LOCAL_ETH=$ETHER_ADDR
 
@@ -241,29 +248,30 @@ read -p "Press enter to continue"
 echo "Cleaning up old deploy stuff..."
 rm $CHAIN_DIR/metronome-v2.js  2>/dev/null
 
-echo "Turning off Parity..."
-if [[ "$CHAIN" = "etc" ]] 
-then
-    CHAINPID=$(lsof -t -i:8555)
-    if [[ ! -z "$CHAINPID" ]]; then
-      echo "Turning off ETC parity at port 8555"
-      kill -9 $CHAINPID
-    fi
-else
-    CHAINPID=$(lsof -t -i:8545)
-    if [[ ! -z "$CHAINPID" ]]; then
-      echo "Turning off ETH parity at port 8545"
-      kill -9 $CHAINPID
-    fi
+if [[ $RESTART_PARITY = 1 ]]; then
+  echo "Turning off Parity..."
+  if [[ "$CHAIN" = "etc" ]] 
+  then
+      CHAINPID=$(lsof -t -i:8555)
+      if [[ ! -z "$CHAINPID" ]]; then
+        echo "Turning off ETC parity at port 8555"
+        kill -9 $CHAINPID
+      fi
+  else
+      CHAINPID=$(lsof -t -i:8545)
+      if [[ ! -z "$CHAINPID" ]]; then
+        echo "Turning off ETH parity at port 8545"
+        kill -9 $CHAINPID
+      fi
+  fi
+
+  sleep 5
+
+  echo "Loading Parity..."
+  eval $PARITY &
+
+  sleep 5
 fi
-
-sleep 5
-
-
-echo "Loading Parity..."
-eval $PARITY &
-
-sleep 5
 
 #set account for devnet
 if [[ $DEVNET = 1 ]]; then
