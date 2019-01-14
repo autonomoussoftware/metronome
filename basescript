@@ -1,0 +1,281 @@
+#!/bin/bash
+#set -e
+#set -o pipefail
+
+<< LICENSE
+The MIT License (MIT)
+
+Copyright 2018 - 2019, Autonomous Software.
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+LICENSE
+
+check_system()
+{
+  unameOut="$(uname -s)"
+  case "${unameOut}" in
+    Linux*)     SOLDEPLOY=bin/soldeploy.amd64.bin;;
+    Darwin*)    SOLDEPLOY=bin/soldeploy.osx.bin;;
+    *)          echo "What Architecture is this? Punting."
+      exit 1;;
+  esac
+
+  parityString=`parity --version | grep version\ P`
+  parityVersion=${parityString:18:3}  
+  if [[ "$parityString" = *"2.2.5"* ]]; then
+    echo "You have Parity 2.2.5"
+  else
+    echo "Need Parity 2.2.5 - You have $parityString. Punting."
+    exit 1
+  fi
+
+  mkdir -p log
+}
+
+check_system
+
+AUCTION=0
+SEED=""
+INTERACTIVE=0
+SUPPLY=10000000
+DEST="Parity DevChain Local ETH"
+LIVE=0
+PARITY_HOST=http://127.0.0.1
+RESTART_PARITY=1
+PASS=""
+TEST=0
+DEVNET=0
+LOCAL=1
+TIMESCALE=1
+CHAIN="eth"
+CHAIN_DIR=js/$CHAIN
+RPC=8545
+WS=8546
+ISA_ENDTIME=0
+PORT=33333
+CHAINARG="--chain dev"
+BOOTNODES=""
+DATADIR=/tmp/parity/local/eth
+GASARGS=" --min-gas-price 0"
+RPCAPI="--jsonrpc-apis=web3,eth,personal,rpc,net,parity,parity_accounts,pubsub --ws-apis=web3,eth,personal,rpc,net,parity,parity_accounts,pubsub"
+OWNER_ADDRESS=0x0 #Todo- for live network enter owner's actual address here 
+#Public testnetwork - ETH-Rinkeby and ETC-Morden
+ETH_TEST_BOOTNODE=""
+ETC_TEST_BOOTNODE="enode://90dffa087d58f9584ae2199900cf7c0b36e3a61cda87358bd96cbb80b6ef41de2b91d7a3a74c68e836f02eaf6674653ddbae18fa5d4367101d7719db88f0900f@18.228.197.183:30303,enode://1fac84e8fe252d63764563f4f526323393b52aaaf832693f7a8a1637f6920311d7d04a7cb91945273e6c644d5c3b01a6bf8a172ae653c918e1bf8eb79e7e6baf@94.152.212.32:40404,enode://21101a9597b79e933e17bc94ef3506fe99a137808907aa8fefa67eea4b789792ad11fb391f38b00087f8800a2d3dff011572b62a31232133dd1591ac2d1502c8@104.198.71.200:30403,enode://30a1fd71f28aa6f66fe662af9ecc75f0a6980f06b71598f2b19d3dda04223fc0e53b47e40c9171d5014e9f5b59d9954de125782da592f5d95ea39066e2591d5d@104.237.131.102:30304,enode://3666177e0e2e56bebaef318c8ba4aed3d05ce788df1eb0e48b79fce40fcf3445feb4ccc4ce2fd4aadc3c146858e276bdef1cb63437215f17e6e5dd8c41403427@144.202.23.122:30303,enode://3666177e0e2e56bebaef318c8ba4aed3d05ce788df1eb0e48b79fce40fcf3445feb4ccc4ce2fd4aadc3c146858e276bdef1cb63437215f17e6e5dd8c41403427@45.76.16.230:30303,enode://78d8897b376e549c2b47664e4c81fd023b089d0a417275731760739b7f98dd639d632bb7b75e92606c7d6abbbe96f69f06d85e0a41a143f1f0a3c55ff2b1d732@144.202.101.214:30303,enode://7909d51011d8a153351169f21d3a7bbedb3be1e17d38c1f2fad06504dd5aa07a00f00845835d535fe702bf379c4d7209a51f4d1b723e0ca8b8732bd21fba3b30@139.162.133.42:30303,enode://a088dfb2f5305be9232e8071c5535f13718a4017e247a0b35074b807d43d99e022880c27302cdb5b1e98ad34c083dbbb483f2b17bdc66149bad037154d6ace96@139.162.127.72:30303,enode://a329e2399e6d72009690faa15a82ae13ef2015bc5e72ffb22f92ea83cf3bfc9ce45d43c38b3c2289c148939d3911e9d1a9e940f41698dba54508b59489072b2a@5.135.157.4:30303,enode://afdc6076b9bf3e7d3d01442d6841071e84c76c73a7016cb4f35c0437df219db38565766234448f1592a07ba5295a867f0ce87b359bf50311ed0b830a2361392d@104.154.136.117:30403,enode://d79b12fc48a494ba7053bbc30cbe510060ebb3a2ce9bb4f88076303e97e31e2af263c61e797af0af20419b7268b2bfb2d2f196b57242a454035ecb6001cc69a2@94.23.49.75:30303,enode://f4a1805a51cfdf5afdddf0b43b8d4b687657497311797464046dce65388b9e5a538b55bdb23ae4eac54485a81d47adad48731294efc9d73fbc9f297f625aec70@198.27.80.32:30303,enode://f570df80b5589dfb0a7657adb62b93dc55e76d491694d8965c6382964e6f397ae0b8c3548ef0a108151f3b1485c75769ff203df2db7ace385ee98fdb2766ba3b@86.8.233.254:30303,enode://fb28713820e718066a2f5df6250ae9d07cff22f672dbf26be6c75d088f821a9ad230138ba492c533a80407d054b1436ef18e951bb65e6901553516c8dffe8ff0@104.155.176.151:30304,enode://fd008499e9c4662f384b3cff23438879d31ced24e2d19504c6389bc6da6c882f9c2f8dbed972f7058d7650337f54e4ba17bb49c7d11882dd1731d26a6e62e3cb@35.187.57.94:30304"
+#ETH_TEST_BOOTNODE="enode://a90b36105811c87207b3a9bef260c2bff02355b0f8c1bfbc1e8341ee332fc803bc0f62cbec61fcc443228580a7f2ec3eeab3b57a649203f6ae6955e54ee9dfac@35.202.109.171:30303"
+ETH_TEST_PARITYSPEC="parity-spec.json"
+ETC_TEST_PARITYSPEC="parity-spec-etc.json"
+VALIDATORS="[]"
+
+# Price in ETH per MET at start
+PRICE=2
+
+while [ "$1" != "" ]; do
+  case $1 in
+    --live )
+      DEST="Eth Live Net"
+      LIVE=1
+      LOCAL=0
+      TEST=0
+      ;;
+    --test )
+      LIVE=0
+      TEST=1
+      LOCAL=0
+      ;;
+    --devnet )
+      LIVE=0
+      TEST=0
+      LOCAL=1
+      DEVNET=1
+      ;;
+    --isa_endtime ) shift
+      ISA_ENDTIME=$1
+      ;;
+    -h | --help ) usage
+      exit
+      ;;
+    -s | --supply ) shift
+      SUPPLY=$1
+      ;;
+    -p | --price ) shift
+      PRICE=$1
+      ;;
+    -a | --auction ) shift
+      AUCTION=$1
+      ;;
+    -v | --validators ) shift
+      if [[ "$1" = "0x"* ]] && [[ "$2" = "0x"* ]] && [[ "$3" = "0x"* ]]; then
+        VALIDATORS="['$1', '$2', '$3']"
+        shift
+        shift
+      else 
+        usage  
+        echo "Invalid address of validators or number of address passed is not correct. Require three address. [$1,$2,$3]"
+        exit 1
+      fi
+      ;; 
+    -P | --pass ) shift
+      echo $1
+      PASS=$1
+      ;;
+    -O | --owner ) shift
+      OWNER_ADDRESS=$1
+      ;;  
+    -c | --chain ) shift
+      CHAIN=$1
+      CHAIN_DIR=js/$CHAIN
+      ;;
+    -t | --timescale ) shift
+      TIMESCALE=$1
+      ;;
+    -p | --parity-host ) shift
+      PARITY_HOST=$1
+      RESTART_PARITY=0
+      ;;
+    -i | --interactive )
+      INTERACTIVE=1
+      ;;
+    --seed )
+      SEED=,$CHAIN_DIR/testStart.js
+      ;;
+    * ) usage
+      exit 1
+  esac
+  shift
+done
+
+if [[ "$CHAIN" = "eth" ]]
+then
+  SUPPLY=10000000
+  RPC=8545
+  WS=8546
+  PORT=33333
+  if [[ $LIVE = 1 ]]
+  then
+    echo "ETH live net deploy is not allowed."
+    exit 1
+  elif [[ $TEST = 1 ]]
+  then
+     DATADIR=../parity/test/ropsten
+     DEST="New Alchemy ETH Testnet"
+     CHAINARG="--chain ropsten"
+     ETHER_ADDR=0x0a97f3e3f24d7bd52edce9fc1829cf2d082750ee
+     #BOOTNODES="--bootnodes $ETH_TEST_BOOTNODE"
+  elif [[ $DEVNET = 1 ]]
+  then
+     DATADIR=../parity/devnet/eth
+     DEST="New Alchemy ETH devnet"
+     CHAINARG="--chain devnet-eth.json"
+     BOOTNODES="--bootnodes enode://c84b1142224c2cd8c448ca2c6ff131285b334985af0c57e8d18652265c5a7c80447d6f3f9d393efe4e666b5bcbb1e2266066102453e1a489a23a64d7e2163016@35.231.151.34:33333"
+  else
+    DATADIR=/tmp/parity/local/eth
+    DEST="Parity DevChain Local ETH"
+  fi
+elif [[ "$CHAIN" = "etc" ]]
+then
+  SUPPLY=0
+  RPC=8555
+  WS=8556
+  PORT=30301
+  if [[ $LIVE = 1 ]]
+  then
+    DEST="Etc Live Net"
+    AUCTION = 1529280060
+    ISA_ENDTIME = 1529883999
+    CHAINARG="--chain classic"
+  elif [[ $TEST = 1 ]]
+  then
+     DATADIR=../parity/test/mordenv2
+     DEST="New Alchemy ETC Testnet"
+     CHAINARG="--chain morden"
+     ETHER_ADDR=0x99abd7981b2c2e94a0cc2d0d8f19852ec0ac66d9
+     BOOTNODES="--bootnodes $ETC_TEST_BOOTNODE"
+  elif [[ $DEVNET = 1 ]]
+  then
+     DATADIR=../parity/devnet/etc
+     DEST="New Alchemy ETH devnet"
+     CHAINARG="--chain devnet-etc.json"
+     BOOTNODES="--bootnodes enode://e791c02a432914b8109bd99b4f77fd1b19afacc6068882d32737705a01403c6b2a46a8b9372dee990d0de34d3973dbca6f92dda214cb00a6187178eb7537808f@35.231.151.34:30301"
+  else
+     DATADIR=/tmp/parity/local/etc
+     DEST="New Alchemy ETC Local"
+  fi
+fi
+
+if [[ $LIVE = 0 ]]; then
+#  PARITY="parity --geth --fat-db on --jsonrpc-port=$RPC --ws-port=$WS --port=$PORT --datadir=$DATADIR --tracing on  --pruning archive $CHAINARG $BOOTNODES $GASARGS > log/parity.$CHAIN.log 2>log/parity.$CHAIN.err.log"
+  PARITY="parity --geth --force-sealing --pruning archive --jsonrpc-hosts all --jsonrpc-interface all --ws-interface all --ws-origins all --ws-hosts all --jsonrpc-cors '*' $RPCAPI --jsonrpc-port=$RPC --ws-port=$WS --port=$PORT --base-path=$DATADIR --tracing=off $CHAINARG $BOOTNODES $GASARGS > log/parity.$CHAIN.log 2>log/parity.$CHAIN.err.log"
+else
+  PARITY="parity --geth $RPCAPI $CHAINARG > log/parity.$CHAIN.log 2>log/parity.$CHAIN.err.log"
+fi
+
+PARITY_URL="$PARITY_HOST:$RPC"
+echo $PARITY_URL
+LOCAL_ETH=$ETHER_ADDR
+if [[ $LOCAL = 1 ]]; then
+  LOCAL_ETH=0x00a329c0648769a73afac7f9381e08fb43dbea72 
+  if [[ $AUCTION = 0 ]]; then
+    AUCTION=$(expr `date +%s` + 10)
+  fi
+else
+  if [[ $PASS = "" ]] && [[ $LIVE = 1 ]]
+  then
+    echo "Live net deploy requires password. Use -P or --pass."
+    exit 1
+  fi
+  if [[ $OWNER_ADDRESS = 0x0 ]]
+  then
+    echo " Live and Test net deploy requires owner's address. Use -O or --owner."
+    exit 1
+  fi
+fi
+if [[ $RESTART_PARITY = 1 ]]; then
+  echo "Turning off Parity..."
+  if [[ "$CHAIN" = "etc" ]] 
+  then
+      CHAINPID=$(lsof -t -i:8555)
+      if [[ ! -z "$CHAINPID" ]]; then
+        echo "Turning off ETC parity at port 8555"
+        kill -9 $CHAINPID
+      fi
+      CHAINPID=$(lsof -t -i:8556)
+      if [[ ! -z "$CHAINPID" ]]; then
+        echo "Turning off ETC parity at port 8556"
+        kill -9 $CHAINPID
+      fi
+  else
+      CHAINPID=$(lsof -t -i:8545)
+      if [[ ! -z "$CHAINPID" ]]; then
+        echo "Turning off ETH parity at port 8545"
+        kill -9 $CHAINPID
+      fi
+      CHAINPID=$(lsof -t -i:8546)
+      if [[ ! -z "$CHAINPID" ]]; then
+        echo "Turning off ETH parity at port 8546"
+        kill -9 $CHAINPID
+      fi
+  fi
+sleep 5
+
+echo "Loading Parity...$PARITY"
+eval $PARITY &
+fi
+sleep 10
