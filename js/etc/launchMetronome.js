@@ -62,6 +62,9 @@ console.log('\nAccepting ownership of Auctions')
 hash = Auctions.acceptOwnership({from: newOwner})
 waitForTx(hash)
 
+console.log('\nUnlocking account')
+personal.unlockAccount(newOwner, newOwnerPassword)
+
 console.log('\nAccepting ownership of Proceeds')
 hash = Proceeds.acceptOwnership({from: newOwner})
 waitForTx(hash)
@@ -74,9 +77,15 @@ console.log('\nAccepting ownership of Validator')
 hash = Validator.acceptOwnership({from: newOwner})
 waitForTx(hash)
 
+console.log('\nUnlocking account')
+personal.unlockAccount(newOwner, newOwnerPassword)
+
 console.log('\nAccepting ownership of TokenPorter')
 hash = TokenPorter.acceptOwnership({from: newOwner})
 waitForTx(hash)
+
+console.log('\nUnlocking account')
+personal.unlockAccount(newOwner, newOwnerPassword)
 
 console.log('\nInitializing AutonomousConverter Contract')
 hash = AutonomousConverter.init(METToken.address, SmartToken.address, Auctions.address, {from: newOwner, value: web3.toWei(0.1, 'ether')})
