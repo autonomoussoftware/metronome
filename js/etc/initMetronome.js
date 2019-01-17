@@ -43,6 +43,8 @@ hash = METToken.initMETToken(AutonomousConverter.address, Auctions.address, 0, 0
 waitForTx(hash)
 hash = METToken.setTokenPorter(TokenPorter.address, {from: ETHER_ADDR})
 waitForTx(hash)
+hash = METToken.enableMETTransfers({from: ETHER_ADDR})
+waitForTx(hash)
 console.log('METToken published at ' + METToken.address + 'auction address:' + METToken.minter)
 
 console.log('\nConfiguring Smart Token')
