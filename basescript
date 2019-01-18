@@ -39,10 +39,10 @@ check_system()
 
   parityString=`parity --version | grep version\ P`
   parityVersion=${parityString:18:3}  
-  if [[ "$parityString" = *"2.2.5"* ]]; then
-    echo "You have Parity 2.2.5"
+  if [[ "$parityString" = *"2.2.7"* ]]; then
+    echo "You have Parity 2.2.7"
   else
-    echo "Need Parity 2.2.5 - You have $parityString. Punting."
+    echo "Need Parity 2.2.7 - You have $parityString. Punting."
     exit 1
   fi
 
@@ -230,7 +230,7 @@ fi
 PARITY_URL="$PARITY_HOST:$RPC"
 echo $PARITY_URL
 LOCAL_ETH=$ETHER_ADDR
-if [[ $LOCAL = 1 ]]; then
+if [[ $LOCAL = 1 ]] && [[ $DEVNET = 0 ]]; then
   LOCAL_ETH=0x00a329c0648769a73afac7f9381e08fb43dbea72 
   if [[ $AUCTION = 0 ]]; then
     AUCTION=$(expr `date +%s` + 10)
@@ -273,6 +273,13 @@ if [[ $RESTART_PARITY = 1 ]]; then
         kill -9 $CHAINPID
       fi
   fi
+
+if [[ $AUCTION = 0 ]]; 
+    then
+      echo "Auction start date is required. Use --auction <initial auction start date>"
+      exit 1
+fi
+
 sleep 5
 
 echo "Loading Parity...$PARITY"

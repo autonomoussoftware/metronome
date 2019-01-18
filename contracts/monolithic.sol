@@ -2023,7 +2023,7 @@ contract Validator is Owned {
 
     uint public threshold = 2;
 
-    event LogAttestation(bytes32 indexed hash, bool isValid);
+    event LogAttestation(bytes32 indexed hash, address indexed recipientAddr, bool isValid);
 
     /// @param _validator validator address
     function addValidator(address _validator) public onlyOwner {
@@ -2105,7 +2105,7 @@ contract Validator is Owned {
         require(verifyProof(tokenPorter.merkleRoots(_burnHash), _burnHash, _proof));
         hashAttestations[_burnHash][msg.sender] = true;
         attestationCount[_burnHash]++;
-        emit LogAttestation(_burnHash, true);
+        emit LogAttestation(_burnHash, _recipientAddr, true);
         
         if (attestationCount[_burnHash] >= threshold && !hashClaimed[_burnHash]) {
             hashClaimed[_burnHash] = true;
@@ -2116,12 +2116,12 @@ contract Validator is Owned {
 
     /// @notice off chain validator can refute hash, if given export hash is not verified in origin chain.
     /// @param _burnHash Burn hash
-    function refuteHash(bytes32 _burnHash) public {
+    function refuteHash(bytes32 _burnHash, address _recipientAddr) public {
         require(isValidator[msg.sender]);
         require(!hashAttestations[_burnHash][msg.sender]);
         require(!hashRefutation[_burnHash][msg.sender]);
         hashRefutation[_burnHash][msg.sender] = true;
-        emit LogAttestation(_burnHash, false);
+        emit LogAttestation(_burnHash, _recipientAddr, false);
     }
 
     /// @notice verify that the given leaf is in merkle root.

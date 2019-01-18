@@ -40,7 +40,8 @@ usage()
 
   If --live is offered, it will connect to the default parity instance.
 
-  usage: launch [-O | --owner <owner eth address> ] [-P | --pass <password> ] [--live | --test] [-p <parity host>]
+  usage: launch [-O | --owner <owner eth address> ] [-P | --pass <password> ] 
+  [--live | --test | --devnet] [-p <parity host>] [--acution <genesis time>] [--isa_endtime <isa end time>]
 
 _EOM_
 
@@ -91,7 +92,6 @@ EOF
 
 currentTime=$(expr `date +%s` + 10)
 
-echo "Genesis time=$AUCTION"
 if [[ $CHAIN = "eth" ]] && [[ $LIVE = 1 ]] && [[ $AUCTION <  $currentTime ]]
 then
   echo "Auction start time can not be past time in eth chain"

@@ -25,6 +25,6 @@ RUN apt-get update
 RUN apt-get -y install ethereum
 RUN apt-get update
 RUN apt-get install -y curl
-RUN wget https://releases.parity.io/ethereum/v2.2.5/x86_64-unknown-linux-gnu/parity
+RUN wget https://releases.parity.io/ethereum/v2.2.7/x86_64-unknown-linux-gnu/parity
 RUN chmod u+x parity
 RUN cp ./parity /usr/local/bin/
