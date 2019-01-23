@@ -34,12 +34,12 @@ function test () {
   var expectedGenesisTime = 1529280060
   var expectedISAEndTime = 1529883999
   error = false
-  if (Auctions.genesisTime() !== expectedGenesisTime) {
+  if (Auctions.genesisTime() != expectedGenesisTime) {
     console.log('Error: Genesis time is not correct. ')
     error = true
   }
 
-  if (Auctions.initialAuctionEndTime() !== expectedISAEndTime) {
+  if (Auctions.initialAuctionEndTime() != expectedISAEndTime) {
     console.log('Error:  initialAuctionEndTime is not correct. ')
     error = true
   }

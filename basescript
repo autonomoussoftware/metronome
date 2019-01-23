@@ -174,10 +174,10 @@ then
     exit 1
   elif [[ $TEST = 1 ]]
   then
-     DATADIR=../parity/test/ropsten
+     DATADIR=../parity/test/ropstenv5
      DEST="New Alchemy ETH Testnet"
      CHAINARG="--chain ropsten"
-     ETHER_ADDR=0x0a97f3e3f24d7bd52edce9fc1829cf2d082750ee
+     ETHER_ADDR=0xbb9ce05252c0d20a033c25882492771b3075d2c9
      #BOOTNODES="--bootnodes $ETH_TEST_BOOTNODE"
   elif [[ $DEVNET = 1 ]]
   then

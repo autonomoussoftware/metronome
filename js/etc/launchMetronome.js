@@ -107,4 +107,6 @@ console.log('Initialized auctions', Auctions.initialized())
 if (!Auctions.initialized()) {
   throw new Error('Error occured while launching auction')
 }
+hash = METToken.enableMETTransfers({from: newOwner})
+waitForTx(hash)
 console.log('Launch completed\n')
