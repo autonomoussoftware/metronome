@@ -1,0 +1,38 @@
+language: node_js
+
+sudo: required
+
+node_js:
+  - "8.9.4"
+
+env:
+  - CXX=g++-4.8
+
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - build-essential
+      - g++-4.8
+
+before_install:
+  - export CXX="g++-4.8"
+  - npm install -g npm@latest
+  - npm install -g truffle
+  - npm install -g ganache-cli
+
+install:
+  - npm install 
+
+script:
+  - npm run solhint
+  - npm run eslint
+  - npm run test
+
+notifications:
+  slack:
+    secure: uJi7559NkU31ea2ouRXAwfGl7uiVkh0tuo2AuqoRQepSeWu/J7cMgjbZmfsMfAHxm8pLHBsuaqfL/lk7mne2vXR3Iwq957dCbmfgCJLvOUHI8IjgE8/ounnkkgGY0IVRTS0fkKGeEJn96nGm1/er/T8nWzoN7om1s9VpMnYmkdiaFzDkpw6AsCqsdl1FLYUgHWp6SKJTwkmQiFzHYvwh1DuzDfeAxRMPsY47t5Ss16yOCmgayNq/eTKMksvFZ97VA9Q1CMJHjtX/PU8y+eY2wfePzB4Bh9HNrs3Vv/pS7R258UYLzxBHPjK1Cs592p+1Lixi46ixP6VE2X6C8X8RFFW1T+D+04KHQtjPICHPSIeoVRSQumgWUq6OHqpbGbnW5jHPgKLQeGYTxZ4RXnWgt3E/pkIt0DcTs0nglG4VcqM49RJpXpSOBcyVfjtPWnfWKNlUKk2fMin6/V1o34lI+1tDw7/tQwtOdqWsARx59vbLPF2z6v3zwv9Cqr45Gx127UoqQsqlVZ9ddrGja447cSmVitqXWepY5gE0HM4p/vO3zau26GygLXgzByzyDVYBszAV5X4nXX13B0/kOpyU9M7/8hKZFm4fGHG/cbUYnJ0buAmLlaBEDpLW+6W9IT3xLbqHX/+ONbsNHMlT6LjHcVL5wQeqWeyf1kqIMDiCT0g=
+      on_success:always
+      on_failure:always
+      on_start:change

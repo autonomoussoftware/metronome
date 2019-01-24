@@ -1,0 +1,12 @@
+{                                              
+    "extends": "default",                      
+    "rules": {                                 
+        "avoid-call-value": "warn",
+        "code-complexity": "warn",
+        "func-param-name-mixedcase": "warn",
+        "var-name-mixedcase": "warn",
+        "const-name-snakecase": "warn",
+        "max-states-count": "warn",
+        "function-max-lines": "warn"
+    }                                          
+}                                              

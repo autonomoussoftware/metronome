@@ -1,0 +1,85 @@
+{
+  "name": "metronome",
+  "version": "1.0.0",
+  "description": "Metronome Token",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "./test-all",
+    "compile": "truffle compile",
+    "migrate": "truffle migrate",
+    "migrate:clean": "truffle migrate --reset",
+    "solhint": "solhint contracts/*.sol",
+    "eslint": "eslint test/*.js timed-tests/*.js metronome-validator/lib/*.js metronome-validator/test/*.js",
+    "ganache": "kill -9 $(lsof -ti :8545) & (ganache-cli -p 8545 -e 1000 -a 15 > /dev/null & truffle test) && kill -9 $(lsof -ti :8545)",
+    "ganache:single": "kill -9 $(lsof -ti :8545) & (ganache-cli -p 8545 -e 1000 -a 15 > /dev/null & truffle test $TESTFILE) && kill -9 $(lsof -ti :8545)",
+    "ganache:subs": "kill -9 $(lsof -ti :8545) & (ganache-cli -p 8545 -e 1000 -a 15 > /dev/null & truffle test timed-tests/subscriptions.js) && kill -9 $(lsof -ti :8545)",
+    "ganache:ac": "kill -9 $(lsof -ti :8545) & (ganache-cli -p 8545 -e 1000 -a 100 > /dev/null & truffle test timed-tests/ac.js) && kill -9 $(lsof -ti :8545)",
+    "ganache:auctions": "kill -9 $(lsof -ti :8545) & (ganache-cli -p 8545 -e 1000 -a 15 > /dev/null & truffle test timed-tests/auctions.js) && kill -9 $(lsof -ti :8545)",
+    "ganache:proceeds": "kill -9 $(lsof -ti :8545) & (ganache-cli -p 8545 -e 1000 -a 15 > /dev/null & truffle test timed-tests/proceeds.js) && kill -9 $(lsof -ti :8545)",
+    "ganache:tokenLocker": "kill -9 $(lsof -ti :8545) & (ganache-cli -p 8545 -e 1000 -a 15 > /dev/null & truffle test timed-tests/tokenLocker.js) && kill -9 $(lsof -ti :8545)",
+    "ganache:tokenPorter": "kill -9 $(lsof -ti :8545) & (ganache-cli -p 8545 -e 1000 -a 15 > /dev/null & truffle test timed-tests/tokenPorter.js) && kill -9 $(lsof -ti :8545)",
+    "precommit-msg": "echo 'Pre-commit checks...' && exit 0",
+    "testExport": "./node_modules/mocha/bin/mocha --timeout 100000"
+  },
+  "pre-commit": [
+    "eslint",
+    "solhint",
+    "ganache:auctions",
+    "ganache",
+    "ganache:subs",
+    "ganache:ac",
+    "ganache:proceeds",
+    "ganache:tokenLocker"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MetronomeToken/metronome.git"
+  },
+  "keywords": [
+    "eth",
+    "token",
+    "ethereum",
+    "metronome"
+  ],
+  "bugs": {
+    "url": "https://github.com/acmetoken/metronome/issues"
+  },
+  "homepage": "https://github.com/acmetoken/metronome#readme",
+  "devDependencies": {
+    "eslint": "^4.18.1",
+    "eslint-config-standard": "^11.0.0",
+    "eslint-plugin-import": "^2.9.0",
+    "eslint-plugin-node": "^5.2.1",
+    "eslint-plugin-promise": "^3.6.0",
+    "eslint-plugin-standard": "^3.0.1",
+    "pre-commit": "^1.2.2",
+    "solhint": "^1.2.1",
+    "truffle": "4.1.5",
+    "minimist": "^1.2.0"
+  },
+  "engines": {
+    "node": "8",
+    "npm": "5"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.259.1",
+    "bignumber.js": "^6.0.0",
+    "bn.js": "^4.11.8",
+    "chai": "^4.1.2",
+    "commander": "^2.19.0",
+    "cron": "^1.3.0",
+    "dotenv": "^6.2.0",
+    "ethers": "^4.0.7",
+    "ethjs-abi": "^0.2.1",
+    "fs": "0.0.1-security",
+    "ganache-cli": "^6.2.3",
+    "lodash": "^4.17.5",
+    "merkle-lib": "^2.0.10",
+    "merkletreejs": "0.0.9",
+    "mocha": "5.1.0",
+    "qtumjs": "^1.9.1",
+    "web3": "^0.19.0"
+  }
+}

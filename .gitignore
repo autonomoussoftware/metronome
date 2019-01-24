@@ -1,0 +1,18 @@
+# swap
+*.swp
+
+# logs
+logs
+*.log
+npm-debug.log*
+
+# dependency directories
+node_modules/
+build/
+
+# truffle placeholders
+contracts/.placeholder
+test/.placeholder
+
+# trash files
+.DS_Store
