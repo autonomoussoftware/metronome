@@ -81,30 +81,24 @@ async function initContracts () {
 async function launchContracts () {
   console.log('Launching metronome in qtum')
 
-  // console.log('\nInitializing AutonomousConverter Contract')
-  // var tx = await contracts.AutonomousConverter.send('init', [contracts.METToken.info.address, contracts.SmartToken.info.address, contracts.Auctions.info.address])
-  // await tx.confirm(1)
+  console.log('\nInitializing AutonomousConverter Contract')
+  var tx = await contracts.AutonomousConverter.send('init', [contracts.METToken.info.address, contracts.SmartToken.info.address, contracts.Auctions.info.address])
+  await tx.confirm(1)
 
-  // console.log('\nInitializing Proceeds')
-  // tx = await contracts.Proceeds.send('initProceeds', [contracts.AutonomousConverter.info.address, contracts.Auctions.info.address])
-  // await tx.confirm(1)
+  console.log('\nInitializing Proceeds')
+  tx = await contracts.Proceeds.send('initProceeds', [contracts.AutonomousConverter.info.address, contracts.Auctions.info.address])
+  await tx.confirm(1)
 
-  // console.log('\nInitializing Auctions')
-  // var qtum = '0x7174756d'
-  // var START = 1529280060
-  // var ISA_ENDTIME = 1529883999
-  // var MINPRICE = 3300000000000 // Same as current min price in eth chain
-  // var PRICE = 2 // start price for first daily auction. This may be average start price at eth chain
-  // var TIMESCALE = 1 // hard coded
-  // console.log('Initialized auctions', (await contracts.Auctions.call('initialized')).outputs[0])
-  // tx = await contracts.Auctions.send('skipInitBecauseIAmNotOg', [contracts.METToken.info.address, contracts.Proceeds.info.address, START, MINPRICE, PRICE, TIMESCALE, qtum, ISA_ENDTIME], {gasLimit: 5000000})
-  // await tx.confirm(1)
-  var isa =  (await contracts.Auctions.call('initialAuctionEndTime')).outputs[0]
-  console.log('ISA end time', isa.toString())
-  var tx = await contracts.Auctions.call('isInitialAuctionEnded')
-  console.log(tx.outputs[0])
-  tx = await contracts.Auctions.call('whatisnow')
-  console.log(tx.outputs[0].toString())
+  console.log('\nInitializing Auctions')
+  var qtum = '0x7174756d'
+  var START = 1529280060
+  var ISA_ENDTIME = 1529883999
+  var MINPRICE = 3300000000000 // Same as current min price in eth chain
+  var PRICE = 2 // start price for first daily auction. This may be average start price at eth chain
+  var TIMESCALE = 1 // hard coded
+  console.log('Initialized auctions', (await contracts.Auctions.call('initialized')).outputs[0])
+  tx = await contracts.Auctions.send('skipInitBecauseIAmNotOg', [contracts.METToken.info.address, contracts.Proceeds.info.address, START, MINPRICE, PRICE, TIMESCALE, qtum, ISA_ENDTIME], {gasLimit: 5000000})
+  await tx.confirm(1)
   console.log('Initialized auctions', (await contracts.Auctions.call('initialized')).outputs[0])
   console.log('Enabling MET transfer', (await contracts.METToken.call('transferAllowed')).outputs[0])
   tx = await contracts.METToken.send('enableMETTransfers')
