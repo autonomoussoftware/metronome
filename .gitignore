@@ -13,6 +13,6 @@ build/
 # truffle placeholders
 contracts/.placeholder
 test/.placeholder
-
+qtum-data
 # trash files
 .DS_Store

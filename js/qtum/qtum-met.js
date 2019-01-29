@@ -24,6 +24,7 @@
 */
 
 const contracts = require('./qtum-contracts.js').getContractInstance()
+const smoke = require('./qtum-smoke.js')
 const program = require('commander')
 const process = require('process')
 
@@ -36,6 +37,10 @@ function init () {
     .command('launch')
     .description('Launch Metronome in qtum')
     .action(launchContracts)
+  program
+    .command('test')
+    .description('Launch Metronome in qtum')
+    .action(smoke.test)
   program.parse(process.argv)
 }
 
@@ -80,7 +85,6 @@ async function initContracts () {
 
 async function launchContracts () {
   console.log('Launching metronome in qtum')
-
   console.log('\nInitializing AutonomousConverter Contract')
   var tx = await contracts.AutonomousConverter.send('init', [contracts.METToken.info.address, contracts.SmartToken.info.address, contracts.Auctions.info.address])
   await tx.confirm(1)
@@ -105,6 +109,7 @@ async function launchContracts () {
   await tx.confirm(1)
   console.log('Enabled', (await contracts.METToken.call('transferAllowed')).outputs[0])
 }
+
 // Todo: use sender address from env
 // Todo: ownership transfer and acceptance
 // Todo: unlock account
