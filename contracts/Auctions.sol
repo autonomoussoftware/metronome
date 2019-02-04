@@ -63,7 +63,7 @@ contract Auctions is Pricer, Owned {
     bool public initialized;
     uint public globalSupplyAfterPercentageLogic = 52598080 * METDECMULT;
     uint public constant AUCTION_WHEN_PERCENTAGE_LOGIC_STARTS = 14791;
-    bytes8 public chain = "ETH";
+    bytes8 public chain = "QTUM";
     event LogAuctionFundsIn(address indexed sender, uint amount, uint tokens, uint purchasePrice, uint refund);
 
     function Auctions() public {
