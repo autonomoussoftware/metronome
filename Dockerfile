@@ -28,3 +28,5 @@ RUN apt-get install -y curl
 RUN wget https://releases.parity.io/ethereum/v2.2.7/x86_64-unknown-linux-gnu/parity
 RUN chmod u+x parity
 RUN cp ./parity /usr/local/bin/
+
+EXPOSE 8545 8546 8555 8556
