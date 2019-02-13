@@ -1859,7 +1859,8 @@ contract TokenPorter is ITokenPorter, Owned {
         merkleRoots[_burnHashes[1]] = bytesToBytes32(_proof);
 
         // mint hash is used for further validation before minting and after attestation by off chain validators. 
-        mintHashes[_burnHashes[1]] = keccak256(abi.encodePacked(_originChain, _addresses[1], _importData[1], _importData[2]));
+        mintHashes[_burnHashes[1]] = keccak256(abi.encodePacked(_originChain, 
+        _addresses[1], _importData[1], _importData[2]));
         
         emit LogImportRequest(_originChain, _burnHashes[1], _burnHashes[0], _addresses[1], _importData[1],
             _importData[2], _importData[0], _importData[6], _extraData);
@@ -1993,9 +1994,9 @@ contract TokenPorter is ITokenPorter, Owned {
         // _addresses[0] is _destMetronomeAddr and _addresses[1] is _recipAddr
         // _burnHashes[0] is previous burnHash, _burnHashes[1] is current burnHash
 
-        if (_burnHashes[1] == keccak256(abi.encodePacked(_importData[0], _originChain, _destinationChain, _addresses[0], 
-            _addresses[1], _importData[1], _importData[2], _importData[3], _importData[4], _importData[5], 
-            _extraData, _burnHashes[0]))) {
+        if (_burnHashes[1] == keccak256(abi.encodePacked(_importData[0], _originChain,
+            _destinationChain, _addresses[0], _addresses[1], _importData[1], _importData[2], 
+            _importData[3], _importData[4], _importData[5], _extraData, _burnHashes[0]))) {
             return true;
         }
         
