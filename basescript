@@ -39,10 +39,10 @@ check_system()
 
   parityString=`parity --version | grep version\ P`
   parityVersion=${parityString:18:3}  
-  if [[ "$parityString" = *"2.2.7"* ]]; then
-    echo "You have Parity 2.2.7"
+  if [[ "$parityString" = *"2.3.2"* ]]; then
+    echo "You have Parity 2.3.2"
   else
-    echo "Need Parity 2.2.7 - You have $parityString. Punting."
+    echo "Need Parity 2.3.2 - You have $parityString. Punting."
     exit 1
   fi
 
@@ -184,7 +184,7 @@ then
      DATADIR=../parity/devnet/eth
      DEST="New Alchemy ETH devnet"
      CHAINARG="--chain devnet-eth.json"
-     BOOTNODES="--bootnodes enode://c84b1142224c2cd8c448ca2c6ff131285b334985af0c57e8d18652265c5a7c80447d6f3f9d393efe4e666b5bcbb1e2266066102453e1a489a23a64d7e2163016@35.231.151.34:33333"
+     BOOTNODES="--bootnodes enode://c84b1142224c2cd8c448ca2c6ff131285b334985af0c57e8d18652265c5a7c80447d6f3f9d393efe4e666b5bcbb1e2266066102453e1a489a23a64d7e2163016@35.237.184.229:33333"
   else
     DATADIR=/tmp/parity/local/eth
     DEST="Parity DevChain Local ETH"
@@ -213,7 +213,7 @@ then
      DATADIR=../parity/devnet/etc
      DEST="New Alchemy ETH devnet"
      CHAINARG="--chain devnet-etc.json"
-     BOOTNODES="--bootnodes enode://e791c02a432914b8109bd99b4f77fd1b19afacc6068882d32737705a01403c6b2a46a8b9372dee990d0de34d3973dbca6f92dda214cb00a6187178eb7537808f@35.231.151.34:30301"
+     BOOTNODES="--bootnodes enode://e791c02a432914b8109bd99b4f77fd1b19afacc6068882d32737705a01403c6b2a46a8b9372dee990d0de34d3973dbca6f92dda214cb00a6187178eb7537808f@35.237.184.229:30301"
   else
      DATADIR=/tmp/parity/local/etc
      DEST="New Alchemy ETC Local"

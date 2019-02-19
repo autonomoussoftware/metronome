@@ -22,7 +22,7 @@
     TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-pragma solidity ^0.4.21;
+pragma solidity ^0.4.25;
 
 
 /**
@@ -311,7 +311,7 @@ contract Ownable {
     address public owner;
     event OwnershipChanged(address indexed prevOwner, address indexed newOwner);
 
-    function Ownable() public {
+    constructor() public {
         owner = msg.sender;
     }
 
@@ -322,7 +322,7 @@ contract Ownable {
     }
 
     /// @notice Allows the current owner to transfer control of the contract to a newOwner.
-    /// @param _newOwner 
+    /// @param _newOwner ..
     /// @return true/false
     function changeOwnership(address _newOwner) public onlyOwner returns (bool) {
         require(_newOwner != address(0));
@@ -340,7 +340,7 @@ contract Owned is Ownable {
     address public newOwner;
 
     /// @notice Allows the current owner to transfer control of the contract to a newOwner.
-    /// @param _newOwner 
+    /// @param _newOwner ..
     /// @return true/false
     function changeOwnership(address _newOwner) public onlyOwner returns (bool) {
         require(_newOwner != owner);
@@ -377,9 +377,9 @@ contract Mintable is Owned {
     ITokenPorter public tokenPorter;
 
     /// @notice init reference of other contract and initial supply
-    /// @param _autonomousConverter 
-    /// @param _minter 
-    /// @param _initialSupply 
+    /// @param _autonomousConverter ..
+    /// @param _minter ..
+    /// @param _initialSupply ..
     /// @param _decmult Decimal places
     function initMintable(address _autonomousConverter, address _minter, uint _initialSupply, 
         uint _decmult) public onlyOwner {
@@ -410,7 +410,7 @@ contract Mintable is Owned {
     }
 
     /// @notice allow minter and tokenPorter to mint token and assign to address
-    /// @param _to 
+    /// @param _to ..
     /// @param _value Amount to be minted  
     function mint(address _to, uint _value) public returns (bool) {
         require(msg.sender == minter || msg.sender == address(tokenPorter));
@@ -422,7 +422,7 @@ contract Mintable is Owned {
     }
 
     /// @notice allow autonomousConverter and tokenPorter to mint token and assign to address
-    /// @param _from 
+    /// @param _from ..
     /// @param _value Amount to be destroyed
     function destroy(address _from, uint _value) public returns (bool) {
         require(msg.sender == autonomousConverter || msg.sender == address(tokenPorter));
@@ -696,8 +696,8 @@ contract METToken is Token {
     }
 
     /// @notice get subcription details
-    /// @param _owner 
-    /// @param _recipient 
+    /// @param _owner ..
+    /// @param _recipient ..
     /// @return startTime, payPerWeek, lastWithdrawTime
     function getSubscription(address _owner, address _recipient) public constant
         returns (uint startTime, uint payPerWeek, uint lastWithdrawTime) 
@@ -733,8 +733,8 @@ contract METToken is Token {
 
     /// @notice Trigger MET token transfers for all pairs of subscribers and beneficiaries
     /// @dev address at i index in owners and recipients array is subcriber-beneficiary pair.
-    /// @param _owners 
-    /// @param _recipients 
+    /// @param _owners ..
+    /// @param _recipients .. 
     /// @return number of successful transfer done
     function multiSubWithdrawFor(address[] _owners, address[] _recipients) public returns (uint) {
         // owners and recipients need 1-to-1 mapping, must be same length
@@ -990,7 +990,7 @@ contract Auctions is Pricer, Owned {
     bytes8 public chain = "ETH";
     event LogAuctionFundsIn(address indexed sender, uint amount, uint tokens, uint purchasePrice, uint refund);
 
-    function Auctions() public {
+    constructor() public {
         mintable = INITIAL_SUPPLY - 2000000 * METDECMULT;
     }
 
@@ -1301,7 +1301,7 @@ contract Auctions is Pricer, Owned {
         if (genesisTime < block.timestamp) {
             revert(); 
         }
-        genesisTime = genesisTime + 1000 years;
+        genesisTime = genesisTime + (60 * 60 * 24 * 365 * 1000); // 1000 years
         initialAuctionEndTime = genesisTime;
         dailyAuctionStartTime = genesisTime;
     }
@@ -1636,7 +1636,7 @@ contract TokenLocker is Ownable {
     /// @notice Constructor to initialize TokenLocker contract.
     /// @param _auctions Address of auctions contract
     /// @param _token Address of METToken contract
-    function TokenLocker(address _auctions, address _token) public {
+    constructor(address _auctions, address _token) public {
         require(_auctions != 0x0);
         require(_token != 0x0);
         auctions = Auctions(_auctions);
@@ -1859,7 +1859,8 @@ contract TokenPorter is ITokenPorter, Owned {
         merkleRoots[_burnHashes[1]] = bytesToBytes32(_proof);
 
         // mint hash is used for further validation before minting and after attestation by off chain validators. 
-        mintHashes[_burnHashes[1]] = keccak256(_originChain, _addresses[1], _importData[1], _importData[2]);
+        mintHashes[_burnHashes[1]] = keccak256(abi.encodePacked(_originChain, 
+        _addresses[1], _importData[1], _importData[2]));
         
         emit LogImportRequest(_originChain, _burnHashes[1], _burnHashes[0], _addresses[1], _importData[1],
             _importData[2], _importData[0], _importData[6], _extraData);
@@ -1891,7 +1892,7 @@ contract TokenPorter is ITokenPorter, Owned {
        
        
         if (burnSequence == 1) {
-            exportedBurns.push(keccak256(uint8(0)));
+            exportedBurns.push(keccak256(abi.encodePacked(uint8(0))));
         }
 
         if (_destChain == auctions.chain()) {
@@ -1899,7 +1900,7 @@ contract TokenPorter is ITokenPorter, Owned {
                 claimables[_destMetronomeAddr][_destRecipAddr].add(_amount);
         }
         uint blockTime = block.timestamp;
-        bytes32 currentBurn = keccak256(
+        bytes32 currentBurn = keccak256(abi.encodePacked(
             blockTime, 
             auctions.chain(),
             _destChain, 
@@ -1911,7 +1912,7 @@ contract TokenPorter is ITokenPorter, Owned {
             auctions.genesisTime(),
             dailyMintable,
             _extraData,
-            exportedBurns[burnSequence - 1]);
+            exportedBurns[burnSequence - 1]));
        
         exportedBurns.push(currentBurn);
         burnHashes[currentBurn] = burnSequence;
@@ -1944,7 +1945,7 @@ contract TokenPorter is ITokenPorter, Owned {
         require(currentHash != 0x0);
 
         //Validate that mint data is same as the data received during import request.
-        require(mintHashes[currentHash] == keccak256(originChain, recipientAddress, amount, fee));
+        require(mintHashes[currentHash] == keccak256(abi.encodePacked(originChain, recipientAddress, amount, fee)));
 
         require(isGlobalSupplyValid(amount, fee, globalSupplyInOtherChains));
         
@@ -1993,9 +1994,9 @@ contract TokenPorter is ITokenPorter, Owned {
         // _addresses[0] is _destMetronomeAddr and _addresses[1] is _recipAddr
         // _burnHashes[0] is previous burnHash, _burnHashes[1] is current burnHash
 
-        if (_burnHashes[1] == keccak256(_importData[0], _originChain, _destinationChain, _addresses[0], 
-            _addresses[1], _importData[1], _importData[2], _importData[3], _importData[4], _importData[5], 
-            _extraData, _burnHashes[0])) {
+        if (_burnHashes[1] == keccak256(abi.encodePacked(_importData[0], _originChain,
+            _destinationChain, _addresses[0], _addresses[1], _importData[1], _importData[2], 
+            _importData[3], _importData[4], _importData[5], _extraData, _burnHashes[0]))) {
             return true;
         }
         
