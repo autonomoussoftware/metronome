@@ -179,7 +179,7 @@ contract('TokenPorter', accounts => {
 
         assert.equal(totalSupply.valueOf(), 0, 'Total supply in ETC is not 0')
 
-        await Utils.importExport(
+        var importDataObj = await Utils.importExport(
           'ETH',
           ethContracts,
           etcContracts,
@@ -225,7 +225,25 @@ contract('TokenPorter', accounts => {
           2880e18,
           'Daily mintable is wrong'
         )
-
+        var hashClaimed = await etcContracts.validator.hashClaimed(importDataObj.burnHashes[1])
+        if (hashClaimed) {
+          var thrown = false
+          try {
+            await etcContracts.metToken.importMET(
+              web3.fromAscii('ETH'),
+              importDataObj.destinationChain,
+              importDataObj.addresses,
+              importDataObj.extraData,
+              importDataObj.burnHashes,
+              importDataObj.supplyOnAllChains,
+              importDataObj.importData,
+              importDataObj.root
+            )
+          } catch (e) {
+            thrown = true
+          }
+          assert(thrown, 'ImportMET should thrown error if hash already claimed')
+        }
         resolve()
       })
     })

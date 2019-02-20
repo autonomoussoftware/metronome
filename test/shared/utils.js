@@ -206,7 +206,7 @@ async function importExport (
     globalSupplyETH.valueOf(),
     'Global supply in two chain is not correct'
   )
-  return true
+  return importDataObj
 }
 
 module.exports = { secondsToNextMidnight, prepareImportData, importExport }
