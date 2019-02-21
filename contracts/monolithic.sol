@@ -1847,6 +1847,7 @@ contract TokenPorter is ITokenPorter, Owned {
         require(_importData.length == 8);
         require(_addresses.length == 2);
         require(_burnHashes.length == 2);
+        require(!validator.hashClaimed(_burnHashes[1]));
         require(isReceiptValid(_originChain, _destinationChain, _addresses, _extraData, _burnHashes, 
         _supplyOnAllChains, _importData));
         require(_destinationChain == auctions.chain());
