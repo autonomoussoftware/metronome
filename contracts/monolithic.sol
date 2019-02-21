@@ -978,7 +978,6 @@ contract Auctions is Pricer, Owned {
     METToken public token;
     Proceeds public proceeds;
     address[] public founders;
-    mapping(address => TokenLocker) public tokenLockers;
     uint internal constant DAY_IN_SECONDS = 86400;
     uint internal constant DAY_IN_MINUTES = 1440;
     uint public genesisTime;
@@ -1209,105 +1208,6 @@ contract Auctions is Pricer, Owned {
         chain = _chain;
         minted = true;
         initialized = true;
-        return true;
-    }
-
-    /// @notice Initialize Auctions parameters
-    /// @param _startTime The block.timestamp when first auction starts
-    /// @param _minimumPrice Nobody can buy tokens for less than this price
-    /// @param _startingPrice Start price of MET when first auction starts
-    /// @param _timeScale time scale factor for auction. will be always 1 in live environment
-    function initAuctions(uint _startTime, uint _minimumPrice, uint _startingPrice, uint _timeScale) 
-        public onlyOwner returns (bool) 
-    {
-        require(minted);
-        require(!initialized);
-        require(_timeScale != 0);
-        initPricer();
-        if (_startTime > 0) { 
-            genesisTime = (_startTime / (1 minutes)) * (1 minutes) + 60;
-        } else {
-            genesisTime = block.timestamp + 60 - (block.timestamp % 60);
-        }
-
-        initialAuctionEndTime = genesisTime + initialAuctionDuration;
-
-        // if initialAuctionEndTime is midnight, then daily auction will start immediately
-        // after initial auction.
-        if (initialAuctionEndTime == (initialAuctionEndTime / 1 days) * 1 days) {
-            dailyAuctionStartTime = initialAuctionEndTime;
-        } else {
-            dailyAuctionStartTime = ((initialAuctionEndTime / 1 days) + 1) * 1 days;
-        }
-
-        lastPurchaseTick = 0;
-
-        if (_minimumPrice > 0) {
-            minimumPrice = _minimumPrice;
-        }
-
-        timeScale = _timeScale;
-
-        if (_startingPrice > 0) {
-            lastPurchasePrice = _startingPrice * 1 ether;
-        } else {
-            lastPurchasePrice = 2 ether;
-        }
-
-        for (uint i = 0; i < founders.length; i++) {
-            TokenLocker tokenLocker = tokenLockers[founders[i]];
-            tokenLocker.lockTokenLocker();
-        }
-        
-        initialized = true;
-        return true;
-    }
-
-    function createTokenLocker(address _founder, address _token) public onlyOwner {
-        require(_token != 0x0);
-        require(_founder != 0x0);
-        founders.push(_founder);
-        TokenLocker tokenLocker = new TokenLocker(address(this), _token);
-        tokenLockers[_founder] = tokenLocker;
-        tokenLocker.changeOwnership(_founder);
-    }
-
-    /// @notice Mint initial supply for founder and move to token locker
-    /// @param _founders Left 160 bits are the founder address and the right 96 bits are the token amount.
-    /// @param _token MET token contract address
-    /// @param _proceeds Address of Proceeds contract
-    function mintInitialSupply(uint[] _founders, address _token, 
-        address _proceeds, address _autonomousConverter) public onlyOwner returns (bool) 
-    {
-        require(!minted);
-        require(_founders.length != 0);
-        require(address(token) == 0x0 && _token != 0x0);
-        require(address(proceeds) == 0x0 && _proceeds != 0x0);
-        require(_autonomousConverter != 0x0);
-
-        token = METToken(_token);
-        proceeds = Proceeds(_proceeds);
-
-        // _founders will be minted into individual token lockers
-        uint foundersTotal;
-        for (uint i = 0; i < _founders.length; i++) {
-            address addr = address(_founders[i] >> 96);
-            require(addr != 0x0);
-            uint amount = _founders[i] & ((1 << 96) - 1);
-            require(amount > 0);
-            TokenLocker tokenLocker = tokenLockers[addr];
-            require(token.mint(address(tokenLocker), amount));
-            tokenLocker.deposit(addr, amount);
-            foundersTotal = foundersTotal.add(amount);
-        }
-
-        // reconcile minted total for founders
-        require(foundersTotal == INITIAL_FOUNDER_SUPPLY);
-
-        // mint a small amount to the AC
-        require(token.mint(_autonomousConverter, INITIAL_AC_SUPPLY));
-
-        minted = true;
         return true;
     }
 
