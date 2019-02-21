@@ -134,6 +134,8 @@ async function importExport (
     web3.fromAscii(expectedExtraData),
     { from: exporter }
   )
+  await TestRPCTime.timeTravel(1 * SECS_IN_DAY)
+  await TestRPCTime.mineBlock()
   let importDataObj = await prepareImportData(sourceContracts, tx)
   let balanceBeforeImport = await destContracts.metToken.balanceOf(
     importDataObj.addresses[1]

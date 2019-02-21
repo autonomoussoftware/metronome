@@ -370,6 +370,7 @@ contract Mintable is Owned {
     event Transfer(address indexed _from, address indexed _to, uint256 _value);
 
     uint256 internal _totalSupply;
+    uint256 public leakage;
     mapping(address => uint256) internal _balanceOf;
 
     address public autonomousConverter;
@@ -407,6 +408,20 @@ contract Mintable is Owned {
 
         tokenPorter = ITokenPorter(_tokenPorter);
         return true;
+    }
+
+    /// @notice Proportional amount of met leakage in daily minting due to cross chain transfer
+    /// @param _value Amount
+    function updateLeakage(uint _value) {
+        require(msg.sender == minter || msg.sender == address(tokenPorter));
+        require(_totalSupply.add(leakage) <= Auctions(minter).globalMetSupply());
+        leakage = leakage.add(_value);
+    }
+
+    /// @notice Proportional amount for extra minting due leakage in daily minting in cross chain transfer
+    function resetLeakage() {
+        require(msg.sender == minter || msg.sender == address(tokenPorter)); 
+        leakage = 0;
     }
 
     /// @notice allow minter and tokenPorter to mint token and assign to address
@@ -1380,7 +1395,7 @@ contract Auctions is Pricer, Owned {
         if (totalAuctions > 0) {
             currMintable = mintable.add(nextAuctionSupply(totalAuctions));
         }
-        return currMintable;
+        return (currMintable.add(token.leakage()));
     }
 
     /// @notice prepare auction when first import is done on a non ETH chain
@@ -1423,7 +1438,8 @@ contract Auctions is Pricer, Owned {
             (time, price, auctionTokens) = nextAuction();
             lastPurchasePrice = price;
             lastPurchaseTick = whichTick(time);
-            mintable = mintable.add(auctionTokens);
+            mintable = mintable.add(auctionTokens).add(token.leakage());
+            token.resetLeakage();
             if (thisAuction > AUCTION_WHEN_PERCENTAGE_LOGIC_STARTS) {
                 globalSupplyAfterPercentageLogic = globalSupplyAfterPercentageLogic.add(globalDailySupply());
             }
@@ -1509,7 +1525,7 @@ contract Auctions is Pricer, Owned {
     /// @param totalAuctionMissed auction count when no purchase done.
     function nextAuctionSupply(uint totalAuctionMissed) internal view returns (uint supply) {
         uint thisAuction = currentAuction();
-        uint tokensHere = token.totalSupply().add(mintable);
+        uint tokensHere = token.totalSupply().add(mintable).add(token.leakage());
         supply = INITIAL_GLOBAL_DAILY_SUPPLY;
         uint dailySupplyAtLastPurchase;
         if (thisAuction > AUCTION_WHEN_PERCENTAGE_LOGIC_STARTS) {
@@ -1732,6 +1748,7 @@ contract TokenPorter is ITokenPorter, Owned {
     uint[] public supplyOnAllChains = new uint[](6);
     mapping (bytes32 => bytes32) public merkleRoots;
     mapping (bytes32 => bytes32) public mintHashes;
+    mapping (bytes32 => uint) public burnAtTick;
     // store burn hashes and burnSequence to find burn hash exist or not. 
     // Burn sequence may be used to find chain of burn hashes
     mapping (bytes32 => uint) public burnHashes;
@@ -1857,7 +1874,7 @@ contract TokenPorter is ITokenPorter, Owned {
         // We do not want to change already deployed interface, hence accepting '_proof' 
         // as bytes and converting into bytes32. Here _proof is merkle root.
         merkleRoots[_burnHashes[1]] = bytesToBytes32(_proof);
-
+        burnAtTick[_burnHashes[1]] = _importData[3];
         // mint hash is used for further validation before minting and after attestation by off chain validators. 
         mintHashes[_burnHashes[1]] = keccak256(abi.encodePacked(_originChain, 
         _addresses[1], _importData[1], _importData[2]));
@@ -1952,7 +1969,7 @@ contract TokenPorter is ITokenPorter, Owned {
         if (importSequence == 1 && token.totalSupply() == 0) {
             auctions.prepareAuctionForNonOGChain();
         }
-        
+        calculateLeakage(amount.add(fee), burnAtTick[currentHash]);
         require(token.mint(recipientAddress, amount));
         // fee amount has already been validated during export and its part of burn hash
         // so we may not need to calculate it again.
@@ -1963,6 +1980,15 @@ contract TokenPorter is ITokenPorter, Owned {
         emit LogImport(originChain, recipientAddress, amount, fee, extraData, importSequence, currentHash);
         importSequence++;
         return true;
+    }
+
+    function calculateLeakage(uint amount, uint burnTick) private {
+        uint lastAuction = auctions.whichAuction(burnTick);
+        uint thisAuction = auctions.currentAuction();
+        uint leakage = thisAuction.sub(lastAuction).mul(amount);
+        uint globalSupply = auctions.INITIAL_SUPPLY().add(auctions.INITIAL_GLOBAL_DAILY_SUPPLY().mul(lastAuction));
+        leakage = (auctions.INITIAL_GLOBAL_DAILY_SUPPLY().mul(leakage)).div(globalSupply);
+        token.updateLeakage(leakage);
     }
 
     /// @notice Convert bytes to bytes32

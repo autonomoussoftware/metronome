@@ -246,7 +246,6 @@ contract('TokenPorter', accounts => {
         })
 
         var balance = await ethContracts.metToken.balanceOf(exporter)
-        console.log('met balance of exporter', balance)
         assert.isAbove(
           balance.toNumber(),
           amountToExport + exportFee,
@@ -307,7 +306,7 @@ contract('TokenPorter', accounts => {
         )
         // await ethContracts.auctions.updateMintable()
         // await ethContracts.auctions.updateMintable()
-        await TestRPCTime.timeTravel(1 * SECS_IN_DAY - SECS_IN_MINUTE)
+        await TestRPCTime.timeTravel(1 * SECS_IN_DAY)
         await TestRPCTime.mineBlock()
         await ethContracts.auctions.sendTransaction({
           from: exporter,
@@ -322,7 +321,7 @@ contract('TokenPorter', accounts => {
         let etcTotalSupply = await etcContracts.metToken.totalSupply()
         let ethTotalSupply = await ethContracts.metToken.totalSupply()
         let globalSupply = etcMintable.add(ethMintable.valueOf()).add(etcTotalSupply.valueOf()).add(ethTotalSupply.valueOf())
-        let expectedGlobalSupply = ethers.utils.bigNumberify(web3.toHex(1.0028800e25))
+        let expectedGlobalSupply = ethers.utils.bigNumberify(web3.toHex(1.003456e25))
         globalSupply = ethers.utils.bigNumberify(web3.toHex(globalSupply.valueOf()))
         assert(expectedGlobalSupply.gte(globalSupply), 'Global supply is wrong')
         assert(expectedGlobalSupply.sub(globalSupply).lt(ethers.utils.bigNumberify(10)), 'Global supply is wrong')
@@ -345,7 +344,7 @@ contract('TokenPorter', accounts => {
         ethTotalSupply = await ethContracts.metToken.totalSupply()
         globalSupply = etcMintable.add(ethMintable.valueOf()).add(etcTotalSupply.valueOf()).add(ethTotalSupply.valueOf())
         globalSupply = ethers.utils.bigNumberify(web3.toHex(globalSupply.valueOf()))
-        expectedGlobalSupply = ethers.utils.bigNumberify(web3.toHex(1.003168E25))
+        expectedGlobalSupply = ethers.utils.bigNumberify(web3.toHex(1.003744E25))
         assert(expectedGlobalSupply.gte(globalSupply), 'Global supply is wrong')
         assert(expectedGlobalSupply.sub(globalSupply).lte(ethers.utils.bigNumberify(10)), 'Global supply is wrong')
         resolve()
