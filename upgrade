@@ -45,7 +45,7 @@ usage()
   [--live | --test] [-O | --owner <owner eth address> ] 
   [-i | --interactive] [--chain eth|etc ] | [-h]
   [-v | --validators <list of three validators address>]
-  [-p <parity host>]
+  [--parity-host <parity host>]
 
 _EOM_
 

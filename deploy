@@ -47,7 +47,7 @@ usage()
   [-O | --owner <owner eth address> ] [--auction auction_epoch_seconds] [-t | --timescale Time Mult]
   [-i | --interactive] [--seed ] [--chain eth|etc ] | [-h]
   [-v | --validators <list of three validators address>]
-  [-p <parity host>]
+  [--parity-host <parity host>]
 
 _EOM_
 
