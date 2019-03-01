@@ -41,11 +41,11 @@ usage()
   If --chain etc is offered, deploy will deploy to ETC. Note that deploy will
   consider ETC to be the "Non OG" chain, and initialize a destination metronome.
 
-  usage: deploy [--supply supply of Metronome] [-P | --pass <password> ]
+  usage: upgrade [--supply supply of Metronome] [-P | --pass <password> ]
   [--live | --test] [-O | --owner <owner eth address> ] 
   [-i | --interactive] [--chain eth|etc ] | [-h]
   [-v | --validators <list of three validators address>]
-  [-p <parity host>]
+  [--parity-host <parity host>]
 
 _EOM_
 

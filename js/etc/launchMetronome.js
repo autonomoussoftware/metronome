@@ -41,7 +41,7 @@ function waitForTx (hash) {
 var newOwner = OWNER_ADDRESS
 var newOwnerPassword = OWNER_PASS
 var balanceOfNewOwner = eth.getBalance(newOwner)
-
+var gasPrice = 80000000000
 if (balanceOfNewOwner < 1e18) {
   console.log('New owner should have sufficient balance to launch the metronome. Should have 1 ether atleast')
 }
@@ -51,49 +51,49 @@ personal.unlockAccount(newOwner, newOwnerPassword)
 
 // Accept ownership of all contracts before launching
 console.log('\nAccepting ownership of METToken')
-hash = METToken.acceptOwnership({from: newOwner})
+hash = METToken.acceptOwnership({from: newOwner, gasPrice: gasPrice})
 waitForTx(hash)
 
 console.log('\nAccepting ownership of AutonomousConverter')
-hash = AutonomousConverter.acceptOwnership({from: newOwner})
+hash = AutonomousConverter.acceptOwnership({from: newOwner, gasPrice: gasPrice})
 waitForTx(hash)
 
 console.log('\nAccepting ownership of Auctions')
-hash = Auctions.acceptOwnership({from: newOwner})
+hash = Auctions.acceptOwnership({from: newOwner, gasPrice: gasPrice})
 waitForTx(hash)
 
 console.log('\nUnlocking account')
 personal.unlockAccount(newOwner, newOwnerPassword)
 
 console.log('\nAccepting ownership of Proceeds')
-hash = Proceeds.acceptOwnership({from: newOwner})
+hash = Proceeds.acceptOwnership({from: newOwner, gasPrice: gasPrice})
 waitForTx(hash)
 
 console.log('\nAccepting ownership of SmartToken')
-hash = SmartToken.acceptOwnership({from: newOwner})
+hash = SmartToken.acceptOwnership({from: newOwner, gasPrice: gasPrice})
 waitForTx(hash)
 
 console.log('\nAccepting ownership of Validator')
-hash = Validator.acceptOwnership({from: newOwner})
+hash = Validator.acceptOwnership({from: newOwner, gasPrice: gasPrice})
 waitForTx(hash)
 
 console.log('\nUnlocking account')
 personal.unlockAccount(newOwner, newOwnerPassword)
 
 console.log('\nAccepting ownership of TokenPorter')
-hash = TokenPorter.acceptOwnership({from: newOwner})
+hash = TokenPorter.acceptOwnership({from: newOwner, gasPrice: gasPrice})
 waitForTx(hash)
 
 console.log('\nUnlocking account')
 personal.unlockAccount(newOwner, newOwnerPassword)
 
 console.log('\nInitializing AutonomousConverter Contract')
-hash = AutonomousConverter.init(METToken.address, SmartToken.address, Auctions.address, {from: newOwner, value: web3.toWei(0.1, 'ether')})
+hash = AutonomousConverter.init(METToken.address, SmartToken.address, Auctions.address, {from: newOwner, value: web3.toWei(0.1, 'ether'), gasPrice: gasPrice})
 waitForTx(hash)
 
 console.log('\nInitializing Proceeds')
 personal.unlockAccount(newOwner, newOwnerPassword)
-hash = Proceeds.initProceeds(AutonomousConverter.address, Auctions.address, {from: newOwner})
+hash = Proceeds.initProceeds(AutonomousConverter.address, Auctions.address, {from: newOwner, gasPrice: gasPrice})
 waitForTx(hash)
 
 console.log('\nInitializing Auctions')
@@ -101,10 +101,12 @@ personal.unlockAccount(newOwner, newOwnerPassword)
 MINPRICE = 3300000000000 // Same as current min price in eth chain
 PRICE = 0.02e18. // start price for first daily auction. This may be average start price at eth chain 
 TIMESCALE = 1 //hard coded
-hash = Auctions.skipInitBecauseIAmNotOg(METToken.address, Proceeds.address, START, MINPRICE, PRICE, TIMESCALE, web3.fromAscii('ETC'), ISA_ENDTIME, {from: newOwner})
+hash = Auctions.skipInitBecauseIAmNotOg(METToken.address, Proceeds.address, START, MINPRICE, PRICE, TIMESCALE, web3.fromAscii('ETC'), ISA_ENDTIME, {from: newOwner, gasPrice: gasPrice})
 waitForTx(hash)
 console.log('Initialized auctions', Auctions.initialized())
 if (!Auctions.initialized()) {
   throw new Error('Error occured while launching auction')
 }
+hash = METToken.enableMETTransfers({from: newOwner})
+waitForTx(hash)
 console.log('Launch completed\n')
