@@ -456,7 +456,7 @@ contract Auctions is Pricer, Owned {
         if (totalAuctions > 0) {
             currMintable = mintable.add(nextAuctionSupply(totalAuctions));
         }
-        return currMintable;
+        return (currMintable.add(token.leakage()));
     }
 
     /// @notice prepare auction when first import is done on a non ETH chain
@@ -499,7 +499,8 @@ contract Auctions is Pricer, Owned {
             (time, price, auctionTokens) = nextAuction();
             lastPurchasePrice = price;
             lastPurchaseTick = whichTick(time);
-            mintable = mintable.add(auctionTokens);
+            mintable = mintable.add(auctionTokens).add(token.leakage());
+            token.resetLeakage();
             if (thisAuction > AUCTION_WHEN_PERCENTAGE_LOGIC_STARTS) {
                 globalSupplyAfterPercentageLogic = globalSupplyAfterPercentageLogic.add(globalDailySupply());
             }
@@ -585,7 +586,7 @@ contract Auctions is Pricer, Owned {
     /// @param totalAuctionMissed auction count when no purchase done.
     function nextAuctionSupply(uint totalAuctionMissed) internal view returns (uint supply) {
         uint thisAuction = currentAuction();
-        uint tokensHere = token.totalSupply().add(mintable);
+        uint tokensHere = token.totalSupply().add(mintable).add(token.leakage());
         supply = INITIAL_GLOBAL_DAILY_SUPPLY;
         uint dailySupplyAtLastPurchase;
         if (thisAuction > AUCTION_WHEN_PERCENTAGE_LOGIC_STARTS) {

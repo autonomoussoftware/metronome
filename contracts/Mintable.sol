@@ -26,6 +26,7 @@ pragma solidity ^0.4.21;
 
 import "./Owned.sol";
 import "./SafeMath.sol";
+import "./Auctions.sol";
 import "./ITokenPorter.sol";
 
 
@@ -39,6 +40,7 @@ contract Mintable is Owned {
     event Transfer(address indexed _from, address indexed _to, uint256 _value);
 
     uint256 internal _totalSupply;
+    uint256 public leakage;
     mapping(address => uint256) internal _balanceOf;
 
     address public autonomousConverter;
@@ -101,5 +103,19 @@ contract Mintable is Owned {
         emit Destroy(_from, _value);
         emit Transfer(_from, 0x0, _value);
         return true;
+    }
+
+    /// @notice Proportional amount of met leakage in daily minting due to cross chain transfer
+    /// @param _value Amount
+    function updateLeakage(uint _value) public {
+        require(msg.sender == minter || msg.sender == address(tokenPorter));
+        require(_totalSupply.add(leakage) <= Auctions(minter).globalMetSupply());
+        leakage = leakage.add(_value);
+    }
+
+    /// @notice Proportional amount for extra minting due leakage in daily minting in cross chain transfer
+    function resetLeakage() public {
+        require(msg.sender == minter || msg.sender == address(tokenPorter)); 
+        leakage = 0;
     }
 }
