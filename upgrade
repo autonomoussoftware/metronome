@@ -98,9 +98,9 @@ mkdir $TMP_DIR
 
 echo "" > $CHAIN_DIR/metronome-v2.js
 sleep 5
-echo -e "contracts/monolithic-v2.sol:TokenPorter\n$TMP_DIR/TokenPorter.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic-v2.sol >/dev/null
+echo -e "contracts/monolithic.sol:TokenPorter\n$TMP_DIR/TokenPorter.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
 sleep 5
-echo -e "contracts/monolithic-v2.sol:Validator\n$TMP_DIR/Validator.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic-v2.sol >/dev/null
+echo -e "contracts/monolithic.sol:Validator\n$TMP_DIR/Validator.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null
 sleep 5
 cat $TMP_DIR/TokenPorter.js $TMP_DIR/Validator.js > $CHAIN_DIR/metronome-v2.js
 rm -r $TMP_DIR
