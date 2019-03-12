@@ -171,7 +171,11 @@ contract TokenPorter is ITokenPorter, Owned {
         require(_addresses[0] == address(token));
         require(_importData[1] != 0);
         // Update mintable proportionally due for missed auctions
-        auctions.restartAuction();
+        if (auctions.lastPurchaseTick() > 0) {
+            // auction start only after first minting
+            auctions.restartAuction();
+        }
+        
         // We do not want to change already deployed interface, hence accepting '_proof' 
         // as bytes and converting into bytes32. Here _proof is merkle root.
         merkleRoots[_burnHashes[1]] = bytesToBytes32(_proof);

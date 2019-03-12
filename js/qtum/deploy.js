@@ -66,7 +66,7 @@ async function initContracts () {
 async function launchContracts () {
   console.log('Launching metronome in qtum')
   console.log('\nInitializing AutonomousConverter Contract')
-  var tx = await contracts.AutonomousConverter.send('init', [contracts.METToken.info.address, contracts.SmartToken.info.address, contracts.Auctions.info.address])
+  var tx = await contracts.AutonomousConverter.send('init', [contracts.METToken.info.address, contracts.SmartToken.info.address, contracts.Auctions.info.address], {amount: 1})
   await tx.confirm(1)
 
   console.log('\nInitializing Proceeds')
