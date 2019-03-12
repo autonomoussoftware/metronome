@@ -32,7 +32,7 @@ import "./METToken.sol";
 import "./TokenLocker.sol";
 
 
-/// @title Auction contract. Send ETH to the contract address and buy MET. 
+/// @title Auction contract. Send QTUM to the contract address and buy MET. 
 contract Auctions is Pricer, Owned {
 
     using SafeMath for uint256;
@@ -56,7 +56,7 @@ contract Auctions is Pricer, Owned {
     uint public initialAuctionDuration = 7 days;
     uint public initialAuctionEndTime;
     uint public dailyAuctionStartTime;
-    uint public constant DAILY_PURCHASE_LIMIT = 1000 ether;
+    uint public constant DAILY_PURCHASE_LIMIT = 1000e8;
     mapping (address => uint) internal purchaseInTheAuction;
     mapping (address => uint) internal lastPurchaseAuction;
     bool public minted;
@@ -119,9 +119,9 @@ contract Auctions is Pricer, Owned {
         mintable = mintable.sub(tokens);
 
         assert(refund <= amountForPurchase);
-        uint ethForProceeds = amountForPurchase.sub(refund);
+        uint qtumForProceeds = amountForPurchase.sub(refund);
 
-        proceeds.handleFund.value(ethForProceeds)();
+        proceeds.handleFund.value(qtumForProceeds)();
 
         require(token.mint(msg.sender, tokens));
 
@@ -132,7 +132,7 @@ contract Auctions is Pricer, Owned {
             }
             msg.sender.transfer(refund);
         }
-        emit LogAuctionFundsIn(msg.sender, ethForProceeds, tokens, lastPurchasePrice, refund);
+        emit LogAuctionFundsIn(msg.sender, qtumForProceeds, tokens, lastPurchasePrice, refund);
     }
 
     modifier running() {
@@ -223,7 +223,7 @@ contract Auctions is Pricer, Owned {
     /// @param _startingPrice Start price of MET when first auction starts
     /// @param _timeScale time scale factor for auction. will be always 1 in live environment
     /// @param _chain chain where this contract is being deployed
-    /// @param _initialAuctionEndTime  Initial Auction end time in ETH chain. 
+    /// @param _initialAuctionEndTime  Initial Auction end time in qtum chain. 
     function skipInitBecauseIAmNotOg(address _token, address _proceeds, uint _genesisTime, 
         uint _minimumPrice, uint _startingPrice, uint _timeScale, bytes8 _chain, 
         uint _initialAuctionEndTime) public onlyOwner returns (bool) {
@@ -263,9 +263,9 @@ contract Auctions is Pricer, Owned {
         timeScale = _timeScale;
 
         if (_startingPrice > 0) {
-            lastPurchasePrice = _startingPrice * 1 ether;
+            lastPurchasePrice = _startingPrice * 1e8;
         } else {
-            lastPurchasePrice = 2 ether;
+            lastPurchasePrice = 2e8;
         }
         chain = _chain;
         minted = true;
@@ -310,9 +310,9 @@ contract Auctions is Pricer, Owned {
         timeScale = _timeScale;
 
         if (_startingPrice > 0) {
-            lastPurchasePrice = _startingPrice * 1 ether;
+            lastPurchasePrice = _startingPrice * 1e8;
         } else {
-            lastPurchasePrice = 2 ether;
+            lastPurchasePrice = 2e8;
         }
 
         for (uint i = 0; i < founders.length; i++) {
@@ -577,8 +577,8 @@ contract Auctions is Pricer, Owned {
         tokens = calctokens;
         if (calctokens > mintable) {
             tokens = mintable;
-            uint ethPaying = mintable.mul(weiPerToken).div(METDECMULT);
-            refund = _wei.sub(ethPaying);
+            uint qtumPaying = mintable.mul(weiPerToken).div(METDECMULT);
+            refund = _wei.sub(qtumPaying);
         }
     }
 
