@@ -31,19 +31,19 @@ import "./METToken.sol";
 import "./Auctions.sol";
 
 
-/// @title Autonomous Converter contract for MET <=> ETH exchange
+/// @title Autonomous Converter contract for MET <=> QTUM exchange
 contract AutonomousConverter is Formula, Owned {
 
     SmartToken public smartToken;
     METToken public reserveToken;
     Auctions public auctions;
 
-    enum WhichToken { Eth, Met }
+    enum WhichToken { Qtum, Met }
     bool internal initialized = false;
 
     event LogFundsIn(address indexed from, uint value);
-    event ConvertEthToMet(address indexed from, uint eth, uint met);
-    event ConvertMetToEth(address indexed from, uint eth, uint met);
+    event ConvertQtumToMet(address indexed from, uint qtum, uint met);
+    event ConvertMetToQtum(address indexed from, uint qtum, uint met);
 
     function init(address _reserveToken, address _smartToken, address _auctions) 
         public onlyOwner payable 
@@ -64,44 +64,44 @@ contract AutonomousConverter is Formula, Owned {
         return balanceOf(WhichToken.Met);
     }
 
-    function getEthBalance() public view returns (uint) {
-        return balanceOf(WhichToken.Eth);
+    function getQtumBalance() public view returns (uint) {
+        return balanceOf(WhichToken.Qtum);
     }
 
-    /// @notice return the expected MET for ETH
-    /// @param _depositAmount ETH.
-    /// @return expected MET value for ETH
-    function getMetForEthResult(uint _depositAmount) public view returns (uint256) {
-        return convertingReturn(WhichToken.Eth, _depositAmount);
+    /// @notice return the expected MET for QTUM
+    /// @param _depositAmount QTUM.
+    /// @return expected MET value for QTUM
+    function getMetForQtumResult(uint _depositAmount) public view returns (uint256) {
+        return convertingReturn(WhichToken.Qtum, _depositAmount);
     }
 
-    /// @notice return the expected ETH for MET
+    /// @notice return the expected QTUM for MET
     /// @param _depositAmount MET.
-    /// @return expected ETH value for MET
-    function getEthForMetResult(uint _depositAmount) public view returns (uint256) {
+    /// @return expected QTUM value for MET
+    function getQtumForMetResult(uint _depositAmount) public view returns (uint256) {
         return convertingReturn(WhichToken.Met, _depositAmount);
     }
 
-    /// @notice send ETH and get MET
+    /// @notice send QTUM and get MET
     /// @param _minReturn execute conversion only if return is equal or more than _mintReturn
     /// @return returnedMet MET retured after conversion
-    function convertEthToMet(uint _minReturn) public payable returns (uint returnedMet) {
-        returnedMet = convert(WhichToken.Eth, _minReturn, msg.value);
-        emit ConvertEthToMet(msg.sender, msg.value, returnedMet);
+    function convertQtumToMet(uint _minReturn) public payable returns (uint returnedMet) {
+        returnedMet = convert(WhichToken.Qtum, _minReturn, msg.value);
+        emit ConvertQtumToMet(msg.sender, msg.value, returnedMet);
     }
 
-    /// @notice send MET and get ETH
+    /// @notice send MET and get QTUM
     /// @dev Caller will be required to approve the AutonomousConverter to initiate the transfer
     /// @param _amount MET amount
     /// @param _minReturn execute conversion only if return is equal or more than _mintReturn
-    /// @return returnedEth ETh returned after conversion
-    function convertMetToEth(uint _amount, uint _minReturn) public returns (uint returnedEth) {
-        returnedEth = convert(WhichToken.Met, _minReturn, _amount);
-        emit ConvertMetToEth(msg.sender, returnedEth, _amount);
+    /// @return returnedQtum Qtum returned after conversion
+    function convertMetToQtum(uint _amount, uint _minReturn) public returns (uint returnedQtum) {
+        returnedQtum = convert(WhichToken.Met, _minReturn, _amount);
+        emit ConvertMetToQtum(msg.sender, returnedQtum, _amount);
     }
 
     function balanceOf(WhichToken which) internal view returns (uint) {
-        if (which == WhichToken.Eth) return address(this).balance;
+        if (which == WhichToken.Qtum) return address(this).balance;
         if (which == WhichToken.Met) return reserveToken.balanceOf(this);
         revert();
     }
@@ -110,7 +110,7 @@ contract AutonomousConverter is Formula, Owned {
         
         WhichToken to = WhichToken.Met;
         if (whichFrom == WhichToken.Met) {
-            to = WhichToken.Eth;
+            to = WhichToken.Qtum;
         }
 
         uint reserveTokenBalanceFrom = balanceOf(whichFrom).add(_depositAmount);
@@ -127,7 +127,7 @@ contract AutonomousConverter is Formula, Owned {
     function convert(WhichToken whichFrom, uint _minReturn, uint amnt) internal returns (uint) {
         WhichToken to = WhichToken.Met;
         if (whichFrom == WhichToken.Met) {
-            to = WhichToken.Eth;
+            to = WhichToken.Qtum;
             require(reserveToken.transferFrom(msg.sender, this, amnt));
         }
 
@@ -162,7 +162,7 @@ contract AutonomousConverter is Formula, Owned {
         require(_amount < tokenSupply);
 
         smartToken.destroy(msg.sender, _amount);
-        if (which == WhichToken.Eth) {
+        if (which == WhichToken.Qtum) {
             msg.sender.transfer(redeemable);
         } else {
             require(reserveToken.transfer(msg.sender, redeemable));

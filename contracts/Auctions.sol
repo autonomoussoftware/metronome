@@ -32,7 +32,7 @@ import "./METToken.sol";
 import "./TokenLocker.sol";
 
 
-/// @title Auction contract. Send ETH to the contract address and buy MET. 
+/// @title Auction contract. Send QTUM to the contract address and buy MET. 
 contract Auctions is Pricer, Owned {
 
     using SafeMath for uint256;
@@ -56,14 +56,14 @@ contract Auctions is Pricer, Owned {
     uint public initialAuctionDuration = 7 days;
     uint public initialAuctionEndTime;
     uint public dailyAuctionStartTime;
-    uint public constant DAILY_PURCHASE_LIMIT = 1000 ether;
+    uint public constant DAILY_PURCHASE_LIMIT = 1000e8;
     mapping (address => uint) internal purchaseInTheAuction;
     mapping (address => uint) internal lastPurchaseAuction;
     bool public minted;
     bool public initialized;
     uint public globalSupplyAfterPercentageLogic = 52598080 * METDECMULT;
     uint public constant AUCTION_WHEN_PERCENTAGE_LOGIC_STARTS = 14791;
-    bytes8 public chain = "ETH";
+    bytes8 public chain = "QTUM";
     event LogAuctionFundsIn(address indexed sender, uint amount, uint tokens, uint purchasePrice, uint refund);
 
     function Auctions() public {
@@ -119,9 +119,9 @@ contract Auctions is Pricer, Owned {
         mintable = mintable.sub(tokens);
 
         assert(refund <= amountForPurchase);
-        uint ethForProceeds = amountForPurchase.sub(refund);
+        uint qtumForProceeds = amountForPurchase.sub(refund);
 
-        proceeds.handleFund.value(ethForProceeds)();
+        proceeds.handleFund.value(qtumForProceeds)();
 
         require(token.mint(msg.sender, tokens));
 
@@ -132,7 +132,7 @@ contract Auctions is Pricer, Owned {
             }
             msg.sender.transfer(refund);
         }
-        emit LogAuctionFundsIn(msg.sender, ethForProceeds, tokens, lastPurchasePrice, refund);
+        emit LogAuctionFundsIn(msg.sender, qtumForProceeds, tokens, lastPurchasePrice, refund);
     }
 
     modifier running() {
@@ -223,7 +223,7 @@ contract Auctions is Pricer, Owned {
     /// @param _startingPrice Start price of MET when first auction starts
     /// @param _timeScale time scale factor for auction. will be always 1 in live environment
     /// @param _chain chain where this contract is being deployed
-    /// @param _initialAuctionEndTime  Initial Auction end time in ETH chain. 
+    /// @param _initialAuctionEndTime  Initial Auction end time in qtum chain. 
     function skipInitBecauseIAmNotOg(address _token, address _proceeds, uint _genesisTime, 
         uint _minimumPrice, uint _startingPrice, uint _timeScale, bytes8 _chain, 
         uint _initialAuctionEndTime) public onlyOwner returns (bool) {
@@ -263,9 +263,9 @@ contract Auctions is Pricer, Owned {
         timeScale = _timeScale;
 
         if (_startingPrice > 0) {
-            lastPurchasePrice = _startingPrice * 1 ether;
+            lastPurchasePrice = _startingPrice * 1e8;
         } else {
-            lastPurchasePrice = 2 ether;
+            lastPurchasePrice = 2e8;
         }
         chain = _chain;
         minted = true;
@@ -310,9 +310,9 @@ contract Auctions is Pricer, Owned {
         timeScale = _timeScale;
 
         if (_startingPrice > 0) {
-            lastPurchasePrice = _startingPrice * 1 ether;
+            lastPurchasePrice = _startingPrice * 1e8;
         } else {
-            lastPurchasePrice = 2 ether;
+            lastPurchasePrice = 2e8;
         }
 
         for (uint i = 0; i < founders.length; i++) {
@@ -456,7 +456,7 @@ contract Auctions is Pricer, Owned {
         if (totalAuctions > 0) {
             currMintable = mintable.add(nextAuctionSupply(totalAuctions));
         }
-        return currMintable;
+        return (currMintable.add(token.leakage()));
     }
 
     /// @notice prepare auction when first import is done on a non ETH chain
@@ -499,7 +499,8 @@ contract Auctions is Pricer, Owned {
             (time, price, auctionTokens) = nextAuction();
             lastPurchasePrice = price;
             lastPurchaseTick = whichTick(time);
-            mintable = mintable.add(auctionTokens);
+            mintable = mintable.add(auctionTokens).add(token.leakage());
+            token.resetLeakage();
             if (thisAuction > AUCTION_WHEN_PERCENTAGE_LOGIC_STARTS) {
                 globalSupplyAfterPercentageLogic = globalSupplyAfterPercentageLogic.add(globalDailySupply());
             }
@@ -576,8 +577,8 @@ contract Auctions is Pricer, Owned {
         tokens = calctokens;
         if (calctokens > mintable) {
             tokens = mintable;
-            uint ethPaying = mintable.mul(weiPerToken).div(METDECMULT);
-            refund = _wei.sub(ethPaying);
+            uint qtumPaying = mintable.mul(weiPerToken).div(METDECMULT);
+            refund = _wei.sub(qtumPaying);
         }
     }
 
@@ -585,7 +586,7 @@ contract Auctions is Pricer, Owned {
     /// @param totalAuctionMissed auction count when no purchase done.
     function nextAuctionSupply(uint totalAuctionMissed) internal view returns (uint supply) {
         uint thisAuction = currentAuction();
-        uint tokensHere = token.totalSupply().add(mintable);
+        uint tokensHere = token.totalSupply().add(mintable).add(token.leakage());
         supply = INITIAL_GLOBAL_DAILY_SUPPLY;
         uint dailySupplyAtLastPurchase;
         if (thisAuction > AUCTION_WHEN_PERCENTAGE_LOGIC_STARTS) {

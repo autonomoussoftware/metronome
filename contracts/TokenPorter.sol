@@ -49,6 +49,7 @@ contract TokenPorter is ITokenPorter, Owned {
     uint[] public supplyOnAllChains = new uint[](6);
     mapping (bytes32 => bytes32) public merkleRoots;
     mapping (bytes32 => bytes32) public mintHashes;
+    mapping (bytes32 => uint) public burnAtTick;
     // store burn hashes and burnSequence to find burn hash exist or not. 
     // Burn sequence may be used to find chain of burn hashes
     mapping (bytes32 => uint) public burnHashes;
@@ -170,11 +171,15 @@ contract TokenPorter is ITokenPorter, Owned {
         require(_addresses[0] == address(token));
         require(_importData[1] != 0);
         // Update mintable proportionally due for missed auctions
-        auctions.restartAuction();
+        if (auctions.lastPurchaseTick() > 0) {
+            // auction start only after first minting
+            auctions.restartAuction();
+        }
+        
         // We do not want to change already deployed interface, hence accepting '_proof' 
         // as bytes and converting into bytes32. Here _proof is merkle root.
         merkleRoots[_burnHashes[1]] = bytesToBytes32(_proof);
-
+        burnAtTick[_burnHashes[1]] = _importData[3];
         // mint hash is used for further validation before minting and after attestation by off chain validators. 
         mintHashes[_burnHashes[1]] = keccak256(_originChain, _addresses[1], _importData[1], _importData[2]);
         
@@ -268,7 +273,7 @@ contract TokenPorter is ITokenPorter, Owned {
         if (importSequence == 1 && token.totalSupply() == 0) {
             auctions.prepareAuctionForNonOGChain();
         }
-        
+        calculateLeakage(amount.add(fee), burnAtTick[currentHash]);
         require(token.mint(recipientAddress, amount));
         // fee amount has already been validated during export and its part of burn hash
         // so we may not need to calculate it again.
@@ -279,6 +284,18 @@ contract TokenPorter is ITokenPorter, Owned {
         emit LogImport(originChain, recipientAddress, amount, fee, extraData, importSequence, currentHash);
         importSequence++;
         return true;
+    }
+    
+    /// @notice Calculate leakage due to missed auction between export and import
+    /// @param amount origin chain from where these token burnt.
+    /// @param burnTick tick when MET burnt at source chain
+    function calculateLeakage(uint amount, uint burnTick) private {
+        uint lastAuction = auctions.whichAuction(burnTick);
+        uint thisAuction = auctions.currentAuction();
+        uint leakage = thisAuction.sub(lastAuction).mul(amount);
+        uint globalSupply = auctions.INITIAL_SUPPLY().add(auctions.INITIAL_GLOBAL_DAILY_SUPPLY().mul(lastAuction));
+        leakage = (auctions.INITIAL_GLOBAL_DAILY_SUPPLY().mul(leakage)).div(globalSupply);
+        token.updateLeakage(leakage);
     }
 
     /// @notice Convert bytes to bytes32

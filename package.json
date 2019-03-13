@@ -6,22 +6,12 @@
     "test": "test"
   },
   "scripts": {
-    "test": "./test-all",
-    "compile": "truffle compile",
-    "migrate": "truffle migrate",
-    "migrate:clean": "truffle migrate --reset",
+    "docker-build": "docker build -t qtum-dev .", 
+    "docker-run": "docker run -it -v ${PWD}:/usr/src --network=\"host\" qtum-dev bash",
+    "deploy": "node ./js/qtum/deploy.js deploy",
     "solhint": "solhint contracts/*.sol",
     "eslint": "eslint test/*.js timed-tests/*.js metronome-validator/lib/*.js metronome-validator/test/*.js",
-    "ganache": "kill -9 $(lsof -ti :8545) & (ganache-cli -p 8545 -e 1000 -a 15 > /dev/null & truffle test) && kill -9 $(lsof -ti :8545)",
-    "ganache:single": "kill -9 $(lsof -ti :8545) & (ganache-cli -p 8545 -e 1000 -a 15 > /dev/null & truffle test $TESTFILE) && kill -9 $(lsof -ti :8545)",
-    "ganache:subs": "kill -9 $(lsof -ti :8545) & (ganache-cli -p 8545 -e 1000 -a 15 > /dev/null & truffle test timed-tests/subscriptions.js) && kill -9 $(lsof -ti :8545)",
-    "ganache:ac": "kill -9 $(lsof -ti :8545) & (ganache-cli -p 8545 -e 1000 -a 100 > /dev/null & truffle test timed-tests/ac.js) && kill -9 $(lsof -ti :8545)",
-    "ganache:auctions": "kill -9 $(lsof -ti :8545) & (ganache-cli -p 8545 -e 1000 -a 15 > /dev/null & truffle test timed-tests/auctions.js) && kill -9 $(lsof -ti :8545)",
-    "ganache:proceeds": "kill -9 $(lsof -ti :8545) & (ganache-cli -p 8545 -e 1000 -a 15 > /dev/null & truffle test timed-tests/proceeds.js) && kill -9 $(lsof -ti :8545)",
-    "ganache:tokenLocker": "kill -9 $(lsof -ti :8545) & (ganache-cli -p 8545 -e 1000 -a 15 > /dev/null & truffle test timed-tests/tokenLocker.js) && kill -9 $(lsof -ti :8545)",
-    "ganache:tokenPorter": "kill -9 $(lsof -ti :8545) & (ganache-cli -p 8545 -e 1000 -a 15 > /dev/null & truffle test timed-tests/tokenPorter.js) && kill -9 $(lsof -ti :8545)",
-    "precommit-msg": "echo 'Pre-commit checks...' && exit 0",
-    "testExport": "./node_modules/mocha/bin/mocha --timeout 100000"
+    "precommit-msg": "echo 'Pre-commit checks...' && exit 0"
   },
   "pre-commit": [
     "eslint",
@@ -54,10 +44,11 @@
     "eslint-plugin-node": "^5.2.1",
     "eslint-plugin-promise": "^3.6.0",
     "eslint-plugin-standard": "^3.0.1",
+    "minimist": "^1.2.0",
     "pre-commit": "^1.2.2",
+    "shelljs": "^0.8.3",
     "solhint": "^1.2.1",
-    "truffle": "4.1.5",
-    "minimist": "^1.2.0"
+    "truffle": "4.1.5"
   },
   "engines": {
     "node": "8",
@@ -80,6 +71,7 @@
     "merkletreejs": "0.0.9",
     "mocha": "5.1.0",
     "qtumjs": "^1.9.1",
-    "web3": "^0.19.0"
+    "lerna": "^3.8.5",
+    "web3": "https://github.com/bloq/web3.js/tarball/reconnect-resubscribe"
   }
 }
