@@ -1,7 +1,7 @@
 /*
     The MIT License (MIT)
 
-    Copyright 2017 - 2018, Alchemy Limited, LLC.
+    Copyright 2018 - 2019, Autonomous Software.
 
     Permission is hereby granted, free of charge, to any person obtaining
     a copy of this software and associated documentation files (the
@@ -23,10 +23,9 @@
     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-/* globals MINPRICE, PRICE, START, TIMESCALE */
-/* globals eth, personal, OWNER_ADDRESS, OWNER_PASS */
-/* globals Auctions, AutonomousConverter, METToken, Proceeds, SmartToken, Validator, TokenPorter, ChainLedger */
-
+/* globals ETHER_ADDR, OWNER_ADDRESS, OWNER_PASS, VALIDATORS */
+/* globals eth, personal */
+/* globals Auctions, METToken, TokenPorter, Validator, Validator */
 var hash
 function waitForTx (hash) {
   var receipt = eth.getTransactionReceipt(hash)
@@ -37,9 +36,43 @@ function waitForTx (hash) {
   return receipt
 }
 
-// For live net , enter new owner address and password
+eth.defaultAccount = ETHER_ADDR
 var newOwner = OWNER_ADDRESS
 var newOwnerPassword = OWNER_PASS
+console.log('\nConfiguring Token Porter')
+hash = TokenPorter.initTokenPorter(METToken.address, Auctions.address, {from: ETHER_ADDR})
+waitForTx(hash)
+hash = TokenPorter.setValidator(Validator.address, {from: ETHER_ADDR})
+waitForTx(hash)
+// Todo: take this value from input param? 
+hash = TokenPorter.setExportFeePerTenThousand(200, {from: ETHER_ADDR})
+waitForTx(hash)
+// Todo: take this value from input param? 
+hash = TokenPorter.setMinimumExportFee(2e12, {from: ETHER_ADDR})
+waitForTx(hash)
+
+console.log('TokenPorter published at ' + TokenPorter.address)
+
+console.log('\nConfiguring Validator')
+// initValidator will take address of off-chain validators. Strictly passing three validators from deploy script
+hash = Validator.initValidator(METToken.address, Auctions.address, TokenPorter.address, {from: ETHER_ADDR})
+waitForTx(hash)
+hash = Validator.addValidator(VALIDATORS[0], {from: ETHER_ADDR})
+waitForTx(hash)
+hash = Validator.addValidator(VALIDATORS[1], {from: ETHER_ADDR})
+waitForTx(hash)
+hash = Validator.addValidator(VALIDATORS[2], {from: ETHER_ADDR})
+waitForTx(hash)
+console.log('Validator published at ' + Validator.address)
+
+console.log('\nChanging Ownership of new TokenPorter and Validator contracts to', newOwner)
+
+hash = Validator.changeOwnership(newOwner, {from: ETHER_ADDR})
+waitForTx(hash)
+hash = TokenPorter.changeOwnership(newOwner, {from: ETHER_ADDR})
+waitForTx(hash)
+console.log('\nOwnership has been transfered to', newOwner)
+
 console.log('\nOwner address=', OWNER_ADDRESS)
 var balanceOfNewOwner = eth.getBalance(newOwner)
 console.log('Balance of Owner', balanceOfNewOwner)
@@ -53,24 +86,6 @@ personal.unlockAccount(newOwner, newOwnerPassword)
 
 console.log('\nAccepting ownership of contracts')
 
-// Accept ownership of all contracts before launching
-hash = METToken.acceptOwnership({from: newOwner})
-waitForTx(hash)
-
-hash = AutonomousConverter.acceptOwnership({from: newOwner})
-waitForTx(hash)
-
-personal.unlockAccount(newOwner, newOwnerPassword)
-hash = Auctions.acceptOwnership({from: newOwner})
-waitForTx(hash)
-
-hash = Proceeds.acceptOwnership({from: newOwner})
-waitForTx(hash)
-
-personal.unlockAccount(newOwner, newOwnerPassword)
-hash = SmartToken.acceptOwnership({from: newOwner})
-waitForTx(hash)
-
 hash = Validator.acceptOwnership({from: newOwner})
 waitForTx(hash)
 
@@ -78,28 +93,6 @@ personal.unlockAccount(newOwner, newOwnerPassword)
 hash = TokenPorter.acceptOwnership({from: newOwner})
 waitForTx(hash)
 
-// hash = ChainLedger.acceptOwnership({from: newOwner})
-// waitForTx(hash)
-
-console.log('\nLaunching AutonomousConverter Contract')
-personal.unlockAccount(newOwner, newOwnerPassword)
-hash = AutonomousConverter.init(METToken.address, SmartToken.address, Auctions.address, {from: newOwner, value: web3.toWei(0.1, 'ether')})
+console.log('\nUpdating tokenPorter address in METToken contract')
+hash = METToken.setTokenPorter(TokenPorter.address, {from: ETHER_ADDR})
 waitForTx(hash)
-
-console.log('\nLaunching Proceeds')
-personal.unlockAccount(newOwner, newOwnerPassword)
-hash = Proceeds.initProceeds(AutonomousConverter.address, Auctions.address, {from: newOwner})
-waitForTx(hash)
-
-console.log('\nLaunching Auctions')
-personal.unlockAccount(newOwner, newOwnerPassword)
-console.log('Auction start time=', START)
-console.log('Is auctions initialized already? ', Auctions.initialized())
-hash = Auctions.initAuctions(START, MINPRICE, PRICE, TIMESCALE, {from: newOwner, gas: 2000000})
-waitForTx(hash)
-console.log('Initialized auctions', Auctions.initialized())
-if (!Auctions.initialized()) {
-  throw new Error('Error occured while launching auction')
-}
-
-console.log('Launch completed\n')
