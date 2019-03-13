@@ -412,14 +412,14 @@ contract Mintable is Owned {
 
     /// @notice Proportional amount of met leakage in daily minting due to cross chain transfer
     /// @param _value Amount
-    function updateLeakage(uint _value) {
+    function updateLeakage(uint _value) public {
         require(msg.sender == minter || msg.sender == address(tokenPorter));
         require(_totalSupply.add(leakage) <= Auctions(minter).globalMetSupply());
         leakage = leakage.add(_value);
     }
 
     /// @notice Proportional amount for extra minting due leakage in daily minting in cross chain transfer
-    function resetLeakage() {
+    function resetLeakage() public {
         require(msg.sender == minter || msg.sender == address(tokenPorter)); 
         leakage = 0;
     }
@@ -1771,7 +1771,10 @@ contract TokenPorter is ITokenPorter, Owned {
         require(_addresses[0] == address(token));
         require(_importData[1] != 0);
         // Update mintable proportionally due for missed auctions
-        auctions.restartAuction();
+        if (auctions.lastPurchaseTick() > 0) {
+            // auction start only after first minting
+            auctions.restartAuction();
+        }
         // We do not want to change already deployed interface, hence accepting '_proof' 
         // as bytes and converting into bytes32. Here _proof is merkle root.
         merkleRoots[_burnHashes[1]] = bytesToBytes32(_proof);
