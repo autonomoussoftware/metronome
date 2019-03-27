@@ -1,4 +1,5 @@
 const program = require('commander')
+require('dotenv').config()
 var shell = require('shelljs')
 var contractsList = ['Proceeds', 'Auctions', 'AutonomousConverter', 'SmartToken', 'METToken', 'TokenPorter', 'Validator']
 var contracts
