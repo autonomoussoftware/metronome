@@ -1953,6 +1953,142 @@ contract TokenPorter is ITokenPorter, Owned {
 }    
 
 
+/// @title Proposal intiated by validators.  
+contract Proposals is Owned {
+    uint public votingPeriod = 60 * 60 * 24 * 15;
+
+    Validator public validator;
+
+    bytes32[] public actions;
+    
+    struct Proposal {
+        uint proposalId;
+        bytes32 action;
+        uint expiry;
+        address validator;
+        uint newThreshold;
+        uint supportCount;
+        address[] voters;
+        bool passed;
+        mapping (address => bool) voted;
+
+    }
+
+    Proposal[] public proposals;
+
+    event LogVoted(uint indexed proposalId, address indexed voter, bool support);
+
+    event LogProposalCreated(uint indexed proposalId, address indexed newValidator, 
+        uint newThreshold, address creator, uint expiry, bytes32 indexed action);
+
+    event LogProposalClosed(uint indexed proposalId, address indexed newValidator, 
+        uint newThreshold, bytes32 indexed action, uint expiry, uint supportCount, bool passed);
+
+    /// @dev Throws if called by any account other than the validator.
+    modifier onlyValidator() {
+        require(validator.isValidator(msg.sender));
+        _;
+    }
+
+    constructor() public {
+        actions.push("addval");
+        actions.push("removeval");
+        actions.push("updatethreshold");
+    }
+
+    /// @notice set address of validator contract
+    /// @param _validator address of validator contract
+    function setValidator(address _validator) public onlyOwner returns (bool) {
+        require(_validator != 0x0);
+        validator = Validator(_validator);
+        return true;
+    }
+
+    /// @notice set update voting period
+    /// @param _t voting period
+    function updateVotingPeriod(uint _t) public onlyOwner returns (bool) {
+        require(_t != 0);
+        votingPeriod = _t;
+        return true;
+    }
+
+    function proposeNewValidator(address _validator, uint _newThreshold) public onlyValidator returns (uint) {
+        require(_validator != 0x0);
+        require(!validator.isValidator(_validator));
+        return createNewProposal(_validator, msg.sender, actions[0], _newThreshold);
+    }
+
+    function proposeRemoveValidator(address _validator, uint _newThreshold) public onlyValidator {
+        require(_validator != 0x0);
+        require(validator.isValidator(_validator));
+        createNewProposal(_validator, msg.sender, actions[1], _newThreshold);
+    }
+
+    function proposeNewThreshold(uint _newThreshold) public onlyValidator {
+        createNewProposal(0x0, msg.sender, actions[2], _newThreshold);
+    }
+
+    function voteForProposal(uint _proposalId, bool _support) public onlyValidator {
+        require(proposals[_proposalId].expiry != 0);
+        require(now < proposals[_proposalId].expiry);
+        require(!(proposals[_proposalId]).voted[msg.sender]);
+        proposals[_proposalId].voters.push(msg.sender);
+        proposals[_proposalId].voted[msg.sender] = true;
+        if (_support) {
+            proposals[_proposalId].supportCount++;
+        }
+        emit LogVoted(_proposalId, msg.sender, _support);
+    }
+    
+    function closeProposal(uint _proposalId) public {
+        require(proposals[_proposalId].expiry != 0);
+        if (proposals[_proposalId].supportCount >= validator.threshold()) {
+            executeProposal(_proposalId, proposals[_proposalId].newThreshold);
+        } else if (now > proposals[_proposalId].expiry) {
+            // Proposal to remove idle validator if no one take objection
+            if ((proposals[_proposalId].action == actions[1]) && 
+                (proposals[_proposalId].voters.length == proposals[_proposalId].supportCount)) {
+                // new threshold count should never go below 50% remaining validators
+                uint _t = (validator.getValidatorsCount() + 1) / 2;
+                uint newThreshold = validator.threshold() - 1;
+                if (newThreshold < _t) {
+                    newThreshold = _t;
+                }
+                executeProposal(_proposalId, newThreshold);
+            }
+        }   
+    }
+
+    function executeProposal(uint _proposalId, uint _newThreshold) private {
+        proposals[_proposalId].passed = true;
+        if (proposals[_proposalId].action == actions[0]) {
+            validator.addValidator(proposals[_proposalId].validator);
+        } else if (proposals[_proposalId].action == actions[1]) {
+            validator.removeValidator(proposals[_proposalId].validator);
+        }
+        if (_newThreshold != 0) {
+            validator.updateThreshold(_newThreshold);
+        }
+        emit LogProposalClosed(_proposalId, proposals[_proposalId].validator, 
+            _newThreshold, proposals[_proposalId].action, proposals[_proposalId].expiry, 
+            proposals[_proposalId].supportCount, true);
+    }
+
+    function createNewProposal(address _validator, address _creator, bytes32 _action, 
+        uint _newThreshold) private returns (uint proposalId) {
+        proposalId = proposals.length++;
+        uint expiry = now + votingPeriod;
+        Proposal storage p = proposals[proposalId];
+        p.proposalId = proposalId;
+        p.action = _action;
+        p.expiry = expiry;
+        p.validator = _validator;
+        p.newThreshold = _newThreshold;
+        emit LogProposalCreated(_newThreshold, _validator, _newThreshold, _creator, expiry, _action);
+    }
+}
+
+
 /// @title Validator contract for off chain validators to validate hash
 contract Validator is Owned {
 
@@ -1967,28 +2103,36 @@ contract Validator is Owned {
     METToken public token;
     TokenPorter public tokenPorter;
     Auctions public auctions;
+    Proposals public proposals;
 
     mapping (bytes32 => bool) public hashClaimed;
 
+    // Miniumum quorum require for various voting like import, add new validators, add new chain
     uint public threshold = 2;
 
     event LogAttestation(bytes32 indexed hash, address indexed recipientAddr, bool isValid);
-
+        
     /// @dev Throws if called by any account other than the validator.
     modifier onlyValidator() {
         require(isValidator[msg.sender]);
         _;
     }
 
+    /// @dev Throws if called by unauthorized account
+    modifier onlyAuthorized() {
+        require(msg.sender == owner || msg.sender == address(proposals));
+        _;
+    }
+
     /// @param _validator validator address
-    function addValidator(address _validator) public onlyOwner {
+    function addValidator(address _validator) public onlyAuthorized {
         require(!isValidator[_validator]);
         validators.push(_validator);
         isValidator[_validator] = true;
     }
 
     /// @param _validator validator address
-    function removeValidator(address _validator) public onlyOwner {
+    function removeValidator(address _validator) public onlyAuthorized {
         // Must add new validators before removing to maintain minimum three validators active
         require(validators.length > 3);
         delete isValidator[_validator];
@@ -2000,7 +2144,7 @@ contract Validator is Owned {
                 validators.length--; 
                 break;
             }
-        }  
+        }
     }
 
     /// @notice fetch count of validators
@@ -2011,11 +2155,20 @@ contract Validator is Owned {
     /// @notice set threshold for validation and minting
     /// @param _threshold threshold count
     /// @return true/false
-    function updateThreshold(uint _threshold) public onlyOwner returns (bool) {
+    function updateThreshold(uint _threshold) public onlyAuthorized returns (bool) {
         require(_threshold > 1);
-        require(_threshold <= validators.length);
+        require(_threshold < validators.length);
         require(_threshold > validators.length / 2);
         threshold = _threshold;
+        return true;
+    }
+
+    /// @notice set address of Proposals contract
+    /// @param _proposals address of token porter
+    /// @return true/false
+    function setProposalContract(address _proposals) public onlyOwner returns (bool) {
+        require(_proposals != 0x0);
+        proposals = Proposals(_proposals);
         return true;
     }
 
