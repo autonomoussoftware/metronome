@@ -120,24 +120,24 @@ mkdir $TMP_DIR
 echo "" > $CHAIN_DIR/metronome.js
 
 echo "Compiling and deploying Proceeds contract"
-echo -e "contracts/monolithic.sol:Proceeds\n$TMP_DIR/Proceeds.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null > $TMP_DIR/Proceeds.txt
+echo -e "contracts/monolithic.sol:Proceeds\n$TMP_DIR/Proceeds.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol --evm-version spuriousDragon >/dev/null > $TMP_DIR/Proceeds.txt
 echo "Compiling and deploying Auctions contract"
 curl -s -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"personal_unlockAccount","params":["'$LOCAL_ETH'", "'$PASS'","0x3000"],"id":1}' $PARITY_URL >/dev/null
-echo -e "contracts/monolithic.sol:Auctions\n$TMP_DIR/Auctions.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null > $TMP_DIR/Auctions.txt
+echo -e "contracts/monolithic.sol:Auctions\n$TMP_DIR/Auctions.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol --evm-version spuriousDragon >/dev/null > $TMP_DIR/Auctions.txt
 echo "Compiling and deploying AutonomousConverter contract"
 curl -s -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"personal_unlockAccount","params":["'$LOCAL_ETH'", "'$PASS'","0x3000"],"id":1}' $PARITY_URL >/dev/null
-echo -e "contracts/monolithic.sol:AutonomousConverter\n$TMP_DIR/AutonomousConverter.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null > $TMP_DIR/AutonomousConverter.txt
+echo -e "contracts/monolithic.sol:AutonomousConverter\n$TMP_DIR/AutonomousConverter.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol --evm-version spuriousDragon >/dev/null > $TMP_DIR/AutonomousConverter.txt
 echo "Compiling and deploying SmartToken contract"
 curl -s -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"personal_unlockAccount","params":["'$LOCAL_ETH'", "'$PASS'","0x3000"],"id":1}' $PARITY_URL >/dev/null
-echo -e "contracts/monolithic.sol:SmartToken\n$TMP_DIR/SmartToken.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null > $TMP_DIR/SmartToken.txt
+echo -e "contracts/monolithic.sol:SmartToken\n$TMP_DIR/SmartToken.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol --evm-version spuriousDragon >/dev/null > $TMP_DIR/SmartToken.txt
 echo "Compiling and deploying METToken contract"
 curl -s -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"personal_unlockAccount","params":["'$LOCAL_ETH'", "'$PASS'","0x3000"],"id":1}' $PARITY_URL >/dev/null
-echo -e "contracts/monolithic.sol:METToken\n$TMP_DIR/METToken.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null > $TMP_DIR/METToken.txt
+echo -e "contracts/monolithic.sol:METToken\n$TMP_DIR/METToken.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol --evm-version spuriousDragon >/dev/null > $TMP_DIR/METToken.txt
 echo "Compiling and deploying TokenPorter contract"
 curl -s -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","method":"personal_unlockAccount","params":["'$LOCAL_ETH'", "'$PASS'","0x3000"],"id":1}' $PARITY_URL >/dev/null
-echo -e "contracts/monolithic.sol:TokenPorter\n$TMP_DIR/TokenPorter.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null > $TMP_DIR/TokenPorter.txt
+echo -e "contracts/monolithic.sol:TokenPorter\n$TMP_DIR/TokenPorter.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol --evm-version spuriousDragon >/dev/null > $TMP_DIR/TokenPorter.txt
 echo "Compiling and deploying Validator contract"
-echo -e "contracts/monolithic.sol:Validator\n$TMP_DIR/Validator.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol >/dev/null > $TMP_DIR/Validator.txt
+echo -e "contracts/monolithic.sol:Validator\n$TMP_DIR/Validator.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol --evm-version spuriousDragon >/dev/null > $TMP_DIR/Validator.txt
 echo "Copying ABI and Addresses"
 cat $TMP_DIR/Proceeds.js $TMP_DIR/Auctions.js $TMP_DIR/AutonomousConverter.js $TMP_DIR/SmartToken.js $TMP_DIR/METToken.js $TMP_DIR/TokenPorter.js $TMP_DIR/Validator.js > $CHAIN_DIR/metronome.js
 rm -r $TMP_DIR
