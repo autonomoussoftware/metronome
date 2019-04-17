@@ -2015,16 +2015,26 @@ contract Proposals is Owned {
     function proposeNewValidator(address _validator, uint _newThreshold) public onlyValidator returns (uint) {
         require(_validator != 0x0);
         require(!validator.isValidator(_validator));
+        if (_newThreshold > 0) {
+            uint valCount = validator.getValidatorsCount();
+            require(validator.isNewThresholdValid(valCount + 1, _newThreshold));
+        }
         return createNewProposal(_validator, msg.sender, actions[0], _newThreshold);
     }
 
     function proposeRemoveValidator(address _validator, uint _newThreshold) public onlyValidator {
         require(_validator != 0x0);
         require(validator.isValidator(_validator));
+        if (_newThreshold > 0) {
+            uint valCount = validator.getValidatorsCount();
+            require(validator.isNewThresholdValid(valCount - 1, _newThreshold));
+        }
         createNewProposal(_validator, msg.sender, actions[1], _newThreshold);
     }
 
     function proposeNewThreshold(uint _newThreshold) public onlyValidator {
+        uint valCount = validator.getValidatorsCount();
+        require(validator.isNewThresholdValid(valCount, _newThreshold));
         createNewProposal(0x0, msg.sender, actions[2], _newThreshold);
     }
 
@@ -2108,7 +2118,7 @@ contract Validator is Owned {
     mapping (bytes32 => bool) public hashClaimed;
 
     // Miniumum quorum require for various voting like import, add new validators, add new chain
-    uint public threshold = 2;
+    uint public threshold = 1;
 
     event LogAttestation(bytes32 indexed hash, address indexed recipientAddr, bool isValid);
         
@@ -2133,8 +2143,8 @@ contract Validator is Owned {
 
     /// @param _validator validator address
     function removeValidator(address _validator) public onlyAuthorized {
-        // Must add new validators before removing to maintain minimum three validators active
-        require(validators.length > 3);
+        // Must add new validators before removing to maintain minimum one validator active
+        require(validators.length > 1);
         delete isValidator[_validator];
         for (uint i = 0; i < (validators.length); i++) {
             if (validators[i] == _validator) {
@@ -2143,6 +2153,14 @@ contract Validator is Owned {
                 }
                 validators.length--; 
                 break;
+            }
+        }
+
+        if (threshold >= validators.length) {
+            if (validators.length == 1) {
+                threshold = 1;
+            } else {
+                threshold = validators.length - 1;
             }
         }
     }
@@ -2156,11 +2174,18 @@ contract Validator is Owned {
     /// @param _threshold threshold count
     /// @return true/false
     function updateThreshold(uint _threshold) public onlyAuthorized returns (bool) {
-        require(_threshold > 1);
-        require(_threshold < validators.length);
-        require(_threshold > validators.length / 2);
+        require(isNewThresholdValid(validators.length, _threshold));
         threshold = _threshold;
         return true;
+    }
+
+    function isNewThresholdValid(uint _valCount, uint _threshold) public pure returns (bool) {
+        if (_threshold == 1 && _valCount == 2) {
+            return true;
+        } else if (_threshold >= 1 && _threshold < _valCount && (_threshold > (_valCount / 2))) {
+            return true;
+        }
+        return false;
     }
 
     /// @notice set address of Proposals contract
