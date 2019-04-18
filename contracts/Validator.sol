@@ -29,6 +29,7 @@ import "./Owned.sol";
 import "./SafeMath.sol";
 import "./Auctions.sol";
 import "./METToken.sol";
+import "./Proposals.sol";
 
 
 /// @title Validator contract for off chain validators to validate hash
@@ -45,24 +46,32 @@ contract Validator is Owned {
     METToken public token;
     TokenPorter public tokenPorter;
     Auctions public auctions;
+    Proposals public proposals;
 
     mapping (bytes32 => bool) public hashClaimed;
 
-    uint public threshold = 2;
+    // Miniumum quorum require for various voting like import, add new validators, add new chain
+    uint public threshold = 1;
 
     event LogAttestation(bytes32 indexed hash, address indexed recipientAddr, bool isValid);
 
+    /// @dev Throws if called by unauthorized account
+    modifier onlyAuthorized() {
+        require(msg.sender == owner || msg.sender == address(proposals));
+        _;
+    }
+    
     /// @param _validator validator address
-    function addValidator(address _validator) public onlyOwner {
+    function addValidator(address _validator) public onlyAuthorized {
         require(!isValidator[_validator]);
         validators.push(_validator);
         isValidator[_validator] = true;
     }
 
     /// @param _validator validator address
-    function removeValidator(address _validator) public onlyOwner {
-        // Must add new validators before removing to maintain minimum three validators active
-        require(validators.length > 3);
+    function removeValidator(address _validator) public onlyAuthorized {
+        // Must add new validators before removing to maintain minimum one validator active
+        require(validators.length > 1);
         delete isValidator[_validator];
         for (uint i = 0; i < (validators.length); i++) {
             if (validators[i] == _validator) {
@@ -72,7 +81,15 @@ contract Validator is Owned {
                 validators.length--; 
                 break;
             }
-        }  
+        }
+
+        if (threshold >= validators.length) {
+            if (validators.length == 1) {
+                threshold = 1;
+            } else {
+                threshold = validators.length - 1;
+            }
+        }
     }
 
     /// @notice fetch count of validators
@@ -83,11 +100,27 @@ contract Validator is Owned {
     /// @notice set threshold for validation and minting
     /// @param _threshold threshold count
     /// @return true/false
-    function updateThreshold(uint _threshold) public onlyOwner returns (bool) {
-        require(_threshold > 1);
-        require(_threshold <= validators.length);
-        require(_threshold > validators.length / 2);
+    function updateThreshold(uint _threshold) public onlyAuthorized returns (bool) {
+        require(isNewThresholdValid(validators.length, _threshold));
         threshold = _threshold;
+        return true;
+    }
+
+    function isNewThresholdValid(uint _valCount, uint _threshold) public pure returns (bool) {
+        if (_threshold == 1 && _valCount == 2) {
+            return true;
+        } else if (_threshold >= 1 && _threshold < _valCount && (_threshold > (_valCount / 2))) {
+            return true;
+        }
+        return false;
+    }
+
+    /// @notice set address of Proposals contract
+    /// @param _proposals address of token porter
+    /// @return true/false
+    function setProposalContract(address _proposals) public onlyOwner returns (bool) {
+        require(_proposals != 0x0);
+        proposals = Proposals(_proposals);
         return true;
     }
 

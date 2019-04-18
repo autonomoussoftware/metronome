@@ -1,7 +1,7 @@
 const program = require('commander')
 require('dotenv').config()
 var shell = require('shelljs')
-var contractsList = ['Proceeds', 'Auctions', 'AutonomousConverter', 'SmartToken', 'METToken', 'TokenPorter', 'Validator']
+var contractsList = ['Proposals', 'Proceeds', 'Auctions', 'AutonomousConverter', 'SmartToken', 'METToken', 'TokenPorter', 'Validator']
 var contracts
 function init () {
   program
@@ -59,6 +59,11 @@ async function initContracts () {
   tx = await contracts.Validator.send('initValidator', [contracts.METToken.info.address, contracts.Auctions.info.address, contracts.TokenPorter.info.address])
   await tx.confirm(1)
 
+  console.log('\nConfiguring Proposal contract')
+  // Todo: initValidator will take address of off-chain validators
+  tx = await contracts.Proposals.send('setValidator', [contracts.Validator.info.address])
+  await tx.confirm(1)
+
   // Todo: add validators
   // Todo: change ownership
   console.log('Deployment Phase 1 Completed')
@@ -76,8 +81,8 @@ async function launchContracts () {
 
   console.log('\nInitializing Auctions')
   var qtum = '0x7174756d'
-  var START = 1529280060
-  var ISA_ENDTIME = 1529883999
+  var START = 1528588800
+  var ISA_ENDTIME = 1529193600
   var MINPRICE = 3300000000000 // Same as current min price in eth chain
   var PRICE = 2 // start price for first daily auction. This may be average start price at eth chain
   var TIMESCALE = 1 // hard coded

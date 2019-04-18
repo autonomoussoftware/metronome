@@ -60,3 +60,5 @@ solar deploy ./contracts/METToken.sol --force --gasLimit=$gasLimit --qtum_sender
 solar deploy ./contracts/TokenPorter.sol --force --gasLimit=$gasLimit --qtum_sender=$sender
 # Validator
 solar deploy ./contracts/Validator.sol --force --gasLimit=$gasLimit --qtum_sender=$sender
+#Proposals
+solar deploy ./contracts/Proposals.sol --force --gasLimit=$gasLimit --qtum_sender=$sender

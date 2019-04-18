@@ -28,7 +28,7 @@ const repo = require('../../solar.development.json')
 require('dotenv').config()
 const qtum = new Qtum(process.env.rpc_url, repo)
 
-const contractList = ['Proceeds', 'SmartToken', 'Auctions', 'AutonomousConverter', 'METToken', 'TokenPorter', 'Validator']
+const contractList = ['Proposals', 'Proceeds', 'SmartToken', 'Auctions', 'AutonomousConverter', 'METToken', 'TokenPorter', 'Validator']
 var contracts = {}
 function getContractInstance (list = contractList) {
   list.forEach(createInstance)
@@ -39,4 +39,4 @@ function createInstance (name) {
   contracts[name] = qtum.contract('./contracts/' + name + '.sol')
 }
 
-module.exports = { getContractInstance }
+module.exports = { getContractInstance, qtum }
