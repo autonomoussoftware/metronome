@@ -138,8 +138,10 @@ curl -s -X POST -H "Content-Type: application/json" --data '{"jsonrpc":"2.0","me
 echo -e "contracts/monolithic.sol:TokenPorter\n$TMP_DIR/TokenPorter.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol --evm-version spuriousDragon >/dev/null > $TMP_DIR/TokenPorter.txt
 echo "Compiling and deploying Validator contract"
 echo -e "contracts/monolithic.sol:Validator\n$TMP_DIR/Validator.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol --evm-version spuriousDragon >/dev/null > $TMP_DIR/Validator.txt
+echo "Compiling and deploying Proposals contract"
+echo -e "contracts/monolithic.sol:Proposals\n$TMP_DIR/Proposals.js" | SETH_URL=$PARITY_URL ETHER_ADDR=$LOCAL_ETH $SOLDEPLOY contracts/monolithic.sol --evm-version spuriousDragon >/dev/null > $TMP_DIR/Proposals.txt
 echo "Copying ABI and Addresses"
-cat $TMP_DIR/Proceeds.js $TMP_DIR/Auctions.js $TMP_DIR/AutonomousConverter.js $TMP_DIR/SmartToken.js $TMP_DIR/METToken.js $TMP_DIR/TokenPorter.js $TMP_DIR/Validator.js > $CHAIN_DIR/metronome.js
+cat $TMP_DIR/Proceeds.js $TMP_DIR/Auctions.js $TMP_DIR/AutonomousConverter.js $TMP_DIR/SmartToken.js $TMP_DIR/METToken.js $TMP_DIR/TokenPorter.js $TMP_DIR/Validator.js $TMP_DIR/Proposals.js > $CHAIN_DIR/metronome.js
 rm -r $TMP_DIR
 
 #Reading founder list

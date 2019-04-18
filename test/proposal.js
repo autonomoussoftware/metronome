@@ -64,17 +64,7 @@ contract('Proposal contract', accounts => {
         value: web3.toWei(1, 'ether')
       })
     await proceeds.initProceeds(autonomousConverter.address, auctions.address, {from: OWNER})
-    const founders = []
-    // Since we are appending it with hexadecimal address so amount should also be
-    // in hexa decimal. Hence 999999e18 = 0000d3c20dee1639f99c0000 in 24 character ( 96 bits)
-    // 1000000e18 =  0000d3c20dee1639f99c0000
-    founders.push(OWNER + '0000D3C214DE7193CD4E0000')
-    founders.push(accounts[1] + '0000D3C214DE7193CD4E0000')
-    await auctions.createTokenLocker(OWNER, metToken.address, {from: OWNER})
-    await auctions.createTokenLocker(accounts[1], metToken.address, {from: OWNER})
-
-    await auctions.mintInitialSupply(founders, metToken.address, proceeds.address, autonomousConverter.address, {from: OWNER})
-    await auctions.initAuctions(startTime, minimumPrice, startingPrice, timeScale, {from: OWNER})
+    await auctions.skipInitBecauseIAmNotOg(metToken.address, proceeds.address, process.env.genesisTime, 3300000000000, process.env.START_PRICE, 1, web3.fromAscii('ETC'), process.env.ISA_ENDTIME)
     await tokenPorter.initTokenPorter(metToken.address, auctions.address, {from: OWNER})
     await tokenPorter.setValidator(validator.address, {from: OWNER})
     await metToken.setTokenPorter(tokenPorter.address, {from: OWNER})
@@ -144,17 +134,17 @@ contract('Proposal contract', accounts => {
         await validator.addValidator(accounts[1])
         var val = await validator.validators(0)
         assert.equal(val, accounts[1], 'validators not correct')
-        var tx = await proposals.proposeNewValidator(accounts[4], 3, {from: accounts[1]})
+        var tx = await proposals.proposeNewValidator(accounts[4], 0, {from: accounts[1]})
         var log = tx.logs[0]
-        assert.equal(log.args.newThreshold, 3, 'Proposal not created correctly')
+        assert.equal(log.args.newThreshold, 0, 'Proposal not created correctly')
         assert.equal(log.args.newValidator, accounts[4], 'Proposal not created correctly')
-        await proposals.proposeNewValidator(accounts[5], 8600, {from: accounts[1]})
-        await proposals.proposeNewValidator(accounts[5], 8600, {from: accounts[1]})
-        var prop = await proposals.proposals(2)
-        assert.equal(prop[0], 2, 'propsal id is wrong')
+        await validator.addValidator(accounts[3])
+        await proposals.proposeNewValidator(accounts[6], 2, {from: accounts[1]})
+        var prop = await proposals.proposals(1)
+        assert.equal(prop[0], 1, 'propsal id is wrong')
         let thrown = false
         try {
-          await proposals.proposeNewValidator(accounts[4], 3, {from: accounts[2]})
+          await proposals.proposeNewValidator(accounts[7], 0, {from: accounts[2]})
         } catch (e) {
           thrown = true
         }
@@ -167,9 +157,9 @@ contract('Proposal contract', accounts => {
       return new Promise(async (resolve, reject) => {
         await initContracts(getCurrentBlockTime() - 60, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
         await validator.addValidator(accounts[1])
-        var tx = await proposals.proposeNewValidator(accounts[4], 3, {from: accounts[1]})
+        var tx = await proposals.proposeNewValidator(accounts[4], 1, {from: accounts[1]})
         var log = tx.logs[0]
-        assert.equal(log.args.newThreshold, 3, 'Proposal not created correctly')
+        assert.equal(log.args.newThreshold, 1, 'Proposal not created correctly')
         assert.equal(log.args.newValidator, accounts[4], 'Proposal not created correctly')
         tx = await proposals.voteForProposal(0, true, {from: accounts[1]})
         var supportCountAfter = (await proposals.proposals(0))[5].toString()
@@ -189,9 +179,10 @@ contract('Proposal contract', accounts => {
       return new Promise(async (resolve, reject) => {
         await initContracts(getCurrentBlockTime() - 60, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
         await validator.addValidator(accounts[1])
-        var tx = await proposals.proposeNewValidator(accounts[4], 3, {from: accounts[1]})
+        await validator.addValidator(accounts[3])
+        var tx = await proposals.proposeNewValidator(accounts[4], 2, {from: accounts[1]})
         var log = tx.logs[0]
-        assert.equal(log.args.newThreshold, 3, 'Proposal not created correctly')
+        assert.equal(log.args.newThreshold, 2, 'Proposal not created correctly')
         assert.equal(log.args.newValidator, accounts[4], 'Proposal not created correctly')
         var thrown = false
         try {
@@ -234,6 +225,7 @@ contract('Proposal contract', accounts => {
         await validator.addValidator(accounts[1])
         await validator.addValidator(accounts[2])
         await validator.addValidator(accounts[3])
+        await validator.updateThreshold(2, {from: OWNER})
         var votingPeriod = 3 * 60
         await proposals.updateVotingPeriod(votingPeriod, {from: OWNER})
         var tx = await proposals.proposeNewValidator(accounts[4], 3, {from: accounts[1]})
@@ -282,15 +274,17 @@ contract('Proposal contract', accounts => {
         await validator.addValidator(accounts[2])
         await validator.addValidator(accounts[3])
         await validator.addValidator(accounts[4])
-        var tx = await proposals.proposeRemoveValidator(accounts[4], 3, {from: accounts[1]})
+        await validator.updateThreshold(3)
+        var tx = await proposals.proposeRemoveValidator(accounts[4], 2, {from: accounts[1]})
         var log = tx.logs[0]
-        assert.equal(log.args.newThreshold, 3, 'Proposal not created correctly')
+        assert.equal(log.args.newThreshold, 2, 'Proposal not created correctly')
         assert.equal(log.args.newValidator, accounts[4], 'Proposal not created correctly')
         await proposals.voteForProposal(0, true, {from: accounts[1]})
         await proposals.voteForProposal(0, false, {from: accounts[2]})
         await proposals.voteForProposal(0, false, {from: accounts[3]})
-        tx = await proposals.closeProposal(0, {from: accounts[4]})
         var valCounAfter = await validator.getValidatorsCount()
+        tx = await proposals.closeProposal(0, {from: accounts[4]})
+        valCounAfter = await validator.getValidatorsCount()
         assert.equal(valCounAfter.toString(), '4', 'Validator is not removed')
         resolve()
       })
@@ -303,6 +297,7 @@ contract('Proposal contract', accounts => {
         await validator.addValidator(accounts[2])
         await validator.addValidator(accounts[3])
         await validator.addValidator(accounts[4])
+        await validator.addValidator(accounts[5])
         var votingPeriod = 3 * 60
         await proposals.updateVotingPeriod(votingPeriod, {from: OWNER})
         var tx = await proposals.proposeRemoveValidator(accounts[4], 3, {from: accounts[1]})
@@ -321,7 +316,7 @@ contract('Proposal contract', accounts => {
         assert.equal(thrown, true, 'validator should not able to vote after expiry')
         tx = await proposals.closeProposal(0, {from: accounts[4]})
         var valCounAfter = await validator.getValidatorsCount()
-        assert.equal(valCounAfter.toString(), '3', 'Validator is not removed')
+        assert.equal(valCounAfter.toString(), '4', 'Validator is not removed')
         resolve()
       })
     })
@@ -357,11 +352,13 @@ contract('Proposal contract', accounts => {
       await validator.addValidator(accounts[2])
       await validator.addValidator(accounts[3])
       await validator.addValidator(accounts[4])
+      await validator.addValidator(accounts[5])
+      await validator.updateThreshold(3, {from: OWNER})
       var votingPeriod = 3 * 60
       await proposals.updateVotingPeriod(votingPeriod, {from: OWNER})
-      var tx = await proposals.proposeNewThreshold(3, {from: accounts[1]})
+      var tx = await proposals.proposeNewThreshold(4, {from: accounts[1]})
       var log = tx.logs[0]
-      assert.equal(log.args.newThreshold, 3, 'Proposal not created correctly')
+      assert.equal(log.args.newThreshold, 4, 'Proposal not created correctly')
       assert.equal(log.args.newValidator, 0x0, 'Proposal not created correctly')
       await proposals.voteForProposal(0, true, {from: accounts[1]})
       await proposals.voteForProposal(0, false, {from: accounts[2]})
@@ -370,7 +367,7 @@ contract('Proposal contract', accounts => {
       await BlockTime.mineBlock()
       tx = await proposals.closeProposal(0, {from: accounts[4]})
       var newThreshold = await validator.threshold()
-      assert.equal(newThreshold.toString(), '2', 'New threshold is not correct')
+      assert.equal(newThreshold.toString(), '3', 'New threshold is not correct')
       var prop = await proposals.proposals(0)
       assert.equal(prop[6], false, 'Propose is not passed')
       resolve()
