@@ -25,7 +25,7 @@
 
 /* globals ETHER_ADDR, OWNER_ADDRESS */
 /* globals eth */
-/* globals Auctions, AutonomousConverter, METToken, Proceeds, SmartToken, TokenPorter, Validator, Validator */
+/* globals Auctions, AutonomousConverter, Proposals, METToken, Proceeds, SmartToken, TokenPorter, Validator, Validator */
 var hash
 function waitForTx (hash) {
   var receipt = eth.getTransactionReceipt(hash)
@@ -71,6 +71,8 @@ console.log('\nConfiguring Validator')
 // Todo: initValidator will take address of off-chain validators
 hash = Validator.initValidator(METToken.address, Auctions.address, TokenPorter.address, {from: ETHER_ADDR, gasPrice: gasPrice})
 waitForTx(hash)
+hash = Validator.setProposalContract(Proposals.address)
+waitForTx(hash)
 hash = Validator.addValidator(VALIDATORS[0], {from: ETHER_ADDR, gasPrice: gasPrice})
 waitForTx(hash)
 hash = Validator.addValidator(VALIDATORS[1], {from: ETHER_ADDR, gasPrice: gasPrice})
@@ -78,6 +80,10 @@ waitForTx(hash)
 hash = Validator.addValidator(VALIDATORS[2], {from: ETHER_ADDR, gasPrice: gasPrice})
 waitForTx(hash)
 console.log('Validator published at ' + Validator.address)
+
+hash = Proposals.setValidator(Validator.address)
+waitForTx(hash)
+console.log('Proposals contract published at ' + Proposals.address)
 
 console.log('\nChanging Ownership of METToken')
 hash = METToken.changeOwnership(newOwner, {from: ETHER_ADDR, gasPrice: gasPrice})
