@@ -1994,6 +1994,9 @@ contract Proposals is Owned {
         return true;
     }
 
+    /// @notice validator can initiate proposal for add new validator.
+    /// @param _validator new validator address
+    /// @param _newThreshold new threshold value. 0 if do not want to update it
     function proposeNewValidator(address _validator, uint _newThreshold) public onlyValidator returns (uint) {
         require(_validator != 0x0);
         require(!validator.isValidator(_validator));
@@ -2004,25 +2007,36 @@ contract Proposals is Owned {
         return createNewProposal(_validator, msg.sender, actions[0], _newThreshold);
     }
 
-    function proposeRemoveValidator(address _validator, uint _newThreshold) public onlyValidator {
+    /// @notice validator can initiate proposal to remove bad actor or idle validators.
+    /// validators can be removed if support count >= threshold or  support count == voting count.
+    /// Later approach is to remove idle validator from system. 
+    /// @param _validator new validator address
+    /// @param _newThreshold new threshold value. 0 if do not want to update it
+    function proposeRemoveValidator(address _validator, uint _newThreshold) public onlyValidator returns (uint) {
         require(_validator != 0x0);
         require(validator.isValidator(_validator));
         if (_newThreshold > 0) {
             uint valCount = validator.getValidatorsCount();
             require(validator.isNewThresholdValid(valCount - 1, _newThreshold));
         }
-        createNewProposal(_validator, msg.sender, actions[1], _newThreshold);
+        return createNewProposal(_validator, msg.sender, actions[1], _newThreshold);
     }
 
-    function proposeNewThreshold(uint _newThreshold) public onlyValidator {
+    /// @notice validator can initiate proposal to update threshold value
+    /// @param _newThreshold new threshold value. 0 if do not want to update it
+    function proposeNewThreshold(uint _newThreshold) public onlyValidator returns (uint) {
         uint valCount = validator.getValidatorsCount();
         require(validator.isNewThresholdValid(valCount, _newThreshold));
-        createNewProposal(0x0, msg.sender, actions[2], _newThreshold);
+        return createNewProposal(0x0, msg.sender, actions[2], _newThreshold);
     }
 
+    /// @notice validator can vote for a proposal
+    /// @param _proposalId ..
+    /// @param _support true/false
     function voteForProposal(uint _proposalId, bool _support) public onlyValidator {
         require(proposals[_proposalId].expiry != 0);
         require(now < proposals[_proposalId].expiry);
+        require(!proposals[_proposalId].passed);
         require(!(proposals[_proposalId]).voted[msg.sender]);
         proposals[_proposalId].voters.push(msg.sender);
         proposals[_proposalId].voted[msg.sender] = true;
@@ -2032,6 +2046,8 @@ contract Proposals is Owned {
         emit LogVoted(_proposalId, msg.sender, _support);
     }
     
+    /// @notice public function to close a proposal if expired or majority support received
+    /// @param _proposalId ..
     function closeProposal(uint _proposalId) public {
         require(proposals[_proposalId].expiry != 0);
         if (proposals[_proposalId].supportCount >= validator.threshold()) {
@@ -2051,8 +2067,10 @@ contract Proposals is Owned {
         }   
     }
 
+    /// @notice private function to update outcome of a proposal
+    /// @param _proposalId ..
+    /// @param _newThreshold ..
     function executeProposal(uint _proposalId, uint _newThreshold) private {
-        proposals[_proposalId].passed = true;
         if (proposals[_proposalId].action == actions[0]) {
             validator.addValidator(proposals[_proposalId].validator);
         } else if (proposals[_proposalId].action == actions[1]) {
@@ -2061,11 +2079,17 @@ contract Proposals is Owned {
         if (_newThreshold != 0) {
             validator.updateThreshold(_newThreshold);
         }
+        proposals[_proposalId].passed = true;
         emit LogProposalClosed(_proposalId, proposals[_proposalId].validator, 
             _newThreshold, proposals[_proposalId].action, proposals[_proposalId].expiry, 
             proposals[_proposalId].supportCount, true);
     }
 
+    /// @notice private function to create a proposal
+    /// @param _validator validator address
+    /// @param _creator creator
+    /// @param _action _action
+    /// @param _newThreshold _newThreshold
     function createNewProposal(address _validator, address _creator, bytes32 _action, 
         uint _newThreshold) private returns (uint proposalId) {
         proposalId = proposals.length++;
@@ -2076,7 +2100,7 @@ contract Proposals is Owned {
         p.expiry = expiry;
         p.validator = _validator;
         p.newThreshold = _newThreshold;
-        emit LogProposalCreated(_newThreshold, _validator, _newThreshold, _creator, expiry, _action);
+        emit LogProposalCreated(proposalId, _validator, _newThreshold, _creator, expiry, _action);
     }
 }
 
