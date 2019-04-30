@@ -39,7 +39,7 @@ Proceeds | 0x68c4b7d05fAE45bCb6192bb93e246C77E98360e1 | Stores all auction proce
 AutonomousConverter | 0x686e5ac50D9236A9b7406791256e47feDDB26AbA | Use for exchanging MET/ETH after initial auction is over
 METToken | 0xa3d58c4E56fedCae3a7c43A725aeE9A71F0ece4e | Use this address for MET ERC20 functions and third-party wallets
 
-### Developement environment
+### Development environment
 
 #### Installation
 - `npm install` to install all module dependencies
