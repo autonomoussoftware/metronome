@@ -1,0 +1,18 @@
+{
+    "etc": {
+    "newOwner": "0xae4e3af55872601461897d82ce4165ba635c50a1",
+     "validators":["0x1ac817a418Ace0998Bb4606B89582eaCfde38afE", "0xAd8fbc9c87F2b72aa3E040dfc023ee85c94F1705", "0xb0033e54edba5815ce6262e3d2cdc82097e23f53"],
+     "nodeURL": "http://ec2-3-94-173-31.compute-1.amazonaws.com:8555",
+     "chainId": "62",
+     "gasPrice": "20000000000"
+    },
+    "eth": {
+      "newOwner": "0xae4e3af55872601461897d82ce4165ba635c50a1",
+      "validators":["0x1ac817a418Ace0998Bb4606B89582eaCfde38afE", "0xAd8fbc9c87F2b72aa3E040dfc023ee85c94F1705", "0xb0033e54edba5815ce6262e3d2cdc82097e23f53"],
+      "nodeURL": "http://ec2-3-94-173-31.compute-1.amazonaws.com:8545",
+      "chainId": "3",
+      "gasPrice": "20000000000"
+    },
+    "genesisTime": 1528588800,
+    "isa_endtime": 1529193600
+  }

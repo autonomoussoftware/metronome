@@ -1640,7 +1640,7 @@ contract TokenPorter is ITokenPorter, Owned {
 
     uint public burnSequence = 1;
     uint public importSequence = 1;
-    uint public chainHopStartTime = now + (2 * 60 * 60 * 24 );
+    uint public chainHopStartTime = now + (2 * 60 * 60 * 24);
     // This is flat fee and must be in 18 decimal value
     uint public minimumExportFee = 1 * (10 ** 12);
     // export fee per 10,000 MET. 1 means 0.01% or 1 met as fee for export of 10,000 met
@@ -1693,7 +1693,8 @@ contract TokenPorter is ITokenPorter, Owned {
         return true;
     }
 
-    /// @notice set chain hop start time. Also, useful if owner want to suspend chain hop until given time in case anything goes wrong
+    /// @notice set chain hop start time. Also, useful if owner want to suspend 
+    //  chain hop until given time in case anything goes wrong
     /// @param _startTime fee amount per 10,000 met
     function setChainHopStartTime(uint _startTime) public onlyOwner returns (bool) {
         require(_startTime >= block.timestamp);
@@ -1770,7 +1771,7 @@ contract TokenPorter is ITokenPorter, Owned {
     {
         
         require(msg.sender == address(token));
-	require(now >= chainHopStartTime);
+        require(now >= chainHopStartTime);
         require(_importData.length == 8);
         require(_addresses.length == 2);
         require(_burnHashes.length == 2);
@@ -2100,7 +2101,8 @@ contract Proposals is Owned {
         uint _newThreshold) private returns (uint proposalId) {
         proposalId = proposals.length++;
         if (_validator != 0x0) {
-            require((valProposals[_validator] == 0) || (now > proposals[valProposals[_validator]].expiry) || (proposals[valProposals[_validator]].passed));
+            require((valProposals[_validator] == 0) || (now > proposals[valProposals[_validator]].expiry) 
+            || (proposals[valProposals[_validator]].passed));
             valProposals[_validator] = proposalId;
         }
         uint expiry = now + votingPeriod;
@@ -2140,7 +2142,6 @@ contract Validator is Owned {
     event LogValidatorAdded(address indexed validator, address indexed caller, uint threshold);
     event LogValidatorRemoved(address indexed validator, address indexed caller, uint threshold);
   
-
     /// @dev Throws if called by unauthorized account
     modifier onlyAuthorized() {
         require(msg.sender == owner || msg.sender == address(proposals));
@@ -2154,7 +2155,7 @@ contract Validator is Owned {
         isValidator[_validator] = true;
         uint minThreshold = (validators.length / 2) + 1;
         if (threshold < minThreshold) {
-            threshold =  minThreshold;
+            threshold = minThreshold;
         }
         emit LogValidatorAdded(_validator, msg.sender, threshold);
     }
@@ -2197,7 +2198,7 @@ contract Validator is Owned {
         threshold = _threshold;
         return true;
     }
-	
+    
     /// @notice check valid threshold value. Common function for validator and proposal contract
     /// @param _valCount valicator count
     /// @param _threshold new threshold value
