@@ -1640,10 +1640,11 @@ contract TokenPorter is ITokenPorter, Owned {
 
     uint public burnSequence = 1;
     uint public importSequence = 1;
+    uint public chainHopStartTime = now + (2 * 60 * 60 * 24 );
     // This is flat fee and must be in 18 decimal value
     uint public minimumExportFee = 1 * (10 ** 12);
     // export fee per 10,000 MET. 1 means 0.01% or 1 met as fee for export of 10,000 met
-    uint public exportFee = 0;
+    uint public exportFee = 50;
     bytes32[] public exportedBurns;
     uint[] public supplyOnAllChains = new uint[](6);
     mapping (bytes32 => bytes32) public merkleRoots;
@@ -1689,6 +1690,14 @@ contract TokenPorter is ITokenPorter, Owned {
     /// @param _exportFee fee amount per 10,000 met
     function setExportFeePerTenThousand(uint _exportFee) public onlyOwner returns (bool) {
         exportFee = _exportFee;
+        return true;
+    }
+
+    /// @notice set chain hop start time. Also, useful if owner want to suspend chain hop until given time in case anything goes wrong
+    /// @param _startTime fee amount per 10,000 met
+    function setChainHopStartTime(uint _startTime) public onlyOwner returns (bool) {
+        require(_startTime >= block.timestamp);
+        chainHopStartTime = _startTime;
         return true;
     }
 
@@ -1761,6 +1770,7 @@ contract TokenPorter is ITokenPorter, Owned {
     {
         
         require(msg.sender == address(token));
+	require(now >= chainHopStartTime);
         require(_importData.length == 8);
         require(_addresses.length == 2);
         require(_burnHashes.length == 2);
@@ -1799,6 +1809,7 @@ contract TokenPorter is ITokenPorter, Owned {
     function export(address tokenOwner, bytes8 _destChain, address _destMetronomeAddr,
         address _destRecipAddr, uint _amount, uint _fee, bytes _extraData) public returns (bool) {
         require(msg.sender == address(token));
+        require(now >= chainHopStartTime);
         require(_destChain != 0x0 && _destMetronomeAddr != 0x0 && _destRecipAddr != 0x0 && _amount != 0);
         require(destinationChains[_destChain] == _destMetronomeAddr);
         
@@ -1935,11 +1946,12 @@ contract TokenPorter is ITokenPorter, Owned {
 }    
 
 
-/// @title Proposal intiated by validators.  
+/// @title Proposals intiated by validators.  
 contract Proposals is Owned {
     uint public votingPeriod = 60 * 60 * 24 * 15;
 
     Validator public validator;
+    mapping (address => uint) public valProposals;
 
     bytes32[] public actions;
     
@@ -2056,13 +2068,7 @@ contract Proposals is Owned {
             // Proposal to remove idle validator if no one take objection
             if ((proposals[_proposalId].action == actions[1]) && 
                 (proposals[_proposalId].voters.length == proposals[_proposalId].supportCount)) {
-                // new threshold count should never go below 50% remaining validators
-                uint _t = (validator.getValidatorsCount() + 1) / 2;
-                uint newThreshold = validator.threshold() - 1;
-                if (newThreshold < _t) {
-                    newThreshold = _t;
-                }
-                executeProposal(_proposalId, newThreshold);
+                executeProposal(_proposalId, proposals[_proposalId].newThreshold);
             }
         }   
     }
@@ -2076,7 +2082,7 @@ contract Proposals is Owned {
         } else if (proposals[_proposalId].action == actions[1]) {
             validator.removeValidator(proposals[_proposalId].validator);
         }
-        if (_newThreshold != 0) {
+        if (_newThreshold != 0 && _newThreshold != validator.threshold()) {
             validator.updateThreshold(_newThreshold);
         }
         proposals[_proposalId].passed = true;
@@ -2093,6 +2099,10 @@ contract Proposals is Owned {
     function createNewProposal(address _validator, address _creator, bytes32 _action, 
         uint _newThreshold) private returns (uint proposalId) {
         proposalId = proposals.length++;
+        if (_validator != 0x0) {
+            require((valProposals[_validator] == 0) || (now > proposals[valProposals[_validator]].expiry) || (proposals[valProposals[_validator]].passed));
+            valProposals[_validator] = proposalId;
+        }
         uint expiry = now + votingPeriod;
         Proposal storage p = proposals[proposalId];
         p.proposalId = proposalId;
@@ -2123,9 +2133,13 @@ contract Validator is Owned {
 
     mapping (bytes32 => bool) public hashClaimed;
 
-    uint public threshold = 1;
+    // Miniumum quorum require for various voting like import, add new validators, add new chain
+    uint public threshold = 2;
 
     event LogAttestation(bytes32 indexed hash, address indexed recipientAddr, bool isValid);
+    event LogValidatorAdded(address indexed validator, address indexed caller, uint threshold);
+    event LogValidatorRemoved(address indexed validator, address indexed caller, uint threshold);
+  
 
     /// @dev Throws if called by unauthorized account
     modifier onlyAuthorized() {
@@ -2138,6 +2152,11 @@ contract Validator is Owned {
         require(!isValidator[_validator]);
         validators.push(_validator);
         isValidator[_validator] = true;
+        uint minThreshold = (validators.length / 2) + 1;
+        if (threshold < minThreshold) {
+            threshold =  minThreshold;
+        }
+        emit LogValidatorAdded(_validator, msg.sender, threshold);
     }
 
     /// @param _validator validator address
@@ -2162,6 +2181,7 @@ contract Validator is Owned {
                 threshold = validators.length - 1;
             }
         }
+        emit LogValidatorRemoved(_validator, msg.sender, threshold);
     }
 
     /// @notice fetch count of validators
@@ -2177,7 +2197,11 @@ contract Validator is Owned {
         threshold = _threshold;
         return true;
     }
-
+	
+    /// @notice check valid threshold value. Common function for validator and proposal contract
+    /// @param _valCount valicator count
+    /// @param _threshold new threshold value
+    /// @return true/false
     function isNewThresholdValid(uint _valCount, uint _threshold) public pure returns (bool) {
         if (_threshold == 1 && _valCount == 2) {
             return true;
