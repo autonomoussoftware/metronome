@@ -22,13 +22,18 @@ async function configureContracts (keystorePath, password) {
   web3.eth.defaultAccount = account.address
   console.log('\nConfiguring METToken')
   var receipt
-  // var metToken = new web3.eth.Contract(JSON.parse(contracts.METToken.abi), contracts.METToken.address)
-  // receipt = await metToken.methods.setTokenPorter(contracts.TokenPorter.address).send({ from: account.address, gasPrice: config[chain].gasPrice, gas: 4512388 })
-  // console.log('setTokenPorter done', receipt.transactionHash)
-  // receipt = ''
-
+  var metAbi = require('./abi/metToken.json')
+  var metToken = new web3.eth.Contract(metAbi, config[chain].METToken)
+  receipt = await metToken.methods.setTokenPorter(contracts.TokenPorter.address).send({ from: account.address, gasPrice: config[chain].gasPrice, gas: 4512388 })
+  console.log('setTokenPorter done', receipt.transactionHash)
+  receipt = ''
   console.log('\nConfiguring Token Porter')
   var tokenPorter = new web3.eth.Contract(JSON.parse(contracts.TokenPorter.abi), contracts.TokenPorter.address)
+  console.log('adding destination chain address')
+  receipt = await tokenPorter.methods.addDestinationChain(web3.utils.toHex('ETC'), config[chain].destinationChain).send({ from: account.address, gasPrice: config[chain].gasPrice, gas: 4512388 })
+  var destChain = await tokenPorter.methods.destinationChains(web3.utils.toHex('ETC')).call()
+  console.log('destChain', destChain)
+
   receipt = await tokenPorter.methods.initTokenPorter(config[chain].METToken, config[chain].Auctions).send({ from: account.address, gasPrice: config[chain].gasPrice, gas: 4512388 })
   console.log('initTokenPorter done', receipt.transactionHash)
   receipt = ''
