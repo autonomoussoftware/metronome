@@ -7,20 +7,30 @@ const fs = require('fs')
 async function deploy (keystorePath, password) {
   var keystore = fs.readFileSync(keystorePath).toString()
   var wallet = await ethers.Wallet.fromEncryptedJson(keystore, password)
-  let list = ['Proceeds', 'Auctions', 'AutonomousConverter', 'SmartToken', 'METToken', 'TokenPorter', 'Validator', 'Proposals']
+  let list = ['METToken', 'TokenPorter', 'Proceeds', 'Auctions', 'AutonomousConverter', 'SmartToken', 'Validator', 'Proposals']
   await deployContracts(wallet, list)
+  await configureContracts(keystorePath, password)
+  await launchContracts(keystorePath, password)
 }
 async function launchContracts (keystorePath, password) {
   var keystore = fs.readFileSync(keystorePath).toString()
   var wallet = await ethers.Wallet.fromEncryptedJson(keystore, password)
+  console.log(wallet)
   var chain = 'etc'
   var contracts = JSON.parse(fs.readFileSync('./build/' + chain + '/contracts.json'))
   var web3 = new Web3(new Web3.providers.HttpProvider(config[chain].nodeURL))
   const account = await web3.eth.accounts.privateKeyToAccount(wallet.signingKey.privateKey)
   web3.eth.accounts.wallet.add(account)
   web3.eth.defaultAccount = account.address
+  var receipt
+  console.log('adding destination chain address')
+  var tokenPorter = new web3.eth.Contract(JSON.parse(contracts.TokenPorter.abi), contracts.TokenPorter.address)
+  receipt = await tokenPorter.methods.addDestinationChain(web3.utils.toHex('ETH'), config[chain].destinationChain).send({ from: account.address, gasPrice: config[chain].gasPrice, gas: 4512388 })
+  var destChain = await tokenPorter.methods.destinationChains(web3.utils.toHex('ETH')).call()
+  console.log('destChain', destChain)
+  process.exit(0)
   var autonomousConverter = new web3.eth.Contract(JSON.parse(contracts.AutonomousConverter.abi), contracts.AutonomousConverter.address)
-  var receipt = await autonomousConverter.methods.init(contracts.METToken.address, contracts.SmartToken.address, contracts.Auctions.address).send({ from: account.address, gasPrice: config[chain].gasPrice, gas: 4512388, value: '100000000000000000' })
+  receipt = await autonomousConverter.methods.init(contracts.METToken.address, contracts.SmartToken.address, contracts.Auctions.address).send({ from: account.address, gasPrice: config[chain].gasPrice, gas: 4512388, value: '100000000000000000' })
   console.log('AutonomousConvert initiated', receipt.transactionHash)
   receipt = ''
   var proceeds = new web3.eth.Contract(JSON.parse(contracts.Proceeds.abi), contracts.Proceeds.address)
@@ -113,7 +123,7 @@ async function deployContracts (wallet, list) {
     var rawTx = {
       nonce: web3.utils.toHex(nonce),
       gasPrice: web3.utils.toHex(config[chain].gasPrice),
-      gasLimit: web3.utils.toHex('4702388'),
+      gasLimit: web3.utils.toHex('4712382'),
       chainId: web3.utils.toHex(config[chain].chainId)
     }
     var temp = contractsJson['./contracts/monolithic.sol:' + contractName]
@@ -138,6 +148,14 @@ async function deployContracts (wallet, list) {
     }
 
     if (receipt && receipt.contractAddress) {
+      var instance = new web3.eth.Contract(JSON.parse(temp.abi), receipt.contractAddress)
+      var owner = await instance.methods.owner().call()
+      if (owner !== wallet.address) {
+        console.log('deployment issue')
+        console.log('wallet.address', wallet.address)
+        console.log('owner', owner)
+        process.exit(0)
+      }
       console.log('contract deployed successfully', receipt.contractAddress)
       var contracObject = {}
       contracObject.abi = temp.abi

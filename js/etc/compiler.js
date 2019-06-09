@@ -12,7 +12,7 @@ function compile (sourcePath) {
   } catch (err) {
     console.error(err)
   }
-  var arg = 'solc --combined-json abi,bin ' + sourcePath + ' --evm-version  spuriousDragon > ' + buildPath + '/output.json'
+  var arg = 'solc --combined-json abi,bin --optimize ' + sourcePath + ' --evm-version  spuriousDragon > ' + buildPath + '/output.json'
   console.log(arg)
   shell.exec(arg, function (code, stdout, stderr) {
     console.log('Exit code:', code)

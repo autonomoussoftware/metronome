@@ -4,11 +4,12 @@
      "validators":["0x1ac817a418Ace0998Bb4606B89582eaCfde38afE", "0xAd8fbc9c87F2b72aa3E040dfc023ee85c94F1705", "0xb0033e54edba5815ce6262e3d2cdc82097e23f53"],
      "nodeURL": "http://ec2-3-94-173-31.compute-1.amazonaws.com:8555",
      "chainId": "62",
-     "gasPrice": "20000000000"
+     "gasPrice": "20000000000",
+     "destinationChain": "0xF3e9a687Fdf24112745D4d7dEe150BA87A07ecc3"
     },
     "eth": {
       "newOwner": "0xae4e3af55872601461897d82ce4165ba635c50a1",
-      "validators":["0x1ac817a418Ace0998Bb4606B89582eaCfde38afE", "0xAd8fbc9c87F2b72aa3E040dfc023ee85c94F1705", "0xb0033e54edba5815ce6262e3d2cdc82097e23f53"],
+      "validators":["0xD8252d2741a67C50519F70801Fe9e21Cf590910C", "0xB0033E54eDbA5815cE6262E3d2CDc82097E23f53", "0x001f6BC290bA84C65b7D17a49C701D583C08f86B", "0x9f8587D86E20b40bE77E7d1A8e0B60975C76dD4b", "0x0F08d5C194b6dd3eF30B2D3947C0F7506a14855b", "0xfcFAD29BbbaB2968790d2D36FbF4A11BCF4AbBaC", "0x11dbEf64698F81C47e7fA4d5E39965f300b486AC", "0xAd8fbc9c87F2b72aa3E040dfc023ee85c94F1705", "0xF7f04E1052c6a30f651b07Bb8f6BeDF4844137f5", "0x1ac817a418Ace0998Bb4606B89582eaCfde38afE"],
       "nodeURL": "http://ec2-3-94-173-31.compute-1.amazonaws.com:8545",
       "chainId": "3",
       "gasPrice": "20000000000"
