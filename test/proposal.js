@@ -136,6 +136,7 @@ contract('Proposal contract', accounts => {
         assert.equal(val, accounts[1], 'validators not correct')
         var tx = await proposals.proposeNewValidator(accounts[4], 0, {from: accounts[1]})
         var log = tx.logs[0]
+        console.log(await proposals.proposals(0))
         assert.equal(log.args.newThreshold, 0, 'Proposal not created correctly')
         assert.equal(log.args.newValidator, accounts[4], 'Proposal not created correctly')
         await validator.addValidator(accounts[3])
@@ -219,6 +220,34 @@ contract('Proposal contract', accounts => {
       })
     })
 
+    it('Should be create remove proposal after new val added', () => {
+      return new Promise(async (resolve, reject) => {
+        await initContracts(getCurrentBlockTime() - 60, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+        await validator.addValidator(accounts[1])
+        await validator.addValidator(accounts[2])
+        await validator.addValidator(accounts[3])
+        var tx = await proposals.proposeNewValidator(accounts[4], 3, {from: accounts[1]})
+        var log = tx.logs[0]
+        assert.equal(log.args.newThreshold, 3, 'Proposal not created correctly')
+        assert.equal(log.args.newValidator, accounts[4], 'Proposal not created correctly')
+        await proposals.voteForProposal(0, true, {from: accounts[1]})
+        await proposals.voteForProposal(0, true, {from: accounts[2]})
+        await proposals.voteForProposal(0, false, {from: accounts[3]})
+        tx = await proposals.closeProposal(0, {from: accounts[4]})
+        var newValidator = await validator.validators(3)
+        assert.equal(newValidator.toString(), accounts[4], 'new validator is not added correctly')
+        var newThreshold = await validator.threshold()
+        assert.equal(newThreshold.toString(), '3', 'New threshold is not correct')
+        var prop = await proposals.proposals(0)
+        assert.equal(prop[6], true, 'Propose is not passed')
+        tx = await proposals.proposeRemoveValidator(accounts[4], 2, {from: accounts[1]})
+        log = tx.logs[0]
+        assert.equal(log.args.newThreshold, 2, 'Proposal not created correctly')
+        assert.equal(log.args.newValidator, accounts[4], 'Proposal not created correctly')
+        resolve()
+      })
+    })
+
     it('Proposal should be closed after expiry', () => {
       return new Promise(async (resolve, reject) => {
         await initContracts(getCurrentBlockTime() - 60, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
@@ -259,7 +288,7 @@ contract('Proposal contract', accounts => {
         assert.equal(log.args.newValidator, accounts[4], 'Proposal not created correctly')
         await proposals.voteForProposal(0, true, {from: accounts[1]})
         await proposals.voteForProposal(0, true, {from: accounts[2]})
-        await proposals.voteForProposal(0, false, {from: accounts[3]})
+        await proposals.voteForProposal(0, true, {from: accounts[3]})
         tx = await proposals.closeProposal(0, {from: accounts[4]})
         var valCounAfter = await validator.getValidatorsCount()
         assert.equal(valCounAfter.toString(), '3', 'Validator is not removed')
@@ -320,6 +349,64 @@ contract('Proposal contract', accounts => {
         resolve()
       })
     })
+
+    it('Should not be able to create new proposal to remove val if one already exist', () => {
+      return new Promise(async (resolve, reject) => {
+        await initContracts(getCurrentBlockTime() - 60, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+        await validator.addValidator(accounts[1])
+        await validator.addValidator(accounts[2])
+        await validator.addValidator(accounts[3])
+        await validator.addValidator(accounts[4])
+        await validator.addValidator(accounts[5])
+        var votingPeriod = 3 * 60
+        await proposals.updateVotingPeriod(votingPeriod, {from: OWNER})
+        var tx = await proposals.proposeRemoveValidator(accounts[4], 3, {from: accounts[1]})
+        var log = tx.logs[0]
+        console.log(tx.logs[0].args)
+        assert.equal(log.args.newThreshold, 3, 'Proposal not created correctly')
+        assert.equal(log.args.newValidator, accounts[4], 'Proposal not created correctly')
+        let thrown = false
+        try {
+          tx = await proposals.proposeRemoveValidator(accounts[4], 3, {from: accounts[1]})
+          console.log(tx.logs[0].args)
+          tx = await proposals.proposeRemoveValidator(accounts[4], 3, {from: accounts[1]})
+          console.log(tx.logs[0].args)
+        } catch (e) {
+          thrown = true
+        }
+        console.log('thrown', thrown)
+        assert(thrown, 'should not be able to create validator if one already exist')
+        resolve()
+      })
+    })
+
+    it('Should not be able to create new proposal to add val if one already exist', () => {
+      return new Promise(async (resolve, reject) => {
+        await initContracts(getCurrentBlockTime() - 60, MINIMUM_PRICE, STARTING_PRICE, TIME_SCALE)
+        await validator.addValidator(accounts[1])
+        await validator.addValidator(accounts[2])
+        await validator.addValidator(accounts[3])
+        var votingPeriod = 3 * 60
+        await proposals.updateVotingPeriod(votingPeriod, {from: OWNER})
+        var tx = await proposals.proposeNewValidator(accounts[4], 3, {from: accounts[1]})
+        var log = tx.logs[0]
+        console.log(tx.logs[0].args)
+        assert.equal(log.args.newThreshold, 3, 'Proposal not created correctly')
+        assert.equal(log.args.newValidator, accounts[4], 'Proposal not created correctly')
+        let thrown = false
+        try {
+          tx = await proposals.proposeNewValidator(accounts[5], 3, {from: accounts[1]})
+          console.log(tx.logs[0].args)
+          tx = await proposals.proposeNewValidator(accounts[5], 3, {from: accounts[1]})
+          console.log(tx.logs[0].args)
+        } catch (e) {
+          thrown = true
+        }
+        console.log('thrown', thrown)
+        assert(thrown, 'should not be able to create validator if one already exist')
+        resolve()
+      })
+    })
   })
 
   it('Update threshold and proposal should be closed successfully', () => {
@@ -335,7 +422,8 @@ contract('Proposal contract', accounts => {
       assert.equal(log.args.newValidator, 0x0, 'Proposal not created correctly')
       await proposals.voteForProposal(0, true, {from: accounts[1]})
       await proposals.voteForProposal(0, true, {from: accounts[2]})
-      await proposals.voteForProposal(0, false, {from: accounts[3]})
+      await proposals.voteForProposal(0, true, {from: accounts[3]})
+      await proposals.voteForProposal(0, false, {from: accounts[4]})
       tx = await proposals.closeProposal(0, {from: accounts[4]})
       var newThreshold = await validator.threshold()
       assert.equal(newThreshold.toString(), '3', 'New threshold is not correct')
