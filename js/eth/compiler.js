@@ -3,12 +3,13 @@ const fs = require('fs-extra')
 
 function compile (sourcePath) {
   console.log('compiling for', sourcePath)
-  var buildPath = './build/eth'
+  var buildPath = './build'
   try {
     if (fs.existsSync(buildPath)) {
       fs.removeSync(buildPath)
     }
-    fs.mkdirSync(buildPath)
+    buildPath = buildPath + '/eth'
+    fs.mkdirSync(buildPath, { recursive: true })
   } catch (err) {
     console.error(err)
   }
