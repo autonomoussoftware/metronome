@@ -9,8 +9,8 @@ async function deploy (keystorePath, password) {
   var wallet = await ethers.Wallet.fromEncryptedJson(keystore, password)
   let list = ['METToken', 'TokenPorter', 'Proceeds', 'Auctions', 'AutonomousConverter', 'SmartToken', 'Validator', 'Proposals']
   await deployContracts(wallet, list)
-  await configureContracts(keystorePath, password)
-  await launchContracts(keystorePath, password)
+  // await configureContracts(keystorePath, password)
+  // await launchContracts(keystorePath, password)
 }
 async function launchContracts (keystorePath, password) {
   var keystore = fs.readFileSync(keystorePath).toString()
@@ -28,7 +28,6 @@ async function launchContracts (keystorePath, password) {
   receipt = await tokenPorter.methods.addDestinationChain(web3.utils.toHex('ETH'), config[chain].destinationChain).send({ from: account.address, gasPrice: config[chain].gasPrice, gas: 4512388 })
   var destChain = await tokenPorter.methods.destinationChains(web3.utils.toHex('ETH')).call()
   console.log('destChain', destChain)
-  process.exit(0)
   var autonomousConverter = new web3.eth.Contract(JSON.parse(contracts.AutonomousConverter.abi), contracts.AutonomousConverter.address)
   receipt = await autonomousConverter.methods.init(contracts.METToken.address, contracts.SmartToken.address, contracts.Auctions.address).send({ from: account.address, gasPrice: config[chain].gasPrice, gas: 4512388, value: '100000000000000000' })
   console.log('AutonomousConvert initiated', receipt.transactionHash)
