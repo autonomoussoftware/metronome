@@ -66,7 +66,7 @@ async function configureContracts (keystorePath, password) {
   console.log('\nConfiguring METToken')
   var metToken = new web3.eth.Contract(JSON.parse(contracts.METToken.abi), contracts.METToken.address)
   var receipt = await metToken.methods.initMETToken(contracts.AutonomousConverter.address, contracts.Auctions.address, 0, 0).send({ from: account.address, gasPrice: config[chain].gasPrice, gas: 4512388 })
-  console.log('initMETToken done', receipt)
+  console.log('initMETToken done', receipt.transactionHash)
   console.log('minter', await metToken.methods.minter().call())
   receipt = ''
   receipt = await metToken.methods.setTokenPorter(contracts.TokenPorter.address).send({ from: account.address, gasPrice: config[chain].gasPrice, gas: 4512388 })

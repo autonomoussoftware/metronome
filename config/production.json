@@ -1,0 +1,13 @@
+{
+    "etc": {
+    "newOwner": "0x98579428140acad902f30ea2731a49396cb0284f",
+     "validators":[],
+     "nodeURL": "http://ec2-3-92-45-92.compute-1.amazonaws.com:8555",
+     "chainId": "61",
+     "gasPrice": "1000000000",
+     "destinationChain": "0xa3d58c4E56fedCae3a7c43A725aeE9A71F0ece4e"
+    },
+    "eth": {},
+    "genesisTime": 1529280060,
+    "isa_endtime": 1529883999
+  }
