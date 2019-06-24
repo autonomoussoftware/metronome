@@ -1,8 +1,8 @@
 {
   "etc": {
   "newOwner": "0x98579428140acad902f30ea2731a49396cb0284f",
-   "validators":[],
-   "nodeURL": "http://ec2-3-92-45-92.compute-1.amazonaws.com:8555",
+   "validators":["0x71648bdade5e89a14d7f401dbf1e19b4b071d964", "0x30b264f432e935918ba643d4ceec357d8eb43f3e", "0xaa0c9474e5491078742d8842907bf6593282d3f4", "0xe096566f99e5430497a2d658aaa83b33f33e6f08", "0xdaae90370f38c05f1e44d36c3a24087d9fb7dd19"],
+   "nodeURL": "http://127.0.0.1:8555",
    "chainId": "61",
    "gasPrice": "1000000000",
    "destinationChain": "0xa3d58c4E56fedCae3a7c43A725aeE9A71F0ece4e"
