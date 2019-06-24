@@ -3,7 +3,7 @@
   "eth": {
       "newOwner": "0x98579428140acad902f30ea2731a49396cb0284f",
       "validators":[],
-      "nodeURL": "https://eth.wallet.metronome.io:8545",
+      "nodeURL": "https://127.0.0.1:8545",
       "chainId": "1",
       "gasPrice": "15000000000",
       "Auctions": "0x9d9BcDd249E439AAaB545F59a33812E39A8e3072",

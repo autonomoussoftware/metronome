@@ -1,16 +1,16 @@
 {
-    "etc": {},
-    "eth": {
-        "newOwner": "0x98579428140acad902f30ea2731a49396cb0284f",
-        "validators":[],
-        "nodeURL": "https://eth.wallet.metronome.io:8545",
-        "chainId": "1",
-        "gasPrice": "15000000000",
-        "Auctions": "0x9d9BcDd249E439AAaB545F59a33812E39A8e3072",
-        "AutonomousConverter": "0x686e5ac50D9236A9b7406791256e47feDDB26AbA",
-        "METToken": "0xa3d58c4E56fedCae3a7c43A725aeE9A71F0ece4e",
-        "destinationChain": ""
-      },
-    "genesisTime": 1529280060,
-    "isa_endtime": 1529883999
-  }
+  "etc": {},
+  "eth": {
+      "newOwner": "0x98579428140acad902f30ea2731a49396cb0284f",
+      "validators":["0x71648bdade5e89a14d7f401dbf1e19b4b071d964", "0x174bf89c5fd6d60c4d481b03449b9579fee7aa49", "0xc8f62ff46a2daf7b23f89607656f759a00a29b19", "0xee638dab6b6592bf17b05e32fac616c270c6b4c0", "0xdaae90370f38c05f1e44d36c3a24087d9fb7dd19"],
+      "nodeURL": "https://127.0.0.1:8545",
+      "chainId": "1",
+      "gasPrice": "15000000000",
+      "Auctions": "0x9d9BcDd249E439AAaB545F59a33812E39A8e3072",
+      "AutonomousConverter": "0x686e5ac50D9236A9b7406791256e47feDDB26AbA",
+      "METToken": "0xa3d58c4E56fedCae3a7c43A725aeE9A71F0ece4e",
+      "destinationChain": ""
+    },
+  "genesisTime": 1529280060,
+  "isa_endtime": 1529883999
+}
