@@ -32,12 +32,23 @@ Local development is worked against TestRPC (which will be installed via `npm`).
 
 **Version**: autonomoussoftware/metronome#35a6cd3
 
+**Ethereum Contracts**
+
 Contract | Address | Description
 --- | --- | ---
 Auctions | 0x9d9BcDd249E439AAaB545F59a33812E39A8e3072 | Use for purchasing newly minted MET
 Proceeds | 0x68c4b7d05fAE45bCb6192bb93e246C77E98360e1 | Stores all auction proceeds
 AutonomousConverter | 0x686e5ac50D9236A9b7406791256e47feDDB26AbA | Use for exchanging MET/ETH after initial auction is over
 METToken | 0xa3d58c4E56fedCae3a7c43A725aeE9A71F0ece4e | Use this address for MET ERC20 functions and third-party wallets
+
+**Ethereum Classic Contracts** 
+
+Contract | Address | Description
+--- | --- | ---
+Auctions | 0xF5269Caa54F1f776dD996Db35992D599e14d8a3B | Use for purchasing newly minted MET
+Proceeds | 0x09ACED531359ceFfAD9759a9252E1D82E3557Eb2 | Stores all auction proceeds
+AutonomousConverter | 0x567EEBB6397cC8345e5A7eAE288994bf45FDF85B | Use for exchanging MET/ETC after initial auction is over
+METToken | 0xA4d3A7b00056Cc5D8206b3b2983bfe0C107D90da | Use this address for MET ERC20 functions and third-party wallets
 
 ### Development environment
 
