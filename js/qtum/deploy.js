@@ -1,4 +1,5 @@
 const program = require('commander')
+var config = require('config')
 require('dotenv').config()
 var shell = require('shelljs')
 var contractsList = ['Proposals', 'Proceeds', 'Auctions', 'AutonomousConverter', 'SmartToken', 'METToken', 'TokenPorter', 'Validator']
@@ -48,16 +49,19 @@ async function initContracts () {
   tx = await contracts.TokenPorter.send('setValidator', [contracts.Validator.info.address])
   await tx.confirm(1)
 
-  tx = await contracts.TokenPorter.send('setExportFeePerTenThousand', [100])
-  await tx.confirm(1)
-
-  tx = await contracts.TokenPorter.send('setMinimumExportFee', [1e12])
-  await tx.confirm(1)
-
   console.log('\nConfiguring Validator')
   // Todo: initValidator will take address of off-chain validators
   tx = await contracts.Validator.send('initValidator', [contracts.METToken.info.address, contracts.Auctions.info.address, contracts.TokenPorter.info.address])
   await tx.confirm(1)
+
+  tx = await contracts.Validator.send('setProposalContract', [contracts.Proposals.info.address])
+  await tx.confirm(1)
+
+  for (let val of config.qtum.validators) {
+    console.log('adding validator', val)
+    tx = await contracts.Validator.send('addValidator', [val])
+    await tx.confirm(1)
+  }
 
   console.log('\nConfiguring Proposal contract')
   // Todo: initValidator will take address of off-chain validators
@@ -71,6 +75,13 @@ async function initContracts () {
 
 async function launchContracts () {
   console.log('Launching metronome in qtum')
+  console.log('adding destination chain')
+  await contracts.TokenPorter.send('addDestinationChain', [web3.utils.toHex('ETH'), config.destinationChain.eth])
+  var destChain = await contracts.TokenPorter.call('destinationChains', [web3.utils.toHex('ETH')])
+  console.log('ETH destChain', destChain)
+  contracts.TokenPorter.send('addDestinationChain', [web3.utils.toHex('ETC'), config.destinationChain.eth])
+  destChain = await contracts.TokenPorter.call('destinationChains', [web3.utils.toHex('ETC')])
+  console.log('ETC destChain', destChain)
   console.log('\nInitializing AutonomousConverter Contract')
   var tx = await contracts.AutonomousConverter.send('init', [contracts.METToken.info.address, contracts.SmartToken.info.address, contracts.Auctions.info.address], {amount: 1})
   await tx.confirm(1)
@@ -81,13 +92,11 @@ async function launchContracts () {
 
   console.log('\nInitializing Auctions')
   var qtum = '0x7174756d'
-  var START = 1528588800
-  var ISA_ENDTIME = 1529193600
   var MINPRICE = 3300000000000 // Same as current min price in eth chain
   var PRICE = 2 // start price for first daily auction. This may be average start price at eth chain
   var TIMESCALE = 1 // hard coded
   console.log('Initialized auctions', (await contracts.Auctions.call('initialized')).outputs[0])
-  tx = await contracts.Auctions.send('skipInitBecauseIAmNotOg', [contracts.METToken.info.address, contracts.Proceeds.info.address, START, MINPRICE, PRICE, TIMESCALE, qtum, ISA_ENDTIME], {gasLimit: 5000000})
+  tx = await contracts.Auctions.send('skipInitBecauseIAmNotOg', [contracts.METToken.info.address, contracts.Proceeds.info.address, config.genesisTime, MINPRICE, PRICE, TIMESCALE, qtum, config.isa_endtime], {gasLimit: 5000000})
   await tx.confirm(1)
   console.log('Initialized auctions', (await contracts.Auctions.call('initialized')).outputs[0])
   console.log('Enabling MET transfer', (await contracts.METToken.call('transferAllowed')).outputs[0])

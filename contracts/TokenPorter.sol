@@ -41,10 +41,11 @@ contract TokenPorter is ITokenPorter, Owned {
 
     uint public burnSequence = 1;
     uint public importSequence = 1;
+    uint public chainHopStartTime = now + (2*60*60*24);
     // This is flat fee and must be in 18 decimal value
     uint public minimumExportFee = 1 * (10 ** 12);
     // export fee per 10,000 MET. 1 means 0.01% or 1 met as fee for export of 10,000 met
-    uint public exportFee = 0;
+    uint public exportFee = 50;
     bytes32[] public exportedBurns;
     uint[] public supplyOnAllChains = new uint[](6);
     mapping (bytes32 => bytes32) public merkleRoots;
@@ -90,6 +91,15 @@ contract TokenPorter is ITokenPorter, Owned {
     /// @param _exportFee fee amount per 10,000 met
     function setExportFeePerTenThousand(uint _exportFee) public onlyOwner returns (bool) {
         exportFee = _exportFee;
+        return true;
+    }
+    
+    /// @notice set chain hop start time. Also, useful if owner want to suspend chain hop 
+    // until given time in case anything goes wrong
+    /// @param _startTime epoc time
+    function setChainHopStartTime(uint _startTime) public onlyOwner returns (bool) {
+        require(_startTime >= block.timestamp);
+        chainHopStartTime = _startTime;
         return true;
     }
 
@@ -162,9 +172,11 @@ contract TokenPorter is ITokenPorter, Owned {
     {
         
         require(msg.sender == address(token));
+        require(now >= chainHopStartTime);
         require(_importData.length == 8);
         require(_addresses.length == 2);
         require(_burnHashes.length == 2);
+        require(!validator.hashClaimed(_burnHashes[1]));
         require(isReceiptValid(_originChain, _destinationChain, _addresses, _extraData, _burnHashes, 
         _supplyOnAllChains, _importData));
         require(_destinationChain == auctions.chain());
@@ -199,6 +211,7 @@ contract TokenPorter is ITokenPorter, Owned {
     function export(address tokenOwner, bytes8 _destChain, address _destMetronomeAddr,
         address _destRecipAddr, uint _amount, uint _fee, bytes _extraData) public returns (bool) {
         require(msg.sender == address(token));
+        require(now >= chainHopStartTime);
         require(_destChain != 0x0 && _destMetronomeAddr != 0x0 && _destRecipAddr != 0x0 && _amount != 0);
         require(destinationChains[_destChain] == _destMetronomeAddr);
         

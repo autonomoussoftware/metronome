@@ -54,6 +54,14 @@ contract Validator is Owned {
     uint public threshold = 1;
 
     event LogAttestation(bytes32 indexed hash, address indexed recipientAddr, bool isValid);
+    event LogValidatorAdded(address indexed validator, address indexed caller, uint threshold);
+    event LogValidatorRemoved(address indexed validator, address indexed caller, uint threshold);
+  
+    /// @dev Throws if called by any account other than the validator.
+    modifier onlyValidator() {
+        require(isValidator[msg.sender]);
+        _;
+    }
 
     /// @dev Throws if called by unauthorized account
     modifier onlyAuthorized() {
@@ -66,6 +74,11 @@ contract Validator is Owned {
         require(!isValidator[_validator]);
         validators.push(_validator);
         isValidator[_validator] = true;
+        uint minThreshold = (validators.length / 2) + 1;
+        if (threshold < minThreshold) {
+            threshold = minThreshold;
+        }
+        emit LogValidatorAdded(_validator, msg.sender, threshold);
     }
 
     /// @param _validator validator address
@@ -90,6 +103,7 @@ contract Validator is Owned {
                 threshold = validators.length - 1;
             }
         }
+        emit LogValidatorRemoved(_validator, msg.sender, threshold);
     }
 
     /// @notice fetch count of validators
@@ -106,6 +120,10 @@ contract Validator is Owned {
         return true;
     }
 
+    /// @notice check valid threshold value. Common function for validator and proposal contract
+    /// @param _valCount valicator count
+    /// @param _threshold new threshold value
+    /// @return true/false
     function isNewThresholdValid(uint _valCount, uint _threshold) public pure returns (bool) {
         if (_threshold == 1 && _valCount == 2) {
             return true;
@@ -157,8 +175,7 @@ contract Validator is Owned {
     /// @param _globalSupplyInOtherChains total supply in all other chains except this chain
     function attestHash(bytes32 _burnHash, bytes8 _originChain, address _recipientAddr, 
         uint _amount, uint _fee, bytes32[] _proof, bytes _extraData,
-        uint _globalSupplyInOtherChains) public {
-        require(isValidator[msg.sender]);
+        uint _globalSupplyInOtherChains) public onlyValidator {
         require(_burnHash != 0x0);
         require(!hashAttestations[_burnHash][msg.sender]);
         require(!hashRefutation[_burnHash][msg.sender]);
@@ -176,8 +193,7 @@ contract Validator is Owned {
 
     /// @notice off chain validator can refute hash, if given export hash is not verified in origin chain.
     /// @param _burnHash Burn hash
-    function refuteHash(bytes32 _burnHash, address _recipientAddr) public {
-        require(isValidator[msg.sender]);
+    function refuteHash(bytes32 _burnHash, address _recipientAddr) public onlyValidator {
         require(!hashAttestations[_burnHash][msg.sender]);
         require(!hashRefutation[_burnHash][msg.sender]);
         hashRefutation[_burnHash][msg.sender] = true;
