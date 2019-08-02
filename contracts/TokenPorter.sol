@@ -172,7 +172,7 @@ contract TokenPorter is ITokenPorter, Owned {
     {
         
         require(msg.sender == address(token));
-        require(now >= chainHopStartTime);
+        require(block.timestamp >= chainHopStartTime);
         require(_importData.length == 8);
         require(_addresses.length == 2);
         require(_burnHashes.length == 2);
@@ -211,7 +211,7 @@ contract TokenPorter is ITokenPorter, Owned {
     function export(address tokenOwner, bytes8 _destChain, address _destMetronomeAddr,
         address _destRecipAddr, uint _amount, uint _fee, bytes _extraData) public returns (bool) {
         require(msg.sender == address(token));
-        require(now >= chainHopStartTime);
+        require(block.timestamp >= chainHopStartTime);
         require(_destChain != 0x0 && _destMetronomeAddr != 0x0 && _destRecipAddr != 0x0 && _amount != 0);
         require(destinationChains[_destChain] == _destMetronomeAddr);
         

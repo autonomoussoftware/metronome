@@ -1,7 +1,10 @@
 const program = require('commander')
 var config = require('config')
 require('dotenv').config()
+const _ = require('./qtum-contracts.js')
 var shell = require('shelljs')
+// const Web3 = require('web3')
+// var web3 = new Web3()
 var contractsList = ['Proposals', 'Proceeds', 'Auctions', 'AutonomousConverter', 'SmartToken', 'METToken', 'TokenPorter', 'Validator']
 var contracts
 function init () {
@@ -26,7 +29,6 @@ async function deploy () {
 
 async function initContracts () {
   console.log('Configuring metToken')
-  const _ = require('./qtum-contracts.js')
   contracts = _.getContractInstance(contractsList)
   var output = (await contracts.METToken.call('autonomousConverter')).outputs[0]
   console.log('output', output)
@@ -74,16 +76,24 @@ async function initContracts () {
 }
 
 async function launchContracts () {
-  console.log('Launching metronome in qtum')
-  console.log('adding destination chain')
-  await contracts.TokenPorter.send('addDestinationChain', [web3.utils.toHex('ETH'), config.destinationChain.eth])
-  var destChain = await contracts.TokenPorter.call('destinationChains', [web3.utils.toHex('ETH')])
+  contracts = _.getContractInstance(contractsList)
+  // console.log('genesisTime auctions', (await contracts.Auctions.call('genesisTime')).outputs[0])
+  // process.exit(0)
+  var ethHex = '0x455448'
+  var tx = await contracts.TokenPorter.send('addDestinationChain', [ethHex, config.qtum.destinationChain.eth])
+  await tx.confirm(1)
+  var destChain = await contracts.TokenPorter.call('destinationChains', [ethHex])
   console.log('ETH destChain', destChain)
-  contracts.TokenPorter.send('addDestinationChain', [web3.utils.toHex('ETC'), config.destinationChain.eth])
-  destChain = await contracts.TokenPorter.call('destinationChains', [web3.utils.toHex('ETC')])
+  var etcHex = '0x455443'
+  tx = await contracts.TokenPorter.send('addDestinationChain', [etcHex, config.qtum.destinationChain.etc])
+  await tx.confirm(1)
+  destChain = await contracts.TokenPorter.call('destinationChains', [etcHex])
   console.log('ETC destChain', destChain)
+  var chainHopStartTime = Math.floor((new Date().getTime()) / 1000) + (60 * 5)
+  tx = await contracts.TokenPorter.send('setChainHopStartTime', [chainHopStartTime])
+  await tx.confirm(1)
   console.log('\nInitializing AutonomousConverter Contract')
-  var tx = await contracts.AutonomousConverter.send('init', [contracts.METToken.info.address, contracts.SmartToken.info.address, contracts.Auctions.info.address], {amount: 1})
+  tx = await contracts.AutonomousConverter.send('init', [contracts.METToken.info.address, contracts.SmartToken.info.address, contracts.Auctions.info.address], {amount: 1})
   await tx.confirm(1)
 
   console.log('\nInitializing Proceeds')
@@ -95,7 +105,7 @@ async function launchContracts () {
   var MINPRICE = 3300000000000 // Same as current min price in eth chain
   var PRICE = 2 // start price for first daily auction. This may be average start price at eth chain
   var TIMESCALE = 1 // hard coded
-  console.log('Initialized auctions', (await contracts.Auctions.call('initialized')).outputs[0])
+  console.log('genesisTime auctions', (await contracts.Auctions.call('genesisTime')).outputs[0])
   tx = await contracts.Auctions.send('skipInitBecauseIAmNotOg', [contracts.METToken.info.address, contracts.Proceeds.info.address, config.genesisTime, MINPRICE, PRICE, TIMESCALE, qtum, config.isa_endtime], {gasLimit: 5000000})
   await tx.confirm(1)
   console.log('Initialized auctions', (await contracts.Auctions.call('initialized')).outputs[0])
