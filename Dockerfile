@@ -54,7 +54,8 @@ COPY qtumd-launch /usr/local/bin
 ENV QTUM_DATADIR /dapp/.qtum
 ENV QTUM_RPC_USER qtum
 ENV QTUM_RPC_PASS test
-ENV QTUM_RPC http://$QTUM_RPC_USER:$QTUM_RPC_PASS@localhost:3889
-ENV QTUM_NETWORK regtest
+#ENV QTUM_RPC http://$QTUM_RPC_USER:$QTUM_RPC_PASS@localhost:3889
+ENV QTUM_RPC http://qtum:test@ec2-54-172-219-152.compute-1.amazonaws.com:3889
+ENV QTUM_NETWORK testnet
 
 VOLUME /dapp
