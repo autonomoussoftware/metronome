@@ -7,19 +7,6 @@ async function deploy (wallet, bin, opts = { 'gasLimit': 5000000 }) {
   var tx = await wallet.contractCreate(bin, opts)
   console.log('tx submitted to node', tx.id)
   return confirm(wallet, tx.id)
-//   await sleep(30000)
-//   console.log('waiting for confirmation')
-//   while (true) {
-//     var txinfo = await wallet.getTransactionInfo(tx.id)
-//     if (!txinfo) {
-//       return 'can not fetch tx information'
-//     }
-//     if (txinfo.confirmations >= confirmCount) {
-//       console.log('Tx confirmed. Contract address is', txinfo.outputs[0].address)
-//       return txinfo
-//     }
-//     await sleep(30000)
-//   }
 }
 
 async function contractSend (wallet, abi, address, methodName, params, _options = {}) {
