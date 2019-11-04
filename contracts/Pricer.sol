@@ -34,7 +34,7 @@ contract Pricer {
     uint constant internal METDECIMALS = 18;
     uint constant internal METDECMULT = 10 ** METDECIMALS;
     uint public minimumPrice = 33*10**11;
-    uint public minimumPriceInDailyAuction = 1;
+    uint public minimumPriceInDailyAuction = 1*10**8;
 
     uint public tentimes;
     uint public hundredtimes;

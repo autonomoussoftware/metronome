@@ -6,6 +6,7 @@
     "test": "test"
   },
   "scripts": {
+    "prepare": "patch-package",
     "docker-build": "docker build -t qtum-dev .",
     "docker-run": "docker run -it -v ${PWD}:/usr/src --network=\"host\" qtum-dev bash",
     "deploy": "node ./js/qtum/deploy.js deploy",
@@ -48,7 +49,8 @@
     "pre-commit": "^1.2.2",
     "shelljs": "^0.8.3",
     "solhint": "^1.2.1",
-    "truffle": "4.1.5"
+    "truffle": "4.1.5",
+    "patch-package": "5.1.1"
   },
   "engines": {
     "node": "8",
@@ -71,7 +73,10 @@
     "merkle-lib": "^2.0.10",
     "merkletreejs": "0.0.9",
     "mocha": "5.1.0",
-    "qtumjs": "^1.9.1",
-    "web3": "1.0.0-beta.37"
+    "qtumjs": "^1.9.3",
+    "web3": "1.0.0-beta.37",
+    "web3-eth-abi": "^1.2.1",
+    "websocket-reconnector": "^1.1.1",
+    "qtumjs-wallet": "0.2.1"
   }
 }
