@@ -140,7 +140,7 @@ async function launchContracts () {
   await provider.confirm(wallet, tx.id, 1)
 
   console.log('\nInitializing AutonomousConverter Contract')
-  tx = await provider.contractSend(wallet, JSON.parse(acc.abi), acc.address, 'init', [metToken.address, smartToken.address, auctions.address], {amount: 1})
+  tx = await provider.contractSend(wallet, JSON.parse(acc.abi), acc.address, 'init', [metToken.address, smartToken.address, auctions.address], {amount: 100000000})
   console.log('tx', tx)
   await provider.confirm(wallet, tx.id, 1)
 
@@ -163,17 +163,9 @@ async function launchContracts () {
 
   tx = await provider.contractSend(wallet, JSON.parse(metToken.abi), metToken.address, 'enableMETTransfers', [])
   console.log('tx', tx)
+  await provider.confirm(wallet, tx.id, 1)
   output = await provider.contractCall(wallet, JSON.parse(metToken.abi), metToken.address, 'transferAllowed', [])
   console.log('Enabled', output)
-
-  console.log('genesisTime auctions', (await contracts.Auctions.call('genesisTime')).outputs[0])
-  tx = await contracts.Auctions.send('skipInitBecauseIAmNotOg', [contracts.METToken.info.address, contracts.Proceeds.info.address, config.genesisTime, MINPRICE, PRICE, TIMESCALE, qtum, config.isa_endtime], {gasLimit: 5000000})
-  await tx.confirm(1)
-  console.log('Initialized auctions', (await contracts.Auctions.call('initialized')).outputs[0])
-  console.log('Enabling MET transfer', (await contracts.METToken.call('transferAllowed')).outputs[0])
-  tx = await contracts.METToken.send('enableMETTransfers')
-  await tx.confirm(1)
-  console.log('Enabled', (await contracts.METToken.call('transferAllowed')).outputs[0])
 }
 
 function getContractObjects () {

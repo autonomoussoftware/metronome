@@ -17,6 +17,7 @@ async function contractSend (wallet, abi, address, methodName, params, _options 
   if (_options.gas) {
     delete Object.assign(options, _options, { gasLimit: _options['gas'] })['gas']
   }
+  options = Object.assign(options, _options)
   return wallet.contractSend(contract.info.address, encodeData(contract, methodName, params), options)
 }
 
