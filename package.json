@@ -13,6 +13,7 @@
     "configure": "node ./js/eth/index.js configure",
     "migrate": "truffle migrate",
     "migrate:clean": "truffle migrate --reset",
+    "generate:go": "abigen --sol=./contracts/monolithic.sol --pkg=metronome > metronome.go",
     "solhint": "solhint contracts/*.sol",
     "eslint": "eslint test/*.js timed-tests/*.js",
     "ganache": "kill -9 $(lsof -ti :8545) & (ganache-cli -p 8545 -e 1000 -a 15 > /dev/null & truffle test) && kill -9 $(lsof -ti :8545)",
